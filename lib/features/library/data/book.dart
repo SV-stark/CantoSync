@@ -8,10 +8,10 @@ class Book extends HiveObject {
   final String path;
 
   @HiveField(1)
-  final String title;
+  String title;
 
   @HiveField(2)
-  final String? author;
+  String? author;
 
   @HiveField(3)
   double? durationSeconds;
@@ -34,6 +34,15 @@ class Book extends HiveObject {
   @HiveField(9)
   List<Bookmark>? bookmarks;
 
+  @HiveField(10)
+  List<String>? audioFiles;
+
+  @HiveField(11)
+  bool isDirectory;
+
+  @HiveField(12)
+  int? lastTrackIndex;
+
   Book({
     required this.path,
     required this.title,
@@ -45,9 +54,13 @@ class Book extends HiveObject {
     this.album,
     this.series,
     this.bookmarks,
+    this.audioFiles,
+    this.isDirectory = false,
+    this.lastTrackIndex,
   }) {
     this.lastPlayed = lastPlayed ?? DateTime.now();
     bookmarks ??= [];
+    audioFiles ??= [];
   }
 }
 

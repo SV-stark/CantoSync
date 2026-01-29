@@ -1,5 +1,4 @@
 import 'dart:io';
-import 'package:file_picker/file_picker.dart';
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:media_kit/media_kit.dart';
@@ -9,6 +8,7 @@ import 'package:canto_sync/core/services/playback_sync_service.dart';
 import 'package:canto_sync/core/services/sleep_timer_service.dart';
 import 'package:canto_sync/features/library/data/book.dart';
 import 'package:canto_sync/core/services/app_settings_service.dart';
+import 'package:canto_sync/features/library/ui/metadata_editor.dart';
 
 // Stream Providers for reactive UI
 final playerPositionProvider = StreamProvider.autoDispose<Duration>((ref) {
@@ -50,19 +50,6 @@ final playerChaptersProvider = FutureProvider.autoDispose<List<Chapter>>((
 
 class PlayerScreen extends ConsumerWidget {
   const PlayerScreen({super.key});
-
-  Future<void> _pickFile(WidgetRef ref) async {
-    FilePickerResult? result = await FilePicker.platform.pickFiles(
-      type: FileType.audio,
-    );
-
-    if (result != null) {
-      final path = result.files.single.path!;
-      ref.read(playbackSyncProvider).resumeBook(path);
-      // ref.read(mediaServiceProvider).open(path);
-      // ref.read(mediaServiceProvider).play();
-    }
-  }
 
   String _formatDuration(Duration d) {
     if (d.inHours > 0) {
@@ -179,6 +166,17 @@ class PlayerScreen extends ConsumerWidget {
                     ),
             ),
             const CommandBarSeparator(),
+            CommandBarButton(
+              icon: const Icon(FluentIcons.edit),
+              label: const Text('Edit Info'),
+              onPressed: currentBook == null
+                  ? null
+                  : () => showDialog(
+                      context: context,
+                      builder: (context) => MetadataEditor(book: currentBook),
+                    ),
+            ),
+            const CommandBarSeparator(),
             CommandBarBuilderItem(
               builder: (context, mode, w) => DropDownButton(
                 title: Text(
@@ -204,223 +202,219 @@ class PlayerScreen extends ConsumerWidget {
           ],
         ),
       ),
-      content: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          // Cover Art
-          Container(
-            height: 250,
-            width: 250,
-            decoration: BoxDecoration(
-              color: FluentTheme.of(context).cardColor,
-              borderRadius: BorderRadius.circular(12),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.2),
-                  blurRadius: 10,
-                  offset: const Offset(0, 4),
-                ),
-              ],
-            ),
-            child: ClipRRect(
-              borderRadius: BorderRadius.circular(12),
-              child: currentBook?.coverPath != null
-                  ? Image.file(
-                      File(currentBook!.coverPath!),
-                      fit: BoxFit.cover,
-                      errorBuilder: (context, error, stackTrace) =>
-                          const Icon(FluentIcons.music_in_collection, size: 80),
-                    )
-                  : const Icon(FluentIcons.music_in_collection, size: 80),
-            ),
-          ),
-          const SizedBox(height: 20),
-          // Book Title & Author
-          Text(
-            currentBook?.title ?? 'No Book Selected',
-            style: FluentTheme.of(context).typography.title,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-          ),
-          Text(
-            currentBook?.author ?? 'Unknown Author',
-            style: FluentTheme.of(context).typography.body,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-          ),
-          const SizedBox(height: 30),
-
-          // Slider / Progress
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 40),
-            child: Column(
-              children: [
-                Slider(
-                  value: position.inMilliseconds.toDouble(),
-                  min: 0,
-                  max: duration.inMilliseconds.toDouble(),
-                  onChanged: (value) {
-                    mediaService.seek(Duration(milliseconds: value.toInt()));
-                  },
-                ),
-                const SizedBox(height: 8),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text(_formatDuration(position)),
-                    Text(_formatDuration(duration)),
-                  ],
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(height: 30),
-
-          // Controls
-          Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              IconButton(
-                icon: const Icon(FluentIcons.previous, size: 24),
-                onPressed: () {
-                  mediaService.seek(position - const Duration(seconds: 15));
-                },
-              ),
-              const SizedBox(width: 20),
-              IconButton(
-                icon: Icon(
-                  isPlaying ? FluentIcons.pause : FluentIcons.play,
-                  size: 40,
-                ),
-                onPressed: () {
-                  mediaService.playOrPause();
-                },
-                style: ButtonStyle(
-                  shape: WidgetStateProperty.all(const CircleBorder()),
-                  padding: WidgetStateProperty.all(const EdgeInsets.all(12)),
-                  backgroundColor: WidgetStateProperty.all(
-                    FluentTheme.of(context).accentColor,
-                  ),
-                  foregroundColor: WidgetStateProperty.all(Colors.white),
-                ),
-              ),
-              const SizedBox(width: 20),
-              IconButton(
-                icon: const Icon(FluentIcons.next, size: 24),
-                onPressed: () {
-                  mediaService.seek(position + const Duration(seconds: 15));
-                },
-              ),
-            ],
-          ),
-          const SizedBox(height: 40),
-
-          // Bookmarks List
-          if (currentBook != null &&
-              currentBook.bookmarks != null &&
-              currentBook.bookmarks!.isNotEmpty)
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
-              child: Expander(
-                header: const Text('Bookmarks'),
-                content: SizedBox(
-                  height: 150,
-                  child: ListView.builder(
-                    itemCount: currentBook.bookmarks!.length,
-                    itemBuilder: (context, index) {
-                      final bookmark = currentBook.bookmarks![index];
-                      return ListTile(
-                        title: Text(bookmark.label),
-                        subtitle: Text(
-                          'Created: ${bookmark.createdAt.toLocal().toString().split('.')[0]}',
+      content: LayoutBuilder(
+        builder: (context, constraints) {
+          final isWide = constraints.maxWidth > 800;
+          return Center(
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.all(20),
+              child: Flex(
+                direction: isWide ? Axis.horizontal : Axis.vertical,
+                mainAxisAlignment: MainAxisAlignment.center,
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  // Cover Art
+                  Container(
+                    height: isWide ? 400 : 300,
+                    width: isWide ? 400 : 300,
+                    decoration: BoxDecoration(
+                      color: FluentTheme.of(context).cardColor,
+                      borderRadius: BorderRadius.circular(20),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withValues(alpha: 0.3),
+                          blurRadius: 30,
+                          offset: const Offset(0, 10),
                         ),
-                        trailing: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Text(
-                              _formatDuration(
-                                Duration(
-                                  seconds: bookmark.timestampSeconds.toInt(),
-                                ),
-                              ),
+                      ],
+                    ),
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(20),
+                      child: currentBook?.coverPath != null
+                          ? Image.file(
+                              File(currentBook!.coverPath!),
+                              fit: BoxFit.cover,
+                              errorBuilder: (context, error, stackTrace) =>
+                                  const Icon(
+                                    FluentIcons.music_in_collection,
+                                    size: 100,
+                                  ),
+                            )
+                          : const Icon(
+                              FluentIcons.music_in_collection,
+                              size: 100,
                             ),
-                            IconButton(
-                              icon: const Icon(FluentIcons.delete),
-                              onPressed: () {
-                                ref
-                                    .read(libraryServiceProvider)
-                                    .removeBookmark(currentBook.path, index);
-                              },
+                    ),
+                  ),
+                  if (isWide)
+                    const SizedBox(width: 60)
+                  else
+                    const SizedBox(height: 40),
+
+                  // Info & Controls
+                  Flexible(
+                    child: ConstrainedBox(
+                      constraints: const BoxConstraints(maxWidth: 600),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          // Book Title & Author
+                          Text(
+                            currentBook?.title ?? 'No Book Selected',
+                            style: FluentTheme.of(context).typography.titleLarge
+                                ?.copyWith(fontWeight: FontWeight.bold),
+                            textAlign: TextAlign.center,
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                          const SizedBox(height: 8),
+                          Text(
+                            currentBook?.author ?? 'Unknown Author',
+                            style: FluentTheme.of(context).typography.subtitle
+                                ?.copyWith(
+                                  color: FluentTheme.of(context)
+                                      .typography
+                                      .subtitle
+                                      ?.color
+                                      ?.withValues(alpha: 0.8),
+                                ),
+                            textAlign: TextAlign.center,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                          if (currentBook?.series != null) ...[
+                            const SizedBox(height: 4),
+                            Text(
+                              currentBook!.series!,
+                              style: FluentTheme.of(context)
+                                  .typography
+                                  .bodyStrong
+                                  ?.copyWith(
+                                    color: FluentTheme.of(context).accentColor,
+                                  ),
+                              textAlign: TextAlign.center,
                             ),
                           ],
-                        ),
-                        onPressed: () {
-                          mediaService.seek(
-                            Duration(
-                              seconds: bookmark.timestampSeconds.toInt(),
-                            ),
-                          );
-                        },
-                      );
-                    },
-                  ),
-                ),
-              ),
-            ),
+                          const SizedBox(height: 40),
 
-          // Chapters List
-          Consumer(
-            builder: (context, ref, child) {
-              final chaptersAsync = ref.watch(playerChaptersProvider);
-              return chaptersAsync.when(
-                data: (chapters) {
-                  if (chapters.isEmpty) return const SizedBox.shrink();
+                          // Slider / Progress
+                          Column(
+                            children: [
+                              Slider(
+                                value: position.inMilliseconds.toDouble().clamp(
+                                  0,
+                                  duration.inMilliseconds.toDouble(),
+                                ),
+                                min: 0,
+                                max: duration.inMilliseconds.toDouble() > 0
+                                    ? duration.inMilliseconds.toDouble()
+                                    : 1,
+                                onChanged: (value) {
+                                  mediaService.seek(
+                                    Duration(milliseconds: value.toInt()),
+                                  );
+                                },
+                              ),
+                              const SizedBox(height: 8),
+                              Row(
+                                mainAxisAlignment:
+                                    MainAxisAlignment.spaceBetween,
+                                children: [
+                                  Text(_formatDuration(position)),
+                                  Text(_formatDuration(duration)),
+                                ],
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 30),
 
-                  return Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 20),
-                    child: Expander(
-                      header: const Text('Chapters'),
-                      content: SizedBox(
-                        height: 200, // Limit height
-                        child: ListView.builder(
-                          itemCount: chapters.length,
-                          itemBuilder: (context, index) {
-                            final chapter = chapters[index];
-                            final duration = chapter.durationSeconds;
-                            return ListTile(
-                              title: Text(chapter.title),
-                              subtitle: duration != null
-                                  ? Text(
-                                      'Duration: ${_formatDuration(Duration(seconds: duration.toInt()))}',
-                                    )
-                                  : null,
-                              trailing: Text(
-                                _formatDuration(
-                                  Duration(seconds: chapter.startTime.toInt()),
+                          // Controls
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              IconButton(
+                                icon: const Icon(
+                                  FluentIcons.previous,
+                                  size: 28,
+                                ),
+                                onPressed: () {
+                                  // Logic: If >5s, seek start. If <5s, prev chapter/track
+                                  if (position.inSeconds > 5) {
+                                    mediaService.seek(Duration.zero);
+                                  } else {
+                                    mediaService.previousChapter();
+                                  }
+                                },
+                              ),
+                              const SizedBox(width: 30),
+                              IconButton(
+                                icon: const Icon(
+                                  FluentIcons.rewind,
+                                  size: 24,
+                                ), // -15s
+                                onPressed: () {
+                                  mediaService.seek(
+                                    position - const Duration(seconds: 15),
+                                  );
+                                },
+                              ),
+                              const SizedBox(width: 30),
+                              IconButton(
+                                icon: Icon(
+                                  isPlaying
+                                      ? FluentIcons.pause
+                                      : FluentIcons.play,
+                                  size: 48,
+                                  color: FluentTheme.of(context).accentColor,
+                                ),
+                                onPressed: () {
+                                  mediaService.playOrPause();
+                                },
+                                style: ButtonStyle(
+                                  padding: WidgetStateProperty.all(
+                                    const EdgeInsets.all(16),
+                                  ),
+                                  backgroundColor:
+                                      WidgetStateProperty.resolveWith((states) {
+                                        if (states.isHovered) {
+                                          return FluentTheme.of(
+                                            context,
+                                          ).cardColor;
+                                        }
+                                        return Colors.transparent;
+                                      }),
                                 ),
                               ),
-                              onPressed: () {
-                                mediaService.jumpToChapter(index);
-                              },
-                            );
-                          },
-                        ),
+                              const SizedBox(width: 30),
+                              IconButton(
+                                icon: const Icon(
+                                  FluentIcons.fast_forward,
+                                  size: 24,
+                                ), // +15s
+                                onPressed: () {
+                                  mediaService.seek(
+                                    position + const Duration(seconds: 15),
+                                  );
+                                },
+                              ),
+                              const SizedBox(width: 30),
+                              IconButton(
+                                icon: const Icon(FluentIcons.next, size: 28),
+                                onPressed: () {
+                                  mediaService.nextChapter();
+                                },
+                              ),
+                            ],
+                          ),
+                        ],
                       ),
                     ),
-                  );
-                },
-                loading: () => const SizedBox(),
-                error: (e, _) => Text('Error loading chapters: $e'),
-              );
-            },
-          ),
-
-          const SizedBox(height: 20),
-          FilledButton(
-            onPressed: () => _pickFile(ref),
-            child: const Text('Open Audio File'),
-          ),
-        ],
+                  ),
+                ],
+              ),
+            ),
+          );
+        },
       ),
     );
   }

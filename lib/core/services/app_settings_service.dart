@@ -19,16 +19,23 @@ enum AudioPreset {
 class AppSettings {
   final ThemeMode themeMode;
   final AudioPreset audioPreset;
+  final List<String> libraryPaths;
 
   AppSettings({
     this.themeMode = ThemeMode.system,
     this.audioPreset = AudioPreset.flat,
+    this.libraryPaths = const [],
   });
 
-  AppSettings copyWith({ThemeMode? themeMode, AudioPreset? audioPreset}) {
+  AppSettings copyWith({
+    ThemeMode? themeMode,
+    AudioPreset? audioPreset,
+    List<String>? libraryPaths,
+  }) {
     return AppSettings(
       themeMode: themeMode ?? this.themeMode,
       audioPreset: audioPreset ?? this.audioPreset,
+      libraryPaths: libraryPaths ?? this.libraryPaths,
     );
   }
 }
@@ -48,10 +55,12 @@ class AppSettingsNotifier extends Notifier<AppSettings> {
       'audioPreset',
       defaultValue: AudioPreset.flat.index,
     );
+    final paths = _box.get('libraryPaths', defaultValue: <String>[]);
 
     return AppSettings(
       themeMode: ThemeMode.values[themeIndex],
       audioPreset: AudioPreset.values[presetIndex],
+      libraryPaths: List<String>.from(paths),
     );
   }
 
@@ -66,6 +75,20 @@ class AppSettingsNotifier extends Notifier<AppSettings> {
 
     // Apply filter immediately
     ref.read(mediaServiceProvider).setAudioFilter(preset.filter);
+  }
+
+  void addLibraryPath(String path) {
+    if (!state.libraryPaths.contains(path)) {
+      final newPaths = [...state.libraryPaths, path];
+      state = state.copyWith(libraryPaths: newPaths);
+      _box.put('libraryPaths', newPaths);
+    }
+  }
+
+  void removeLibraryPath(String path) {
+    final newPaths = state.libraryPaths.where((p) => p != path).toList();
+    state = state.copyWith(libraryPaths: newPaths);
+    _box.put('libraryPaths', newPaths);
   }
 }
 

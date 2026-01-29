@@ -13,6 +13,7 @@ import 'package:canto_sync/core/services/hotkey_service.dart';
 import 'package:canto_sync/core/services/tray_service.dart';
 import 'package:canto_sync/core/services/update_service.dart';
 import 'package:canto_sync/core/services/app_settings_service.dart';
+import 'package:canto_sync/core/ui/window_buttons.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 void main() async {
@@ -158,8 +159,17 @@ class _CantoSyncAppState extends ConsumerState<CantoSyncApp>
       ),
       home: NavigationView(
         appBar: const NavigationAppBar(
-          title: Text('CantoSync'),
+          title: DragToMoveArea(
+            child: Align(
+              alignment: AlignmentDirectional.centerStart,
+              child: Text('CantoSync'),
+            ),
+          ),
           automaticallyImplyLeading: false,
+          actions: Row(
+            mainAxisAlignment: MainAxisAlignment.end,
+            children: [Spacer(), WindowButtons()],
+          ),
         ),
         pane: NavigationPane(
           selected: _index,

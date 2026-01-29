@@ -7,6 +7,8 @@ import 'package:canto_sync/features/library/data/book.dart';
 import 'package:canto_sync/features/library/data/library_service.dart';
 import 'package:canto_sync/core/services/playback_sync_service.dart';
 
+import 'package:canto_sync/core/services/app_settings_service.dart';
+
 class LibraryViewMode extends Notifier<bool> {
   @override
   bool build() => true; // Grid by default
@@ -24,6 +26,7 @@ class LibraryScreen extends ConsumerWidget {
   Future<void> _pickFolder(WidgetRef ref) async {
     String? selectedDirectory = await FilePicker.platform.getDirectoryPath();
     if (selectedDirectory != null) {
+      ref.read(appSettingsProvider.notifier).addLibraryPath(selectedDirectory);
       ref.read(libraryServiceProvider).scanDirectory(selectedDirectory);
     }
   }
@@ -232,26 +235,49 @@ class BookCard extends ConsumerWidget {
       builder: (context, states) {
         return Card(
           padding: EdgeInsets.zero,
+          borderRadius: BorderRadius.circular(8),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Expanded(
                 child: Container(
-                  color: Colors.grey.withValues(alpha: 0.2),
+                  decoration: BoxDecoration(
+                    color: Colors.grey.withValues(alpha: 0.2),
+                    borderRadius: const BorderRadius.vertical(
+                      top: Radius.circular(8),
+                    ),
+                    boxShadow: states.isHovered
+                        ? [
+                            BoxShadow(
+                              color: Colors.black.withValues(alpha: 0.2),
+                              blurRadius: 10,
+                              offset: const Offset(0, 4),
+                            ),
+                          ]
+                        : [],
+                  ),
                   width: double.infinity,
-                  child: book.coverPath != null
-                      ? Image.file(
-                          File(book.coverPath!),
-                          fit: BoxFit.cover,
-                          errorBuilder: (context, error, stackTrace) {
-                            return const Icon(FluentIcons.music_note, size: 48);
-                          },
-                        )
-                      : const Icon(FluentIcons.music_note, size: 48),
+                  child: ClipRRect(
+                    borderRadius: const BorderRadius.vertical(
+                      top: Radius.circular(8),
+                    ),
+                    child: book.coverPath != null
+                        ? Image.file(
+                            File(book.coverPath!),
+                            fit: BoxFit.cover,
+                            errorBuilder: (context, error, stackTrace) {
+                              return const Icon(
+                                FluentIcons.music_note,
+                                size: 48,
+                              );
+                            },
+                          )
+                        : const Icon(FluentIcons.music_note, size: 48),
+                  ),
                 ),
               ),
               Padding(
-                padding: const EdgeInsets.all(8.0),
+                padding: const EdgeInsets.all(12.0),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -261,11 +287,17 @@ class BookCard extends ConsumerWidget {
                       overflow: TextOverflow.ellipsis,
                       style: FluentTheme.of(context).typography.bodyStrong,
                     ),
+                    const SizedBox(height: 4),
                     Text(
                       book.author ?? 'Unknown Author',
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: FluentTheme.of(context).typography.caption,
+                      style: FluentTheme.of(context).typography.caption
+                          ?.copyWith(
+                            color: FluentTheme.of(
+                              context,
+                            ).typography.caption?.color?.withValues(alpha: 0.7),
+                          ),
                     ),
                   ],
                 ),

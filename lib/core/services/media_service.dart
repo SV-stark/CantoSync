@@ -28,21 +28,41 @@ class MediaService {
   }
 
   Future<void> open(
-    String filePath, {
+    dynamic mediaSource, {
     String? title,
     String? artist,
     String? album,
+    bool autoPlay = true,
   }) async {
-    await _player.open(
-      Media(
-        filePath,
-        httpHeaders: {
-          'title': title ?? '',
-          'artist': artist ?? '',
-          'album': album ?? '',
-        },
-      ),
-    );
+    if (mediaSource is String) {
+      await _player.open(
+        Media(
+          mediaSource,
+          httpHeaders: {
+            'title': title ?? '',
+            'artist': artist ?? '',
+            'album': album ?? '',
+          },
+        ),
+        play: autoPlay,
+      );
+    } else if (mediaSource is List<String>) {
+      final playlist = Playlist(
+        mediaSource
+            .map(
+              (path) => Media(
+                path,
+                httpHeaders: {
+                  'title': title ?? '',
+                  'artist': artist ?? '',
+                  'album': album ?? '',
+                },
+              ),
+            )
+            .toList(),
+      );
+      await _player.open(playlist, play: autoPlay);
+    }
   }
 
   Future<void> play() async {
@@ -127,6 +147,10 @@ class MediaService {
     }
   }
 
+  Future<void> jump(int index) async {
+    await _player.jump(index);
+  }
+
   Future<void> nextChapter() async {
     // Rely on native next
     await _player.next();
@@ -140,6 +164,7 @@ class MediaService {
   Duration get position => _player.state.position;
   Duration get duration => _player.state.duration;
   bool get isPlaying => _player.state.playing;
+  int get currentIndex => _player.state.playlist.index;
   Tracks get tracks => _player.state.tracks;
   Track get track => _player.state.track;
 

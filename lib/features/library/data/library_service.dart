@@ -89,18 +89,63 @@ class LibraryService {
 
     final audioExtensions = {'.mp3', '.m4b', '.m4a', '.flac', '.ogg', '.wav'};
 
+    // Group files by parent directory
+    final Map<String, List<File>> dirBasedGroups = {};
+
     for (final entity in entities) {
       if (entity is File) {
         final ext = p.extension(entity.path).toLowerCase();
         if (audioExtensions.contains(ext)) {
-          await _addBookIfNotExists(entity.path);
+          final parent = p.dirname(entity.path);
+          dirBasedGroups.putIfAbsent(parent, () => []).add(entity);
         }
+      }
+    }
+
+    for (final entry in dirBasedGroups.entries) {
+      final parentPath = entry.key;
+      final files = entry.value;
+
+      // Sort files by name to ensure correct order
+      files.sort((a, b) => a.path.compareTo(b.path));
+
+      if (files.length == 1 &&
+          files.first.parent.path == dir.path &&
+          files.length == 1) {
+        // Single file book in strictly the root scan dir?
+        // Actually, user wants "Short_Stories_Collection (Single MP3)/Full_Audiobook.mp3" -> One book
+        // "Modern_Thriller_Special (Single M4B)/Book_Title.m4b" -> One book
+        // "Audiobooks/The_Great_Epic (Multipart)/Part01.mp3" -> One book
+
+        // Logic:
+        // If a folder contains audio files, that folder IS the book container.
+        // Even if it has only 1 file.
+        // Use directory as the key/path for the Book entry.
+        // This is consistent.
+        final filePaths = files.map((f) => f.path).toList();
+        await _addBookIfNotExists(
+          parentPath,
+          isDirectory: true,
+          audioFiles: filePaths,
+        );
+      } else {
+        // Same logic: Treat folder as book.
+        final filePaths = files.map((f) => f.path).toList();
+        await _addBookIfNotExists(
+          parentPath,
+          isDirectory: true,
+          audioFiles: filePaths,
+        );
       }
     }
   }
 
-  Future<void> _addBookIfNotExists(String path) async {
-    // Check if already in DB (naive O(n) check, optimize later if needed)
+  Future<void> _addBookIfNotExists(
+    String path, {
+    required bool isDirectory,
+    List<String>? audioFiles,
+  }) async {
+    // Check if already in DB
     final exists = _box.values.any((b) => b.path == path);
     if (exists) return;
 
@@ -108,35 +153,58 @@ class LibraryService {
     String? author;
     String? album;
     String? coverPath;
-    double? duration;
+    double duration = 0;
+
+    // Use the first file to extract metadata
+    final metadataSourcePath = (audioFiles != null && audioFiles.isNotEmpty)
+        ? audioFiles.first
+        : path;
 
     try {
-      final metadata = await MetadataGod.readMetadata(file: path);
+      final metadata = await MetadataGod.readMetadata(file: metadataSourcePath);
       title = metadata.title;
       author = metadata.artist;
       album = metadata.album;
 
-      if (metadata.durationMs != null) {
-        duration = metadata.durationMs! / 1000.0;
+      if (metadata.picture != null) {
+        coverPath = await _extractAndCacheCover(
+          metadata.picture!,
+          metadataSourcePath,
+        );
       }
 
-      if (metadata.picture != null) {
-        coverPath = await _extractAndCacheCover(metadata.picture!, path);
+      // Calculate total duration
+      if (audioFiles != null) {
+        for (final filePath in audioFiles) {
+          try {
+            final fileMeta = await MetadataGod.readMetadata(file: filePath);
+            if (fileMeta.durationMs != null) {
+              duration += fileMeta.durationMs! / 1000.0;
+            }
+          } catch (_) {}
+        }
+      } else {
+        if (metadata.durationMs != null) {
+          duration = metadata.durationMs! / 1000.0;
+        }
       }
     } catch (e) {
       debugPrint('Error reading metadata for $path: $e');
     }
 
-    final filename = p.basenameWithoutExtension(path);
+    // Fallback title to folder name
+    final folderName = p.basename(path);
 
     final book = Book(
       path: path,
-      title: title ?? filename,
+      title: title ?? folderName,
       author: author,
       album: album,
-      durationSeconds: duration,
+      durationSeconds: duration > 0 ? duration : null,
       coverPath: coverPath,
       lastPlayed: DateTime.now(),
+      audioFiles: audioFiles,
+      isDirectory: isDirectory,
     );
 
     await _box.add(book);
@@ -171,11 +239,18 @@ class LibraryService {
     }
   }
 
-  Future<void> updateProgress(String path, double positionSeconds) async {
+  Future<void> updateProgress(
+    String path,
+    double positionSeconds, {
+    int? trackIndex,
+  }) async {
     try {
       final book = _box.values.firstWhere((b) => b.path == path);
       book.positionSeconds = positionSeconds;
       book.lastPlayed = DateTime.now();
+      if (trackIndex != null) {
+        book.lastTrackIndex = trackIndex;
+      }
       await book.save();
     } catch (e) {
       // Book not found in library, ignore

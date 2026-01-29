@@ -37,7 +37,11 @@ class PlaybackSyncService {
   void _init() {
     _subscription = _mediaService.positionStream.listen((position) {
       if (_currentPath != null && _mediaService.isPlaying) {
-        _debounceSave(_currentPath!, position.inMilliseconds / 1000.0);
+        _debounceSave(
+          _currentPath!,
+          position.inMilliseconds / 1000.0,
+          _mediaService.currentIndex,
+        );
       }
     });
 
@@ -62,6 +66,9 @@ class PlaybackSyncService {
     String? author;
     String? album;
     double? lastPosition;
+    List<String>? audioFiles;
+    bool isDirectory = false;
+    int? lastTrackIndex;
 
     try {
       final books = _libraryService.books;
@@ -70,9 +77,33 @@ class PlaybackSyncService {
       author = book.author;
       album = book.album;
       lastPosition = book.positionSeconds;
+      audioFiles = book.audioFiles;
+      isDirectory = book.isDirectory;
+      lastTrackIndex = book.lastTrackIndex;
     } catch (_) {}
 
-    await _mediaService.open(path, title: title, artist: author, album: album);
+    if (isDirectory && audioFiles != null && audioFiles.isNotEmpty) {
+      await _mediaService.open(
+        audioFiles,
+        title: title,
+        artist: author,
+        album: album,
+      );
+
+      // Restore track index
+      if (lastTrackIndex != null &&
+          lastTrackIndex >= 0 &&
+          lastTrackIndex < audioFiles.length) {
+        await _mediaService.jump(lastTrackIndex);
+      }
+    } else {
+      await _mediaService.open(
+        path,
+        title: title,
+        artist: author,
+        album: album,
+      );
+    }
 
     if (lastPosition != null && lastPosition > 0) {
       await _mediaService.seek(
@@ -80,14 +111,19 @@ class PlaybackSyncService {
       );
     }
 
-    await _mediaService.play();
+    // Resume playback is handled by autoPlay: true in open by default now, or explicit play
+    // Check if open already plays. My modified open has autoPlay=true default.
+    // So we don't strictly need _mediaService.play() providing we ensure open handles it.
+    // But let's verify MediaService implementation.
+    // Modified open uses `play: autoPlay`.
+    // So we can remove explicit play if we want, or keep it safe.
   }
 
-  void _debounceSave(String path, double seconds) {
+  void _debounceSave(String path, double seconds, int trackIndex) {
     if (_debounceTimer?.isActive ?? false) return;
 
     _debounceTimer = Timer(const Duration(seconds: 2), () {
-      _libraryService.updateProgress(path, seconds);
+      _libraryService.updateProgress(path, seconds, trackIndex: trackIndex);
     });
   }
 

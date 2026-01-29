@@ -27,8 +27,22 @@ class MediaService {
     _player = Player();
   }
 
-  Future<void> open(String filePath) async {
-    await _player.open(Media(filePath));
+  Future<void> open(
+    String filePath, {
+    String? title,
+    String? artist,
+    String? album,
+  }) async {
+    await _player.open(
+      Media(
+        filePath,
+        httpHeaders: {
+          'title': title ?? '',
+          'artist': artist ?? '',
+          'album': album ?? '',
+        },
+      ),
+    );
   }
 
   Future<void> play() async {
@@ -128,6 +142,13 @@ class MediaService {
   bool get isPlaying => _player.state.playing;
   Tracks get tracks => _player.state.tracks;
   Track get track => _player.state.track;
+
+  Future<void> setAudioFilter(String filter) async {
+    if (_player.platform is NativePlayer) {
+      final native = _player.platform as NativePlayer;
+      await native.setProperty('af', filter);
+    }
+  }
 
   void dispose() {
     _player.dispose();

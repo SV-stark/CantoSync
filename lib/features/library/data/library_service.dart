@@ -12,10 +12,58 @@ final libraryServiceProvider = Provider<LibraryService>((ref) {
   return LibraryService(Hive.box<Book>('library'));
 });
 
+class LibrarySearchQuery extends Notifier<String> {
+  @override
+  String build() => '';
+
+  void updateQuery(String query) => state = query;
+}
+
+final librarySearchQueryProvider = NotifierProvider<LibrarySearchQuery, String>(
+  LibrarySearchQuery.new,
+);
+
+class LibraryGroupingMode extends Notifier<bool> {
+  @override
+  bool build() => false;
+
+  void toggle() => state = !state;
+}
+
+final libraryGroupingModeProvider = NotifierProvider<LibraryGroupingMode, bool>(
+  LibraryGroupingMode.new,
+);
+
 final libraryBooksProvider = StreamProvider<List<Book>>((ref) {
   final service = ref.watch(libraryServiceProvider);
-  return service.listenToBooks();
+  final searchQuery = ref.watch(librarySearchQueryProvider).toLowerCase();
+
+  return service.listenToBooks().map((books) {
+    if (searchQuery.isEmpty) return books;
+    return books.where((book) {
+      final title = book.title.toLowerCase();
+      final author = book.author?.toLowerCase() ?? '';
+      final album = book.album?.toLowerCase() ?? '';
+      return title.contains(searchQuery) ||
+          author.contains(searchQuery) ||
+          album.contains(searchQuery);
+    }).toList();
+  });
 });
+
+final libraryGroupedBooksProvider =
+    Provider<AsyncValue<Map<String, List<Book>>>>((ref) {
+      final booksAsync = ref.watch(libraryBooksProvider);
+
+      return booksAsync.whenData((books) {
+        final Map<String, List<Book>> groups = {};
+        for (final book in books) {
+          final key = book.series ?? 'Standalone';
+          groups.putIfAbsent(key, () => []).add(book);
+        }
+        return groups;
+      });
+    });
 
 class LibraryService {
   final Box<Book> _box;
@@ -131,6 +179,29 @@ class LibraryService {
       await book.save();
     } catch (e) {
       // Book not found in library, ignore
+    }
+  }
+
+  Future<void> addBookmark(String path, Bookmark bookmark) async {
+    try {
+      final book = _box.values.firstWhere((b) => b.path == path);
+      book.bookmarks ??= [];
+      book.bookmarks!.add(bookmark);
+      await book.save();
+    } catch (e) {
+      debugPrint('Error adding bookmark: $e');
+    }
+  }
+
+  Future<void> removeBookmark(String path, int index) async {
+    try {
+      final book = _box.values.firstWhere((b) => b.path == path);
+      if (book.bookmarks != null && index < book.bookmarks!.length) {
+        book.bookmarks!.removeAt(index);
+        await book.save();
+      }
+    } catch (e) {
+      debugPrint('Error removing bookmark: $e');
     }
   }
 }

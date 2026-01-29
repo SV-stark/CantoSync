@@ -8,6 +8,12 @@ import 'package:window_manager/window_manager.dart';
 import 'package:canto_sync/features/library/data/book.dart';
 import 'package:canto_sync/features/player/ui/player_screen.dart';
 import 'package:canto_sync/features/library/ui/library_screen.dart';
+import 'package:canto_sync/features/settings/ui/settings_screen.dart';
+import 'package:canto_sync/core/services/hotkey_service.dart';
+import 'package:canto_sync/core/services/tray_service.dart';
+import 'package:canto_sync/core/services/update_service.dart';
+import 'package:canto_sync/core/services/app_settings_service.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 void main() async {
   // ... existing init code ...
@@ -23,6 +29,7 @@ void main() async {
   // Initialize Hive (Database)
   await Hive.initFlutter();
   Hive.registerAdapter(BookAdapter());
+  Hive.registerAdapter(BookmarkAdapter());
   await Hive.openBox<Book>('library');
 
   // Initialize Window Manager
@@ -44,76 +51,140 @@ void main() async {
 
   // Load System Theme Accent Color
   await SystemTheme.accentColor.load();
+  await Hive.openBox<Book>('books');
+  await Hive.openBox('settings');
 
   runApp(const ProviderScope(child: CantoSyncApp()));
 }
 
-class CantoSyncApp extends ConsumerWidget {
+class CantoSyncApp extends ConsumerStatefulWidget {
   const CantoSyncApp({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    // Basic Theme based on System Accent
-    final accentColor = SystemTheme.accentColor.accent.toAccentColor();
-
-    return FluentApp(
-      title: 'CantoSync',
-      themeMode: ThemeMode.system,
-      debugShowCheckedModeBanner: false,
-      color: accentColor,
-      darkTheme: FluentThemeData(
-        brightness: Brightness.dark,
-        accentColor: accentColor,
-        visualDensity: VisualDensity.standard,
-        focusTheme: FocusThemeData(
-          glowFactor: is10footScreen(context) ? 2.0 : 0.0,
-        ),
-      ),
-      theme: FluentThemeData(
-        accentColor: accentColor,
-        visualDensity: VisualDensity.standard,
-        focusTheme: FocusThemeData(
-          glowFactor: is10footScreen(context) ? 2.0 : 0.0,
-        ),
-      ),
-      home: const MyHomePage(),
-    );
-  }
+  ConsumerState<CantoSyncApp> createState() => _CantoSyncAppState();
 }
 
-class MyHomePage extends StatelessWidget {
-  const MyHomePage({super.key});
+class _CantoSyncAppState extends ConsumerState<CantoSyncApp>
+    with WindowListener {
+  int _index = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    windowManager.addListener(this);
+    _initServices();
+  }
+
+  @override
+  void dispose() {
+    windowManager.removeListener(this);
+    super.dispose();
+  }
+
+  Future<void> _initServices() async {
+    // Prevent default close, we'll handle it for tray minimization
+    await windowManager.setPreventClose(true);
+
+    // Initialize production-grade services
+    await ref.read(hotkeyServiceProvider).init();
+    await ref.read(trayServiceProvider).init();
+
+    // Check for updates
+    _checkUpdates();
+  }
+
+  Future<void> _checkUpdates() async {
+    final updateInfo = await ref.read(updateServiceProvider).checkForUpdates();
+    if (updateInfo != null && mounted) {
+      showDialog(
+        context: context,
+        builder: (context) => ContentDialog(
+          title: const Text('Update Available'),
+          content: Text(
+            'A new version (${updateInfo.latestVersion}) is available. Would you like to download it now?\n\n${updateInfo.releaseNotes ?? ''}',
+          ),
+          actions: [
+            Button(
+              child: const Text('Later'),
+              onPressed: () => Navigator.pop(context),
+            ),
+            FilledButton(
+              child: const Text('Download'),
+              onPressed: () async {
+                final url = Uri.parse(updateInfo.downloadUrl);
+                if (await canLaunchUrl(url)) {
+                  await launchUrl(url);
+                }
+                if (!context.mounted) return;
+                Navigator.pop(context);
+              },
+            ),
+          ],
+        ),
+      );
+    }
+  }
+
+  @override
+  void onWindowClose() async {
+    bool isPreventClose = await windowManager.isPreventClose();
+    if (isPreventClose) {
+      await windowManager.hide();
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
-    return NavigationView(
-      appBar: const NavigationAppBar(
-        title: Text('CantoSync'),
-        automaticallyImplyLeading: false,
+    final settings = ref.watch(appSettingsProvider);
+
+    return FluentApp(
+      title: 'CantoSync',
+      themeMode: settings.themeMode,
+      debugShowCheckedModeBanner: false,
+      theme: FluentThemeData(
+        accentColor: SystemTheme.accentColor.accent.toAccentColor(),
+        visualDensity: VisualDensity.standard,
+        focusTheme: FocusThemeData(
+          glowFactor: is10footScreen(context) ? 2.0 : 0.0,
+        ),
       ),
-      pane: NavigationPane(
-        selected: 0,
-        onChanged: (index) {},
-        displayMode: PaneDisplayMode.auto,
-        items: [
-          PaneItem(
-            icon: const Icon(FluentIcons.library),
-            title: const Text('Library'),
-            body: const LibraryScreen(),
-          ),
-          PaneItem(
-            icon: const Icon(FluentIcons.play),
-            title: const Text('Now Playing'),
-            body: const PlayerScreen(),
-          ),
-        ],
-        footerItems: [
-          PaneItem(
-            icon: const Icon(FluentIcons.settings),
-            title: const Text('Settings'),
-            body: const Center(child: Text('Settings Content')),
-          ),
-        ],
+      darkTheme: FluentThemeData(
+        brightness: Brightness.dark,
+        accentColor: SystemTheme.accentColor.accent.toAccentColor(),
+        visualDensity: VisualDensity.standard,
+        focusTheme: FocusThemeData(
+          glowFactor: is10footScreen(context) ? 2.0 : 0.0,
+        ),
+      ),
+      home: NavigationView(
+        appBar: const NavigationAppBar(
+          title: Text('CantoSync'),
+          automaticallyImplyLeading: false,
+        ),
+        pane: NavigationPane(
+          selected: _index,
+          onChanged: (i) => setState(() => _index = i),
+          displayMode: PaneDisplayMode.auto,
+          items: [
+            PaneItem(
+              icon: const Icon(FluentIcons.library),
+              title: const Text('Library'),
+              body: const LibraryScreen(),
+            ),
+            PaneItem(
+              icon: const Icon(FluentIcons.music_in_collection),
+              title: const Text('Player'),
+              body: const PlayerScreen(),
+            ),
+          ],
+          footerItems: [
+            PaneItem(
+              icon: const Icon(FluentIcons.settings),
+              title: const Text('Settings'),
+              body: const SettingsScreen(),
+            ),
+          ],
+        ),
       ),
     );
   }

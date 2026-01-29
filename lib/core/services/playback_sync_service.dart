@@ -18,6 +18,7 @@ class CurrentBookPathNotifier extends Notifier<String?> {
   @override
   String? build() => null;
 
+  @override
   set state(String? value) => super.state = value;
 }
 
@@ -55,18 +56,29 @@ class PlaybackSyncService {
   Future<void> resumeBook(String path) async {
     _currentPath = path;
     _ref.read(currentBookPathProvider.notifier).state = path;
-    await _mediaService.open(path);
 
-    // Find book to get last position
+    // Find book to get last position and metadata
+    String? title;
+    String? author;
+    String? album;
+    double? lastPosition;
+
     try {
       final books = _libraryService.books;
       final book = books.firstWhere((b) => b.path == path);
-      if (book.positionSeconds != null && book.positionSeconds! > 0) {
-        await _mediaService.seek(
-          Duration(milliseconds: (book.positionSeconds! * 1000).toInt()),
-        );
-      }
+      title = book.title;
+      author = book.author;
+      album = book.album;
+      lastPosition = book.positionSeconds;
     } catch (_) {}
+
+    await _mediaService.open(path, title: title, artist: author, album: album);
+
+    if (lastPosition != null && lastPosition > 0) {
+      await _mediaService.seek(
+        Duration(milliseconds: (lastPosition * 1000).toInt()),
+      );
+    }
 
     await _mediaService.play();
   }

@@ -7,6 +7,7 @@ AppPublisherURL=https://github.com/SV-stark/CantoSync
 DefaultDirName={autopf}\CantoSync
 DisableProgramGroupPage=yes
 OutputBaseFilename=CantoSync_Setup
+OutputDir=Output
 Compression=lzma
 SolidCompression=yes
 WizardStyle=modern

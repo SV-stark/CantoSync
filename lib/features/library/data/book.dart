@@ -28,6 +28,12 @@ class Book extends HiveObject {
   @HiveField(7)
   String? album;
 
+  @HiveField(8)
+  String? series;
+
+  @HiveField(9)
+  List<Bookmark>? bookmarks;
+
   Book({
     required this.path,
     required this.title,
@@ -37,7 +43,28 @@ class Book extends HiveObject {
     DateTime? lastPlayed,
     this.coverPath,
     this.album,
+    this.series,
+    this.bookmarks,
   }) {
     this.lastPlayed = lastPlayed ?? DateTime.now();
+    bookmarks ??= [];
   }
+}
+
+@HiveType(typeId: 1)
+class Bookmark {
+  @HiveField(0)
+  final String label;
+
+  @HiveField(1)
+  final double timestampSeconds;
+
+  @HiveField(2)
+  final DateTime createdAt;
+
+  Bookmark({
+    required this.label,
+    required this.timestampSeconds,
+    DateTime? createdAt,
+  }) : createdAt = createdAt ?? DateTime.now();
 }

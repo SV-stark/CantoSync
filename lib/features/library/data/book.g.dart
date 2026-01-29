@@ -25,13 +25,15 @@ class BookAdapter extends TypeAdapter<Book> {
       lastPlayed: fields[5] as DateTime?,
       coverPath: fields[6] as String?,
       album: fields[7] as String?,
+      series: fields[8] as String?,
+      bookmarks: (fields[9] as List?)?.cast<Bookmark>(),
     );
   }
 
   @override
   void write(BinaryWriter writer, Book obj) {
     writer
-      ..writeByte(8)
+      ..writeByte(10)
       ..writeByte(0)
       ..write(obj.path)
       ..writeByte(1)
@@ -47,7 +49,11 @@ class BookAdapter extends TypeAdapter<Book> {
       ..writeByte(6)
       ..write(obj.coverPath)
       ..writeByte(7)
-      ..write(obj.album);
+      ..write(obj.album)
+      ..writeByte(8)
+      ..write(obj.series)
+      ..writeByte(9)
+      ..write(obj.bookmarks);
   }
 
   @override
@@ -57,6 +63,46 @@ class BookAdapter extends TypeAdapter<Book> {
   bool operator ==(Object other) =>
       identical(this, other) ||
       other is BookAdapter &&
+          runtimeType == other.runtimeType &&
+          typeId == other.typeId;
+}
+
+class BookmarkAdapter extends TypeAdapter<Bookmark> {
+  @override
+  final int typeId = 1;
+
+  @override
+  Bookmark read(BinaryReader reader) {
+    final numOfFields = reader.readByte();
+    final fields = <int, dynamic>{
+      for (int i = 0; i < numOfFields; i++) reader.readByte(): reader.read(),
+    };
+    return Bookmark(
+      label: fields[0] as String,
+      timestampSeconds: fields[1] as double,
+      createdAt: fields[2] as DateTime?,
+    );
+  }
+
+  @override
+  void write(BinaryWriter writer, Bookmark obj) {
+    writer
+      ..writeByte(3)
+      ..writeByte(0)
+      ..write(obj.label)
+      ..writeByte(1)
+      ..write(obj.timestampSeconds)
+      ..writeByte(2)
+      ..write(obj.createdAt);
+  }
+
+  @override
+  int get hashCode => typeId.hashCode;
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is BookmarkAdapter &&
           runtimeType == other.runtimeType &&
           typeId == other.typeId;
 }

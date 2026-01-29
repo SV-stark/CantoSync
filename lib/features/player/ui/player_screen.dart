@@ -7,6 +7,8 @@ import 'package:canto_sync/core/services/media_service.dart';
 import 'package:canto_sync/features/library/data/library_service.dart';
 import 'package:canto_sync/core/services/playback_sync_service.dart';
 import 'package:canto_sync/core/services/sleep_timer_service.dart';
+import 'package:canto_sync/features/library/data/book.dart';
+import 'package:canto_sync/core/services/app_settings_service.dart';
 
 // Stream Providers for reactive UI
 final playerPositionProvider = StreamProvider.autoDispose<Duration>((ref) {
@@ -143,6 +145,62 @@ class PlayerScreen extends ConsumerWidget {
                       )
                       as CommandBarItem,
             ),
+            const CommandBarSeparator(),
+            CommandBarBuilderItem(
+              builder: (context, mode, w) => DropDownButton(
+                title: const Text('Speed'),
+                leading: const Icon(FluentIcons.playback_rate1x),
+                items: [0.5, 0.75, 1.0, 1.25, 1.5, 1.75, 2.0].map((rate) {
+                  return MenuFlyoutItem(
+                    text: Text('${rate}x'),
+                    onPressed: () =>
+                        ref.read(mediaServiceProvider).setRate(rate),
+                  );
+                }).toList(),
+              ),
+              wrappedItem:
+                  CommandBarButton(
+                        icon: const Icon(FluentIcons.playback_rate1x),
+                        onPressed: () {},
+                      )
+                      as CommandBarItem,
+            ),
+            const CommandBarSeparator(),
+            CommandBarButton(
+              icon: const Icon(FluentIcons.bookmarks),
+              label: const Text('Add Bookmark'),
+              onPressed: currentBook == null
+                  ? null
+                  : () => _showAddBookmarkDialog(
+                      context,
+                      ref,
+                      currentBook,
+                      position,
+                    ),
+            ),
+            const CommandBarSeparator(),
+            CommandBarBuilderItem(
+              builder: (context, mode, w) => DropDownButton(
+                title: Text(
+                  'EQ: ${ref.watch(appSettingsProvider).audioPreset.label}',
+                ),
+                leading: const Icon(FluentIcons.equalizer),
+                items: AudioPreset.values.map((preset) {
+                  return MenuFlyoutItem(
+                    text: Text(preset.label),
+                    onPressed: () => ref
+                        .read(appSettingsProvider.notifier)
+                        .setAudioPreset(preset),
+                  );
+                }).toList(),
+              ),
+              wrappedItem:
+                  CommandBarButton(
+                        icon: const Icon(FluentIcons.equalizer),
+                        onPressed: () {},
+                      )
+                      as CommandBarItem,
+            ),
           ],
         ),
       ),
@@ -257,6 +315,59 @@ class PlayerScreen extends ConsumerWidget {
           ),
           const SizedBox(height: 40),
 
+          // Bookmarks List
+          if (currentBook != null &&
+              currentBook.bookmarks != null &&
+              currentBook.bookmarks!.isNotEmpty)
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+              child: Expander(
+                header: const Text('Bookmarks'),
+                content: SizedBox(
+                  height: 150,
+                  child: ListView.builder(
+                    itemCount: currentBook.bookmarks!.length,
+                    itemBuilder: (context, index) {
+                      final bookmark = currentBook.bookmarks![index];
+                      return ListTile(
+                        title: Text(bookmark.label),
+                        subtitle: Text(
+                          'Created: ${bookmark.createdAt.toLocal().toString().split('.')[0]}',
+                        ),
+                        trailing: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Text(
+                              _formatDuration(
+                                Duration(
+                                  seconds: bookmark.timestampSeconds.toInt(),
+                                ),
+                              ),
+                            ),
+                            IconButton(
+                              icon: const Icon(FluentIcons.delete),
+                              onPressed: () {
+                                ref
+                                    .read(libraryServiceProvider)
+                                    .removeBookmark(currentBook.path, index);
+                              },
+                            ),
+                          ],
+                        ),
+                        onPressed: () {
+                          mediaService.seek(
+                            Duration(
+                              seconds: bookmark.timestampSeconds.toInt(),
+                            ),
+                          );
+                        },
+                      );
+                    },
+                  ),
+                ),
+              ),
+            ),
+
           // Chapters List
           Consumer(
             builder: (context, ref, child) {
@@ -304,9 +415,49 @@ class PlayerScreen extends ConsumerWidget {
             },
           ),
 
+          const SizedBox(height: 20),
           FilledButton(
             onPressed: () => _pickFile(ref),
             child: const Text('Open Audio File'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showAddBookmarkDialog(
+    BuildContext context,
+    WidgetRef ref,
+    Book book,
+    Duration position,
+  ) {
+    String label = 'Bookmark ${_formatDuration(position)}';
+    final controller = TextEditingController(text: label);
+
+    showDialog(
+      context: context,
+      builder: (context) => ContentDialog(
+        title: const Text('Add Bookmark'),
+        content: TextBox(
+          controller: controller,
+          placeholder: 'Bookmark Label',
+          autofocus: true,
+        ),
+        actions: [
+          Button(
+            child: const Text('Cancel'),
+            onPressed: () => Navigator.pop(context),
+          ),
+          FilledButton(
+            child: const Text('Save'),
+            onPressed: () {
+              final bookmark = Bookmark(
+                label: controller.text,
+                timestampSeconds: position.inMilliseconds / 1000.0,
+              );
+              ref.read(libraryServiceProvider).addBookmark(book.path, bookmark);
+              Navigator.pop(context);
+            },
           ),
         ],
       ),

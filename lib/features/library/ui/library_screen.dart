@@ -1,5 +1,6 @@
 import 'dart:io';
 import 'package:file_picker/file_picker.dart';
+import 'package:desktop_drop/desktop_drop.dart';
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:canto_sync/features/library/data/book.dart';
@@ -31,6 +32,7 @@ class LibraryScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final booksAsync = ref.watch(libraryBooksProvider);
     final isGridView = ref.watch(libraryViewModeProvider);
+    final isGroupingEnabled = ref.watch(libraryGroupingModeProvider);
 
     return ScaffoldPage.withPadding(
       header: PageHeader(
@@ -47,6 +49,39 @@ class LibraryScreen extends ConsumerWidget {
             ),
             const CommandBarSeparator(),
             CommandBarButton(
+              icon: Icon(
+                isGroupingEnabled ? FluentIcons.group_list : FluentIcons.group,
+              ),
+              label: const Text('Group by Series'),
+              onPressed: () =>
+                  ref.read(libraryGroupingModeProvider.notifier).toggle(),
+            ),
+            CommandBarBuilderItem(
+              builder: (context, mode, w) => Padding(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 8.0,
+                  vertical: 4.0,
+                ),
+                child: TextBox(
+                  placeholder: 'Search library...',
+                  onChanged: (text) => ref
+                      .read(librarySearchQueryProvider.notifier)
+                      .updateQuery(text),
+                  suffix: const Padding(
+                    padding: EdgeInsets.symmetric(horizontal: 8.0),
+                    child: Icon(FluentIcons.search),
+                  ),
+                ),
+              ),
+              wrappedItem:
+                  CommandBarButton(
+                        icon: const Icon(FluentIcons.search),
+                        onPressed: () {},
+                      )
+                      as CommandBarItem,
+            ),
+            const CommandBarSeparator(),
+            CommandBarButton(
               icon: const Icon(FluentIcons.add),
               label: const Text('Add Folder'),
               onPressed: () => _pickFolder(ref),
@@ -54,69 +89,131 @@ class LibraryScreen extends ConsumerWidget {
           ],
         ),
       ),
-      content: booksAsync.when(
-        data: (books) {
-          if (books.isEmpty) {
-            return Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  const Icon(FluentIcons.library, size: 64, color: Colors.grey),
-                  const SizedBox(height: 16),
-                  const Text('Your library is empty'),
-                  const SizedBox(height: 16),
-                  FilledButton(
-                    onPressed: () => _pickFolder(ref),
-                    child: const Text('Add Folder'),
-                  ),
-                ],
-              ),
-            );
-          }
-
-          if (isGridView) {
-            return GridView.builder(
-              gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
-                maxCrossAxisExtent: 200,
-                childAspectRatio: 0.7,
-                crossAxisSpacing: 16,
-                mainAxisSpacing: 16,
-              ),
-              itemCount: books.length,
-              itemBuilder: (context, index) {
-                final book = books[index];
-                return BookCard(book: book);
-              },
-            );
-          } else {
-            return ListView.builder(
-              itemCount: books.length,
-              itemBuilder: (context, index) {
-                final book = books[index];
-                return ListTile(
-                  leading: SizedBox(
-                    width: 40,
-                    height: 40,
-                    child: ClipRRect(
-                      borderRadius: BorderRadius.circular(4),
-                      child: book.coverPath != null
-                          ? Image.file(File(book.coverPath!), fit: BoxFit.cover)
-                          : const Icon(FluentIcons.music_note),
-                    ),
-                  ),
-                  title: Text(book.title),
-                  subtitle: Text(book.author ?? 'Unknown Author'),
-                  onPressed: () {
-                    ref.read(playbackSyncProvider).resumeBook(book.path);
-                  },
-                );
-              },
-            );
+      content: DropTarget(
+        onDragDone: (detail) {
+          for (final file in detail.files) {
+            ref.read(libraryServiceProvider).scanDirectory(file.path);
           }
         },
-        loading: () => const Center(child: ProgressRing()),
-        error: (err, stack) => Center(child: Text('Error: $err')),
+        child: isGroupingEnabled
+            ? _buildGroupedView(context, ref)
+            : booksAsync.when(
+                data: (books) {
+                  if (books.isEmpty) return _buildEmptyState(ref);
+                  return _buildBookList(context, books, isGridView, ref);
+                },
+                loading: () => const Center(child: ProgressRing()),
+                error: (err, stack) => Center(child: Text('Error: $err')),
+              ),
       ),
+    );
+  }
+
+  Widget _buildEmptyState(WidgetRef ref) {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          const Icon(FluentIcons.library, size: 64, color: Colors.grey),
+          const SizedBox(height: 16),
+          const Text('Your library is empty'),
+          const SizedBox(height: 16),
+          const Text('Drag and drop a folder here to import books'),
+          const SizedBox(height: 16),
+          FilledButton(
+            onPressed: () => _pickFolder(ref),
+            child: const Text('Add Folder'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildBookList(
+    BuildContext context,
+    List<Book> books,
+    bool isGridView,
+    WidgetRef ref,
+  ) {
+    if (isGridView) {
+      return GridView.builder(
+        gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
+          maxCrossAxisExtent: 200,
+          childAspectRatio: 0.7,
+          crossAxisSpacing: 16,
+          mainAxisSpacing: 16,
+        ),
+        itemCount: books.length,
+        itemBuilder: (context, index) {
+          final book = books[index];
+          return BookCard(book: book);
+        },
+      );
+    } else {
+      return ListView.builder(
+        itemCount: books.length,
+        itemBuilder: (context, index) {
+          final book = books[index];
+          return ListTile(
+            leading: SizedBox(
+              width: 40,
+              height: 40,
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(4),
+                child: book.coverPath != null
+                    ? Image.file(File(book.coverPath!), fit: BoxFit.cover)
+                    : const Icon(FluentIcons.music_note),
+              ),
+            ),
+            title: Text(book.title),
+            subtitle: Text(book.author ?? 'Unknown Author'),
+            onPressed: () {
+              ref.read(playbackSyncProvider).resumeBook(book.path);
+            },
+          );
+        },
+      );
+    }
+  }
+
+  Widget _buildGroupedView(BuildContext context, WidgetRef ref) {
+    final groupedBooksAsync = ref.watch(libraryGroupedBooksProvider);
+    final isGridView = ref.watch(libraryViewModeProvider);
+
+    return groupedBooksAsync.when(
+      data: (groups) {
+        if (groups.isEmpty) return _buildEmptyState(ref);
+
+        final sortedKeys = groups.keys.toList()..sort();
+
+        return ListView.builder(
+          itemCount: sortedKeys.length,
+          itemBuilder: (context, index) {
+            final series = sortedKeys[index];
+            final books = groups[series]!;
+
+            return Padding(
+              padding: const EdgeInsets.only(bottom: 24.0),
+              child: Expander(
+                initiallyExpanded: true,
+                header: Text(
+                  series,
+                  style: FluentTheme.of(context).typography.subtitle,
+                ),
+                content: SizedBox(
+                  // Dynamic height based on view mode and item count
+                  height: isGridView
+                      ? 300
+                      : (books.length * 60.0).clamp(100.0, 500.0),
+                  child: _buildBookList(context, books, isGridView, ref),
+                ),
+              ),
+            );
+          },
+        );
+      },
+      loading: () => const Center(child: ProgressRing()),
+      error: (err, stack) => Center(child: Text('Error: $err')),
     );
   }
 }
@@ -131,7 +228,6 @@ class BookCard extends ConsumerWidget {
     return HoverButton(
       onPressed: () {
         ref.read(playbackSyncProvider).resumeBook(book.path);
-        // Switch to player tab (TODO: implement navigation controller)
       },
       builder: (context, states) {
         return Card(

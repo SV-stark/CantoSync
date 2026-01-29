@@ -89,137 +89,146 @@ class PlaybackSyncService {
     } catch (_) {}
 
     if (isDirectory && audioFiles != null && audioFiles.isNotEmpty) {
-      // For multi-file books, we want to construct a "Virtual Timeline".
-      // We process files to get their titles and durations.
+      // FIX: Only treat as "Multi-File Book" if there is actually more than one file.
+      // If there is only 1 file (e.g. an M4B in its own folder), we treat it as a single file
+      // so that MediaService/MPV can parse its INTERNAL chapters.
+      if (audioFiles.length > 1) {
+        // For multi-file books, we want to construct a "Virtual Timeline".
+        // We process files to get their titles and durations.
 
-      final List<Chapter> chapters = [];
-      double totalDurationSeconds = 0;
-      List<Map<String, dynamic>> fileDataList = [];
+        final List<Chapter> chapters = [];
+        double totalDurationSeconds = 0;
+        List<Map<String, dynamic>> fileDataList = [];
 
-      Book? bookObj;
-      try {
-        bookObj = _libraryService.books.firstWhere((b) => b.path == path);
-      } catch (_) {}
+        Book? bookObj;
+        try {
+          bookObj = _libraryService.books.firstWhere((b) => b.path == path);
+        } catch (_) {}
 
-      try {
-        if (bookObj?.filesMetadata != null &&
-            bookObj!.filesMetadata!.length == audioFiles.length) {
-          fileDataList = bookObj.filesMetadata!
-              .map(
-                (m) => {
-                  'title': m.title,
-                  'duration': m.duration,
-                  'path': m.path,
-                },
-              )
-              .toList();
-        } else {
-          // Create futures list
-          final futures = audioFiles.map((filePath) async {
-            String fileTitle = p.basename(filePath);
-            double? fileDuration;
-
-            try {
-              // We can optimize this by caching chapter data in the Book object if possible,
-              // but for now, we read on open (might be slightly slow for huge books).
-              final meta = await MetadataGod.readMetadata(file: filePath);
-              if (meta.title != null && meta.title!.isNotEmpty) {
-                fileTitle = meta.title!;
-              }
-              if (meta.durationMs != null) {
-                fileDuration = meta.durationMs! / 1000.0;
-              }
-            } catch (e) {
-              // Ignore metadata errors, rely on basename
-            }
-            return {
-              'title': fileTitle,
-              'duration': fileDuration,
-              'path': filePath,
-            };
-          }).toList();
-
-          fileDataList = await Future.wait(futures);
-
-          // Cache the results
-          if (bookObj != null) {
-            bookObj.filesMetadata = fileDataList
+        try {
+          if (bookObj?.filesMetadata != null &&
+              bookObj!.filesMetadata!.length == audioFiles.length) {
+            fileDataList = bookObj.filesMetadata!
                 .map(
-                  (d) => FileMetadata(
-                    title: d['title'] as String,
-                    duration: d['duration'] as double?,
-                    path: d['path'] as String,
-                  ),
+                  (m) => {
+                    'title': m.title,
+                    'duration': m.duration,
+                    'path': m.path,
+                  },
                 )
                 .toList();
-            await bookObj.save();
-          }
-        }
-
-        // now build chapters securely in order
-        double currentStartTime = 0;
-        for (var i = 0; i < fileDataList.length; i++) {
-          final data = fileDataList[i];
-          final duration = data['duration'] as double?;
-          final title = data['title'] as String;
-
-          // If duration is null (metadata failed), we unfortunately can't know the end time accurately
-          // without opening the file.
-          // For the timeline to work, we kind of need it.
-          // If mostly missing, this feature won't work well.
-          // We'll skip adding accurate chapters if duration missing but we'll try our best.
-
-          // If we have duration, we add a chapter.
-          if (duration != null) {
-            chapters.add(
-              Chapter(
-                title: title,
-                startTime:
-                    currentStartTime, // This start time is actually mostly for display "what index corresponds to what time"
-                // But wait, the user requested "Progress bar should show progress in current chapter".
-                // So the startTime here doesn't map to the player position (which resets to 0 for each file).
-                // It strictly maps to the "Total Duration" timeline.
-                endTime: currentStartTime + duration,
-              ),
-            );
-            currentStartTime += duration;
-            totalDurationSeconds += duration;
           } else {
-            // Fallback: Just add a chapter marker with 0 duration or skip?
-            // Let's just use the filename as title and move on.
-            // We won't be able to calculate total duration correctly.
-            chapters.add(Chapter(title: title, startTime: currentStartTime));
+            // Create futures list
+            final futures = audioFiles.map((filePath) async {
+              String fileTitle = p.basename(filePath);
+              double? fileDuration;
+
+              try {
+                // We can optimize this by caching chapter data in the Book object if possible,
+                // but for now, we read on open (might be slightly slow for huge books).
+                final meta = await MetadataGod.readMetadata(file: filePath);
+                if (meta.title != null && meta.title!.isNotEmpty) {
+                  fileTitle = meta.title!;
+                }
+                if (meta.durationMs != null) {
+                  fileDuration = meta.durationMs! / 1000.0;
+                }
+              } catch (e) {
+                // Ignore metadata errors, rely on basename
+              }
+              return {
+                'title': fileTitle,
+                'duration': fileDuration,
+                'path': filePath,
+              };
+            }).toList();
+
+            fileDataList = await Future.wait(futures);
+
+            // Cache the results
+            if (bookObj != null) {
+              bookObj.filesMetadata = fileDataList
+                  .map(
+                    (d) => FileMetadata(
+                      title: d['title'] as String,
+                      duration: d['duration'] as double?,
+                      path: d['path'] as String,
+                    ),
+                  )
+                  .toList();
+              await bookObj.save();
+            }
           }
+
+          // now build chapters securely in order
+          double currentStartTime = 0;
+          for (var i = 0; i < fileDataList.length; i++) {
+            final data = fileDataList[i];
+            final duration = data['duration'] as double?;
+            final title = data['title'] as String;
+
+            // If duration is null (metadata failed), we unfortunately can't know the end time accurately
+            // without opening the file.
+            // For the timeline to work, we kind of need it.
+            // If mostly missing, this feature won't work well.
+            // We'll skip adding accurate chapters if duration missing but we'll try our best.
+
+            // If we have duration, we add a chapter.
+            if (duration != null) {
+              chapters.add(
+                Chapter(
+                  title: title,
+                  startTime:
+                      currentStartTime, // This start time is actually mostly for display "what index corresponds to what time"
+                  // But wait, the user requested "Progress bar should show progress in current chapter".
+                  // So the startTime here doesn't map to the player position (which resets to 0 for each file).
+                  // It strictly maps to the "Total Duration" timeline.
+                  endTime: currentStartTime + duration,
+                ),
+              );
+              currentStartTime += duration;
+              totalDurationSeconds += duration;
+            } else {
+              // Fallback: Just add a chapter marker with 0 duration or skip?
+              // Let's just use the filename as title and move on.
+              // We won't be able to calculate total duration correctly.
+              chapters.add(Chapter(title: title, startTime: currentStartTime));
+            }
+          }
+        } catch (e) {
+          // If something fails, we just proceed without custom chapters
         }
-      } catch (e) {
-        // If something fails, we just proceed without custom chapters
-      }
 
-      await _mediaService.open(
-        audioFiles,
-        title: title,
-        artist: author,
-        album: album,
-        chapters: chapters,
-        totalDuration: totalDurationSeconds > 0
-            ? Duration(milliseconds: (totalDurationSeconds * 1000).toInt())
-            : null,
-      );
+        await _mediaService.open(
+          audioFiles,
+          title: title,
+          artist: author,
+          album: album,
+          chapters: chapters,
+          totalDuration: totalDurationSeconds > 0
+              ? Duration(milliseconds: (totalDurationSeconds * 1000).toInt())
+              : null,
+        );
 
-      // Restore track index
-      if (lastTrackIndex != null &&
-          lastTrackIndex >= 0 &&
-          lastTrackIndex < audioFiles.length) {
-        await _mediaService.jump(lastTrackIndex);
+        // Restore track index
+        if (lastTrackIndex != null &&
+            lastTrackIndex >= 0 &&
+            lastTrackIndex < audioFiles.length) {
+          await _mediaService.jump(lastTrackIndex);
+        }
+        return; // EXIT here for multi-file case
       }
-    } else {
-      await _mediaService.open(
-        path,
-        title: title,
-        artist: author,
-        album: album,
-      );
+      // If only 1 file, treat as normal file below...
     }
+
+    // Default / Single-file behavior
+    await _mediaService.open(
+      // Use the single file from the list if available, otherwise path
+      (audioFiles != null && audioFiles.isNotEmpty) ? audioFiles.first : path,
+      title: title,
+      artist: author,
+      album: album,
+    );
 
     if (lastPosition != null && lastPosition > 0) {
       await _mediaService.seek(

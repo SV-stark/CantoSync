@@ -6,17 +6,30 @@ import 'package:canto_sync/features/library/data/library_service.dart';
 final playbackSyncProvider = Provider<PlaybackSyncService>((ref) {
   final mediaService = ref.watch(mediaServiceProvider);
   final libraryService = ref.watch(libraryServiceProvider);
-  return PlaybackSyncService(mediaService, libraryService);
+  return PlaybackSyncService(mediaService, libraryService, ref);
 });
+
+final currentBookPathProvider =
+    NotifierProvider<CurrentBookPathNotifier, String?>(() {
+      return CurrentBookPathNotifier();
+    });
+
+class CurrentBookPathNotifier extends Notifier<String?> {
+  @override
+  String? build() => null;
+
+  set state(String? value) => super.state = value;
+}
 
 class PlaybackSyncService {
   final MediaService _mediaService;
   final LibraryService _libraryService;
+  final Ref _ref;
   StreamSubscription? _subscription;
   String? _currentPath;
   Timer? _debounceTimer;
 
-  PlaybackSyncService(this._mediaService, this._libraryService) {
+  PlaybackSyncService(this._mediaService, this._libraryService, this._ref) {
     _init();
   }
 
@@ -36,15 +49,12 @@ class PlaybackSyncService {
 
   void setCurrentBook(String path) {
     _currentPath = path;
-    // Resume logic could go here:
-    // final book = _libraryService.getBook(path);
-    // if (book?.positionSeconds != null) {
-    //   _mediaService.seek(Duration(seconds: book.positionSeconds!.toInt()));
-    // }
+    _ref.read(currentBookPathProvider.notifier).state = path;
   }
 
   Future<void> resumeBook(String path) async {
     _currentPath = path;
+    _ref.read(currentBookPathProvider.notifier).state = path;
     await _mediaService.open(path);
 
     // Find book to get last position

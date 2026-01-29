@@ -1,3 +1,4 @@
+import 'dart:io';
 import 'package:file_picker/file_picker.dart';
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -92,11 +93,17 @@ class BookCard extends ConsumerWidget {
             children: [
               Expanded(
                 child: Container(
-                  color: Colors.grey.withValues(
-                    alpha: 0.2,
-                  ), // Placeholder cover
+                  color: Colors.grey.withValues(alpha: 0.2),
                   width: double.infinity,
-                  child: const Icon(FluentIcons.music_note, size: 48),
+                  child: book.coverPath != null
+                      ? Image.file(
+                          File(book.coverPath!),
+                          fit: BoxFit.cover,
+                          errorBuilder: (context, error, stackTrace) {
+                            return const Icon(FluentIcons.music_note, size: 48);
+                          },
+                        )
+                      : const Icon(FluentIcons.music_note, size: 48),
                 ),
               ),
               Padding(

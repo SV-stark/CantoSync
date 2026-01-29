@@ -25,6 +25,9 @@ class Book extends HiveObject {
   @HiveField(6)
   String? coverPath;
 
+  @HiveField(7)
+  String? album;
+
   Book({
     required this.path,
     required this.title,
@@ -33,6 +36,7 @@ class Book extends HiveObject {
     this.positionSeconds,
     DateTime? lastPlayed,
     this.coverPath,
+    this.album,
   }) {
     this.lastPlayed = lastPlayed ?? DateTime.now();
   }

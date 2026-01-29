@@ -1,9 +1,12 @@
+import 'dart:io';
 import 'package:file_picker/file_picker.dart';
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:media_kit/media_kit.dart';
 import 'package:canto_sync/core/services/media_service.dart';
+import 'package:canto_sync/features/library/data/library_service.dart';
 import 'package:canto_sync/core/services/playback_sync_service.dart';
+import 'package:canto_sync/core/services/sleep_timer_service.dart';
 
 // Stream Providers for reactive UI
 final playerPositionProvider = StreamProvider.autoDispose<Duration>((ref) {
@@ -78,12 +81,75 @@ class PlayerScreen extends ConsumerWidget {
     final duration = durationAsync.value ?? Duration.zero;
     final isPlaying = playingAsync.value ?? false;
 
+    // Get current book info
+    final currentPath = ref.watch(currentBookPathProvider);
+    final books = ref.watch(libraryBooksProvider).value ?? [];
+    final currentBook = currentPath != null
+        ? books.where((b) => b.path == currentPath).firstOrNull
+        : null;
+
+    final sleepTimer = ref.watch(sleepTimerServiceProvider);
+
     return ScaffoldPage.withPadding(
-      header: const PageHeader(title: Text('Now Playing')),
+      header: PageHeader(
+        title: const Text('Now Playing'),
+        commandBar: CommandBar(
+          primaryItems: [
+            CommandBarBuilderItem(
+              builder: (context, mode, w) => DropDownButton(
+                title: Text(
+                  sleepTimer != null
+                      ? 'Timer: ${_formatDuration(sleepTimer)}'
+                      : 'Sleep Timer',
+                ),
+                leading: Icon(
+                  FluentIcons.timer,
+                  color: sleepTimer != null
+                      ? FluentTheme.of(context).accentColor
+                      : null,
+                ),
+                items: [
+                  MenuFlyoutItem(
+                    text: const Text('Off'),
+                    onPressed: () => ref
+                        .read(sleepTimerServiceProvider.notifier)
+                        .cancelTimer(),
+                  ),
+                  const MenuFlyoutSeparator(),
+                  MenuFlyoutItem(
+                    text: const Text('15 Minutes'),
+                    onPressed: () => ref
+                        .read(sleepTimerServiceProvider.notifier)
+                        .startTimer(const Duration(minutes: 15)),
+                  ),
+                  MenuFlyoutItem(
+                    text: const Text('30 Minutes'),
+                    onPressed: () => ref
+                        .read(sleepTimerServiceProvider.notifier)
+                        .startTimer(const Duration(minutes: 30)),
+                  ),
+                  MenuFlyoutItem(
+                    text: const Text('1 Hour'),
+                    onPressed: () => ref
+                        .read(sleepTimerServiceProvider.notifier)
+                        .startTimer(const Duration(hours: 1)),
+                  ),
+                ],
+              ),
+              wrappedItem:
+                  CommandBarButton(
+                        icon: const Icon(FluentIcons.timer),
+                        onPressed: () {},
+                      )
+                      as CommandBarItem,
+            ),
+          ],
+        ),
+      ),
       content: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          // Cover Art Placeholder
+          // Cover Art
           Container(
             height: 250,
             width: 250,
@@ -98,9 +164,33 @@ class PlayerScreen extends ConsumerWidget {
                 ),
               ],
             ),
-            child: const Icon(FluentIcons.music_in_collection, size: 80),
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(12),
+              child: currentBook?.coverPath != null
+                  ? Image.file(
+                      File(currentBook!.coverPath!),
+                      fit: BoxFit.cover,
+                      errorBuilder: (context, error, stackTrace) =>
+                          const Icon(FluentIcons.music_in_collection, size: 80),
+                    )
+                  : const Icon(FluentIcons.music_in_collection, size: 80),
+            ),
           ),
-          const SizedBox(height: 40),
+          const SizedBox(height: 20),
+          // Book Title & Author
+          Text(
+            currentBook?.title ?? 'No Book Selected',
+            style: FluentTheme.of(context).typography.title,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+          ),
+          Text(
+            currentBook?.author ?? 'Unknown Author',
+            style: FluentTheme.of(context).typography.body,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+          ),
+          const SizedBox(height: 30),
 
           // Slider / Progress
           Padding(
@@ -185,8 +275,14 @@ class PlayerScreen extends ConsumerWidget {
                           itemCount: chapters.length,
                           itemBuilder: (context, index) {
                             final chapter = chapters[index];
+                            final duration = chapter.durationSeconds;
                             return ListTile(
                               title: Text(chapter.title),
+                              subtitle: duration != null
+                                  ? Text(
+                                      'Duration: ${_formatDuration(Duration(seconds: duration.toInt()))}',
+                                    )
+                                  : null,
                               trailing: Text(
                                 _formatDuration(
                                   Duration(seconds: chapter.startTime.toInt()),

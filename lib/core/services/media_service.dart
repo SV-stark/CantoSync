@@ -75,14 +75,29 @@ class MediaService {
 
         final result = jsonDecode(resultString);
         if (result is List) {
-          return result
-              .map(
-                (e) => Chapter(
-                  title: e['title'] ?? 'Chapter ${result.indexOf(e) + 1}',
-                  startTime: (e['time'] as num).toDouble(),
-                ),
-              )
-              .toList();
+          final totalDuration = _player.state.duration.inMilliseconds / 1000.0;
+          final List<Chapter> chapters = [];
+
+          for (int i = 0; i < result.length; i++) {
+            final e = result[i];
+            final startTime = (e['time'] as num).toDouble();
+            double? endTime;
+
+            if (i < result.length - 1) {
+              endTime = (result[i + 1]['time'] as num).toDouble();
+            } else if (totalDuration > 0) {
+              endTime = totalDuration;
+            }
+
+            chapters.add(
+              Chapter(
+                title: e['title'] ?? 'Chapter ${i + 1}',
+                startTime: startTime,
+                endTime: endTime,
+              ),
+            );
+          }
+          return chapters;
         }
       } catch (e) {
         debugPrint('Error fetching chapters: $e');
@@ -122,6 +137,10 @@ class MediaService {
 class Chapter {
   final String title;
   final double startTime;
+  final double? endTime;
 
-  Chapter({required this.title, required this.startTime});
+  Chapter({required this.title, required this.startTime, this.endTime});
+
+  double? get durationSeconds =>
+      endTime != null ? (endTime! - startTime) : null;
 }

@@ -2,6 +2,7 @@ import 'package:fluent_ui/fluent_ui.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:media_kit/media_kit.dart';
+import 'package:metadata_god/metadata_god.dart';
 import 'package:system_theme/system_theme.dart';
 import 'package:window_manager/window_manager.dart';
 import 'package:canto_sync/features/library/data/book.dart';
@@ -15,6 +16,9 @@ void main() async {
 
   // Initialize MediaKit (Audio/Video Engine)
   MediaKit.ensureInitialized();
+
+  // Initialize Metadata Reader
+  MetadataGod.initialize();
 
   // Initialize Hive (Database)
   await Hive.initFlutter();

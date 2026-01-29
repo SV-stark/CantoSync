@@ -24,13 +24,14 @@ class BookAdapter extends TypeAdapter<Book> {
       positionSeconds: fields[4] as double?,
       lastPlayed: fields[5] as DateTime?,
       coverPath: fields[6] as String?,
+      album: fields[7] as String?,
     );
   }
 
   @override
   void write(BinaryWriter writer, Book obj) {
     writer
-      ..writeByte(7)
+      ..writeByte(8)
       ..writeByte(0)
       ..write(obj.path)
       ..writeByte(1)
@@ -44,7 +45,9 @@ class BookAdapter extends TypeAdapter<Book> {
       ..writeByte(5)
       ..write(obj.lastPlayed)
       ..writeByte(6)
-      ..write(obj.coverPath);
+      ..write(obj.coverPath)
+      ..writeByte(7)
+      ..write(obj.album);
   }
 
   @override

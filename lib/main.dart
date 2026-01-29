@@ -32,13 +32,17 @@ void main() async {
   await Hive.initFlutter();
   Hive.registerAdapter(BookAdapter());
   Hive.registerAdapter(BookmarkAdapter());
-  await Hive.openBox<Book>(AppConstants.libraryBox);
 
-  // Load System Theme Accent Color & Critical Boxes
-  // We need these before the app builds because our providers read them synchronously in build()
-  await SystemTheme.accentColor.load();
-  await Hive.openBox<Book>(AppConstants.booksBox);
-  await Hive.openBox(AppConstants.settingsBox);
+  try {
+    await Hive.openBox<Book>(AppConstants.libraryBox);
+
+    // Load System Theme Accent Color & Critical Boxes
+    await SystemTheme.accentColor.load();
+    await Hive.openBox<Book>(AppConstants.booksBox);
+    await Hive.openBox(AppConstants.settingsBox);
+  } catch (e) {
+    debugPrint('Error opening Hive boxes: $e');
+  }
 
   // Initialize Window Manager
   await windowManager.ensureInitialized();
@@ -52,11 +56,10 @@ void main() async {
     titleBarStyle: TitleBarStyle.hidden,
   );
 
-  // Start the UI *before* waiting for the window to be ready to show.
-  // This prevents the "waiting for window" <-> "waiting for frame" deadlock.
+  // Fix: Start UI immediately to prevent deadlock
   runApp(const ProviderScope(child: CantoSyncApp()));
 
-  // Show window when ready
+  // Show window asynchronously when ready
   windowManager.waitUntilReadyToShow(windowOptions, () async {
     await windowManager.show();
     await windowManager.focus();

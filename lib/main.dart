@@ -33,16 +33,12 @@ void main() async {
   Hive.registerAdapter(BookAdapter());
   Hive.registerAdapter(BookmarkAdapter());
 
-  try {
-    await Hive.openBox<Book>(AppConstants.libraryBox);
-
-    // Load System Theme Accent Color & Critical Boxes
-    await SystemTheme.accentColor.load();
-    await Hive.openBox<Book>(AppConstants.booksBox);
-    await Hive.openBox(AppConstants.settingsBox);
-  } catch (e) {
-    debugPrint('Error opening Hive boxes: $e');
-  }
+  // Open Hive boxes strictly. If this fails, we want it to fail here
+  // rather than crashing the UI later.
+  await Hive.openBox<Book>(AppConstants.libraryBox);
+  await SystemTheme.accentColor.load();
+  await Hive.openBox<Book>(AppConstants.booksBox);
+  await Hive.openBox(AppConstants.settingsBox);
 
   // Initialize Window Manager
   await windowManager.ensureInitialized();
@@ -51,7 +47,9 @@ void main() async {
     size: Size(1000, 700),
     minimumSize: Size(400, 500),
     center: true,
-    backgroundColor: Colors.transparent,
+    // Use a solid background color to ensure window visibility.
+    // Transparent can cause 'ghost' windows if acrylic is not active.
+    backgroundColor: Colors.black,
     skipTaskbar: false,
     titleBarStyle: TitleBarStyle.hidden,
   );

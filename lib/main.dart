@@ -13,6 +13,7 @@ import 'package:canto_sync/core/services/hotkey_service.dart';
 import 'package:canto_sync/core/services/tray_service.dart';
 import 'package:canto_sync/core/services/update_service.dart';
 import 'package:canto_sync/core/services/app_settings_service.dart';
+import 'package:canto_sync/core/services/playback_sync_service.dart';
 import 'package:canto_sync/core/ui/window_buttons.dart';
 import 'package:canto_sync/core/constants/app_constants.dart';
 import 'package:url_launcher/url_launcher.dart';

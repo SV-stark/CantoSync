@@ -30,6 +30,7 @@ class BookAdapter extends TypeAdapter<Book> {
       audioFiles: (fields[10] as List?)?.cast<String>(),
       isDirectory: fields[11] as bool,
       lastTrackIndex: fields[12] as int?,
+      description: fields[13] as String?,
     );
   }
 
@@ -62,7 +63,9 @@ class BookAdapter extends TypeAdapter<Book> {
       ..writeByte(11)
       ..write(obj.isDirectory)
       ..writeByte(12)
-      ..write(obj.lastTrackIndex);
+      ..write(obj.lastTrackIndex)
+      ..writeByte(13)
+      ..write(obj.description);
   }
 
   @override

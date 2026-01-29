@@ -48,8 +48,16 @@ final playerChaptersProvider = FutureProvider.autoDispose<List<Chapter>>((
   return service.getChapters();
 });
 
-class PlayerScreen extends ConsumerWidget {
+class PlayerScreen extends ConsumerStatefulWidget {
   const PlayerScreen({super.key});
+
+  @override
+  ConsumerState<PlayerScreen> createState() => _PlayerScreenState();
+}
+
+class _PlayerScreenState extends ConsumerState<PlayerScreen> {
+  bool _isDragging = false;
+  double _dragValue = 0.0;
 
   String _formatDuration(Duration d) {
     if (d.inHours > 0) {
@@ -59,16 +67,68 @@ class PlayerScreen extends ConsumerWidget {
   }
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  Widget build(BuildContext context) {
     final mediaService = ref.watch(mediaServiceProvider);
 
     final positionAsync = ref.watch(playerPositionProvider);
     final durationAsync = ref.watch(playerDurationProvider);
     final playingAsync = ref.watch(playerPlayingProvider);
+    final chaptersAsync = ref.watch(playerChaptersProvider);
 
     final position = positionAsync.value ?? Duration.zero;
     final duration = durationAsync.value ?? Duration.zero;
     final isPlaying = playingAsync.value ?? false;
+    final chapters = chaptersAsync.value ?? [];
+
+    // Determine current chapter
+    Chapter? currentChapter;
+    if (chapters.isNotEmpty) {
+      final posSeconds = position.inMilliseconds / 1000.0;
+      // Find the last chapter where startTime <= currentPosition
+      currentChapter = chapters.lastWhere(
+        (c) => c.startTime <= posSeconds + 0.5, // 0.5 buffer
+        orElse: () => chapters.first,
+      );
+    }
+
+    // Calculate display values
+    double sliderValue = 0.0;
+    double sliderMax = 1.0;
+
+    // Chapter stats
+    Duration chapterPosition = Duration.zero;
+    Duration chapterDuration = duration; // Default to full duration
+
+    if (currentChapter != null) {
+      // We have chapters
+      final start = Duration(
+        milliseconds: (currentChapter.startTime * 1000).toInt(),
+      );
+      final end = currentChapter.endTime != null
+          ? Duration(milliseconds: (currentChapter.endTime! * 1000).toInt())
+          : duration;
+
+      chapterDuration = end - start;
+      // Clamp to ensure we don't show negative
+      chapterPosition = (position - start);
+      if (chapterPosition.isNegative) chapterPosition = Duration.zero;
+      if (chapterPosition > chapterDuration) chapterPosition = chapterDuration;
+
+      sliderMax = chapterDuration.inMilliseconds.toDouble();
+      if (sliderMax <= 0) sliderMax = 1.0;
+
+      sliderValue = _isDragging
+          ? _dragValue
+          : chapterPosition.inMilliseconds.toDouble().clamp(0.0, sliderMax);
+    } else {
+      // No chapters, use total duration
+      sliderMax = duration.inMilliseconds.toDouble();
+      if (sliderMax <= 0) sliderMax = 1.0;
+
+      sliderValue = _isDragging
+          ? _dragValue
+          : position.inMilliseconds.toDouble().clamp(0.0, sliderMax);
+    }
 
     // Get current book info
     final currentPath = ref.watch(currentBookPathProvider);
@@ -84,6 +144,7 @@ class PlayerScreen extends ConsumerWidget {
         title: const Text('Now Playing'),
         commandBar: CommandBar(
           primaryItems: [
+            // Sleep Timer
             CommandBarBuilderItem(
               builder: (context, mode, w) => DropDownButton(
                 title: Text(
@@ -133,6 +194,7 @@ class PlayerScreen extends ConsumerWidget {
                       as CommandBarItem,
             ),
             const CommandBarSeparator(),
+            // Speed
             CommandBarBuilderItem(
               builder: (context, mode, w) => DropDownButton(
                 title: const Text('Speed'),
@@ -153,6 +215,17 @@ class PlayerScreen extends ConsumerWidget {
                       as CommandBarItem,
             ),
             const CommandBarSeparator(),
+            // Chapters Button
+            if (chapters.isNotEmpty) ...[
+              CommandBarButton(
+                icon: const Icon(FluentIcons.list),
+                label: const Text('Chapters'),
+                onPressed: () =>
+                    _showChaptersList(context, chapters, currentChapter),
+              ),
+              const CommandBarSeparator(),
+            ],
+            // Bookmark
             CommandBarButton(
               icon: const Icon(FluentIcons.bookmarks),
               label: const Text('Add Bookmark'),
@@ -166,6 +239,7 @@ class PlayerScreen extends ConsumerWidget {
                     ),
             ),
             const CommandBarSeparator(),
+            // Edit Info
             CommandBarButton(
               icon: const Icon(FluentIcons.edit),
               label: const Text('Edit Info'),
@@ -177,6 +251,7 @@ class PlayerScreen extends ConsumerWidget {
                     ),
             ),
             const CommandBarSeparator(),
+            // EQ
             CommandBarBuilderItem(
               builder: (context, mode, w) => DropDownButton(
                 title: Text(
@@ -282,6 +357,7 @@ class PlayerScreen extends ConsumerWidget {
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
                           ),
+                          // Series
                           if (currentBook?.series != null) ...[
                             const SizedBox(height: 4),
                             Text(
@@ -295,24 +371,72 @@ class PlayerScreen extends ConsumerWidget {
                               textAlign: TextAlign.center,
                             ),
                           ],
+
+                          // Current Chapter Title
+                          if (currentChapter != null) ...[
+                            const SizedBox(height: 12),
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 12,
+                                vertical: 4,
+                              ),
+                              decoration: BoxDecoration(
+                                color: FluentTheme.of(
+                                  context,
+                                ).accentColor.withOpacity(0.1),
+                                borderRadius: BorderRadius.circular(20),
+                              ),
+                              child: Text(
+                                currentChapter.title,
+                                style: FluentTheme.of(
+                                  context,
+                                ).typography.bodyStrong,
+                                textAlign: TextAlign.center,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                          ],
+
                           const SizedBox(height: 40),
 
                           // Slider / Progress
                           Column(
                             children: [
                               Slider(
-                                value: position.inMilliseconds.toDouble().clamp(
-                                  0,
-                                  duration.inMilliseconds.toDouble(),
-                                ),
+                                value: sliderValue,
                                 min: 0,
-                                max: duration.inMilliseconds.toDouble() > 0
-                                    ? duration.inMilliseconds.toDouble()
-                                    : 1,
+                                max: sliderMax,
+                                onChangeStart: (val) {
+                                  setState(() {
+                                    _isDragging = true;
+                                    _dragValue = val;
+                                  });
+                                },
                                 onChanged: (value) {
-                                  mediaService.seek(
-                                    Duration(milliseconds: value.toInt()),
-                                  );
+                                  setState(() {
+                                    _dragValue = value;
+                                  });
+                                },
+                                onChangeEnd: (value) {
+                                  setState(() {
+                                    _isDragging = false;
+                                  });
+                                  if (currentChapter != null) {
+                                    // value is relative to chapter start
+                                    final chapterStartMs =
+                                        (currentChapter.startTime * 1000)
+                                            .toInt();
+                                    final seekMs =
+                                        chapterStartMs + value.toInt();
+                                    mediaService.seek(
+                                      Duration(milliseconds: seekMs),
+                                    );
+                                  } else {
+                                    mediaService.seek(
+                                      Duration(milliseconds: value.toInt()),
+                                    );
+                                  }
                                 },
                               ),
                               const SizedBox(height: 8),
@@ -320,8 +444,38 @@ class PlayerScreen extends ConsumerWidget {
                                 mainAxisAlignment:
                                     MainAxisAlignment.spaceBetween,
                                 children: [
-                                  Text(_formatDuration(position)),
-                                  Text(_formatDuration(duration)),
+                                  // Left side: Chapter Progress
+                                  Text(
+                                    currentChapter != null
+                                        ? '${_formatDuration(chapterPosition)} / ${_formatDuration(chapterDuration)}'
+                                        : _formatDuration(position),
+                                  ),
+
+                                  // Right side: Total Progress
+                                  Column(
+                                    crossAxisAlignment: CrossAxisAlignment.end,
+                                    children: [
+                                      if (currentChapter != null)
+                                        Text(
+                                          'Total: ${_formatDuration(position)}',
+                                          style: FluentTheme.of(context)
+                                              .typography
+                                              .caption
+                                              ?.copyWith(
+                                                color: FluentTheme.of(context)
+                                                    .typography
+                                                    .caption
+                                                    ?.color
+                                                    ?.withOpacity(0.7),
+                                              ),
+                                        ),
+                                      Text(
+                                        currentChapter != null
+                                            ? '/ ${_formatDuration(duration)}'
+                                            : _formatDuration(duration),
+                                      ),
+                                    ],
+                                  ),
                                 ],
                               ),
                             ],
@@ -339,8 +493,19 @@ class PlayerScreen extends ConsumerWidget {
                                 ),
                                 onPressed: () {
                                   // Logic: If >5s, seek start. If <5s, prev chapter/track
-                                  if (position.inSeconds > 5) {
-                                    mediaService.seek(Duration.zero);
+                                  if (chapterPosition.inSeconds > 5) {
+                                    // Seek to start of current current chapter
+                                    if (currentChapter != null) {
+                                      mediaService.seek(
+                                        Duration(
+                                          milliseconds:
+                                              (currentChapter.startTime * 1000)
+                                                  .toInt(),
+                                        ),
+                                      );
+                                    } else {
+                                      mediaService.seek(Duration.zero);
+                                    }
                                   } else {
                                     mediaService.previousChapter();
                                   }
@@ -455,6 +620,64 @@ class PlayerScreen extends ConsumerWidget {
           ),
         ],
       ),
+    );
+  }
+
+  void _showChaptersList(
+    BuildContext context,
+    List<Chapter> chapters,
+    Chapter? currentChapter,
+  ) {
+    showDialog(
+      context: context,
+      builder: (context) {
+        return ContentDialog(
+          title: const Text('Chapters'),
+          content: Container(
+            constraints: const BoxConstraints(maxHeight: 400),
+            width: 350,
+            child: ListView.builder(
+              itemCount: chapters.length,
+              itemBuilder: (context, index) {
+                final chapter = chapters[index];
+                final isCurrent = chapter == currentChapter;
+
+                return ListTile(
+                  leading: isCurrent
+                      ? Icon(
+                          FluentIcons.play,
+                          size: 12,
+                          color: FluentTheme.of(context).accentColor,
+                        )
+                      : const SizedBox(width: 12),
+                  title: Text(chapter.title),
+                  subtitle: Text(
+                    _formatDuration(
+                      Duration(seconds: chapter.startTime.toInt()),
+                    ),
+                  ),
+                  onPressed: () {
+                    ref
+                        .read(mediaServiceProvider)
+                        .seek(
+                          Duration(
+                            milliseconds: (chapter.startTime * 1000).toInt(),
+                          ),
+                        );
+                    Navigator.pop(context);
+                  },
+                );
+              },
+            ),
+          ),
+          actions: [
+            Button(
+              child: const Text('Close'),
+              onPressed: () => Navigator.pop(context),
+            ),
+          ],
+        );
+      },
     );
   }
 }

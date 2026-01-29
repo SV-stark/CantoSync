@@ -170,7 +170,7 @@ class _CantoSyncAppState extends ConsumerState<CantoSyncApp>
               child: Text('CantoSync'),
             ),
           ),
-          automaticallyImplyLeading: false,
+          automaticallyImplyLeading: true,
           actions: Row(
             mainAxisAlignment: MainAxisAlignment.end,
             children: [Spacer(), WindowButtons()],

@@ -16,6 +16,7 @@ class _MetadataEditorState extends State<MetadataEditor> {
   late TextEditingController _authorController;
   late TextEditingController _albumController;
   late TextEditingController _seriesController;
+  late TextEditingController _descriptionController;
 
   @override
   void initState() {
@@ -24,6 +25,9 @@ class _MetadataEditorState extends State<MetadataEditor> {
     _authorController = TextEditingController(text: widget.book.author);
     _albumController = TextEditingController(text: widget.book.album);
     _seriesController = TextEditingController(text: widget.book.series);
+    _descriptionController = TextEditingController(
+      text: widget.book.description,
+    );
   }
 
   @override
@@ -32,6 +36,7 @@ class _MetadataEditorState extends State<MetadataEditor> {
     _authorController.dispose();
     _albumController.dispose();
     _seriesController.dispose();
+    _descriptionController.dispose();
     super.dispose();
   }
 
@@ -40,6 +45,7 @@ class _MetadataEditorState extends State<MetadataEditor> {
     widget.book.author = _authorController.text;
     widget.book.album = _albumController.text;
     widget.book.series = _seriesController.text;
+    widget.book.description = _descriptionController.text;
     await widget.book.save();
     if (mounted) Navigator.pop(context);
   }
@@ -106,6 +112,16 @@ class _MetadataEditorState extends State<MetadataEditor> {
               child: TextBox(
                 controller: _seriesController,
                 placeholder: 'Series',
+              ),
+            ),
+            const SizedBox(height: 12),
+            InfoLabel(
+              label: 'Description / Synopsis',
+              child: TextBox(
+                controller: _descriptionController,
+                placeholder: 'Enter synopsis...',
+                maxLines: 5,
+                minLines: 3,
               ),
             ),
           ],

@@ -43,6 +43,9 @@ class Book extends HiveObject {
   @HiveField(12)
   int? lastTrackIndex;
 
+  @HiveField(13)
+  String? description;
+
   Book({
     required this.path,
     required this.title,
@@ -57,6 +60,7 @@ class Book extends HiveObject {
     this.audioFiles,
     this.isDirectory = false,
     this.lastTrackIndex,
+    this.description,
   }) {
     this.lastPlayed = lastPlayed ?? DateTime.now();
     bookmarks ??= [];

@@ -64,14 +64,14 @@ jobs:
           mkdir -p AppDir/usr/bin
           mkdir -p AppDir/usr/lib
           mkdir -p AppDir/usr/share/applications
-          mkdir -p AppDir/usr/share/icons/hicolor/256x256/apps
+          mkdir -p AppDir/usr/share/icons/hicolor/scalable/apps
 
           # Copy binaries and resources
           cp -r build/linux/x64/release/bundle/* AppDir/usr/bin/
           
           # Setup icon and desktop file
-          # Use placeholder icon we created
-          cp linux/packaging/cantosync.png AppDir/usr/share/icons/hicolor/256x256/apps/cantosync.png
+          # Use SVG logo
+          cp assets/logo.svg AppDir/usr/share/icons/hicolor/scalable/apps/cantosync.svg
           
           # Create .desktop file
           cat > AppDir/usr/share/applications/cantosync.desktop <<EOF
@@ -85,7 +85,7 @@ jobs:
           EOF
 
           # Run linuxdeploy
-          ./linuxdeploy-x86_64.AppImage --appdir AppDir --output appimage --icon-file linux/packaging/cantosync.png --desktop-file AppDir/usr/share/applications/cantosync.desktop
+          ./linuxdeploy-x86_64.AppImage --appdir AppDir --output appimage --icon-file assets/logo.svg --desktop-file AppDir/usr/share/applications/cantosync.desktop
 
           # Rename for upload
           mv CantoSync-*.AppImage CantoSync-Linux.AppImage

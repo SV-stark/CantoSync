@@ -383,7 +383,7 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
                               decoration: BoxDecoration(
                                 color: FluentTheme.of(
                                   context,
-                                ).accentColor.withOpacity(0.1),
+                                ).accentColor.withValues(alpha: 0.1),
                                 borderRadius: BorderRadius.circular(20),
                               ),
                               child: Text(
@@ -466,7 +466,7 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
                                                     .typography
                                                     .caption
                                                     ?.color
-                                                    ?.withOpacity(0.7),
+                                                    ?.withValues(alpha: 0.7),
                                               ),
                                         ),
                                       Text(

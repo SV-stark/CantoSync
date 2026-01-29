@@ -1,5 +1,7 @@
 import 'dart:async';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:metadata_god/metadata_god.dart';
+import 'package:path/path.dart' as p;
 import 'package:canto_sync/core/services/media_service.dart';
 import 'package:canto_sync/features/library/data/library_service.dart';
 
@@ -86,11 +88,92 @@ class PlaybackSyncService {
     } catch (_) {}
 
     if (isDirectory && audioFiles != null && audioFiles.isNotEmpty) {
+      // For multi-file books, we want to construct a "Virtual Timeline".
+      // We process files to get their titles and durations.
+
+      final List<Chapter> chapters = [];
+      double totalDurationSeconds = 0;
+
+      // We process sequentially or parallel? Parallel is faster.
+      // But we need strict order.
+      // Let's do a map and wait.
+      try {
+        // Create futures list
+        final futures = audioFiles.map((filePath) async {
+          String fileTitle = p.basename(filePath);
+          double? fileDuration;
+
+          try {
+            // We can optimize this by caching chapter data in the Book object if possible,
+            // but for now, we read on open (might be slightly slow for huge books).
+            // TODO: Optimize by caching in library.
+            final meta = await MetadataGod.readMetadata(file: filePath);
+            if (meta.title != null && meta.title!.isNotEmpty) {
+              fileTitle = meta.title!;
+            }
+            if (meta.durationMs != null) {
+              fileDuration = meta.durationMs! / 1000.0;
+            }
+          } catch (e) {
+            // Ignore metadata errors, rely on basename
+          }
+          return {
+            'title': fileTitle,
+            'duration': fileDuration,
+            'path': filePath,
+          };
+        }).toList();
+
+        final results = await Future.wait(futures);
+
+        // now build chapters securely in order
+        double currentStartTime = 0;
+        for (var i = 0; i < results.length; i++) {
+          final data = results[i];
+          final duration = data['duration'] as double?;
+          final title = data['title'] as String;
+
+          // If duration is null (metadata failed), we unfortunately can't know the end time accurately
+          // without opening the file.
+          // For the timeline to work, we kind of need it.
+          // If mostly missing, this feature won't work well.
+          // We'll skip adding accurate chapters if duration missing but we'll try our best.
+
+          // If we have duration, we add a chapter.
+          if (duration != null) {
+            chapters.add(
+              Chapter(
+                title: title,
+                startTime:
+                    currentStartTime, // This start time is actually mostly for display "what index corresponds to what time"
+                // But wait, the user requested "Progress bar should show progress in current chapter".
+                // So the startTime here doesn't map to the player position (which resets to 0 for each file).
+                // It strictly maps to the "Total Duration" timeline.
+                endTime: currentStartTime + duration,
+              ),
+            );
+            currentStartTime += duration;
+            totalDurationSeconds += duration;
+          } else {
+            // Fallback: Just add a chapter marker with 0 duration or skip?
+            // Let's just use the filename as title and move on.
+            // We won't be able to calculate total duration correctly.
+            chapters.add(Chapter(title: title, startTime: currentStartTime));
+          }
+        }
+      } catch (e) {
+        // If something fails, we just proceed without custom chapters
+      }
+
       await _mediaService.open(
         audioFiles,
         title: title,
         artist: author,
         album: album,
+        chapters: chapters,
+        totalDuration: totalDurationSeconds > 0
+            ? Duration(milliseconds: (totalDurationSeconds * 1000).toInt())
+            : null,
       );
 
       // Restore track index

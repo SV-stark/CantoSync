@@ -27,13 +27,21 @@ class MediaService {
     _player = Player();
   }
 
+  List<Chapter>? _customChapters;
+  Duration? _customTotalDuration;
+
   Future<void> open(
     dynamic mediaSource, {
     String? title,
     String? artist,
     String? album,
     bool autoPlay = true,
+    List<Chapter>? chapters,
+    Duration? totalDuration,
   }) async {
+    _customChapters = chapters;
+    _customTotalDuration = totalDuration;
+
     if (mediaSource is String) {
       await _player.open(
         Media(
@@ -96,14 +104,16 @@ class MediaService {
 
   // Chapter Navigation
   Future<List<Chapter>> getChapters() async {
+    // If we have custom chapters (from multi-file book), return those
+    if (_customChapters != null && _customChapters!.isNotEmpty) {
+      return _customChapters!;
+    }
+
     if (_player.platform is NativePlayer) {
       final native = _player.platform as NativePlayer;
       try {
         // libmpv returns chapters as a list of maps
         // We use 'chapter-list' property
-        // The return type of getProperty can be somewhat dynamic in the wrapper
-        // but typically for complex types it might be a List<dynamic>
-        // Let's assume it returns a list of maps based on standard JSON IPC / mpv behavior
         final resultString = await native.getProperty('chapter-list');
         if (resultString.isEmpty) return [];
 
@@ -145,7 +155,24 @@ class MediaService {
     return [];
   }
 
+  /// Returns the total duration of the book.
+  /// If it's a multi-file book, this is the sum of all files.
+  /// Otherwise, it's the duration of the current file/stream.
+  Stream<Duration> get totalDurationStream {
+    if (_customTotalDuration != null) {
+      return Stream.value(_customTotalDuration!);
+    }
+    return _player.stream.duration;
+  }
+
   Future<void> jumpToChapter(int index) async {
+    // If custom chapters exist, it means we are in multi-file mode where
+    // each chapter corresponds to a playlist item.
+    if (_customChapters != null) {
+      await _player.jump(index);
+      return;
+    }
+
     if (_player.platform is NativePlayer) {
       final native = _player.platform as NativePlayer;
       await native.setProperty('chapter', index.toString());
@@ -157,13 +184,34 @@ class MediaService {
   }
 
   Future<void> nextChapter() async {
-    // Rely on native next
-    await _player.next();
+    // If we have a playlist with multiple files (e.g. folder of MP3s),
+    // next/prev usually means next file.
+    if (_player.state.playlist.medias.length > 1) {
+      await _player.next();
+      return;
+    }
+
+    // Otherwise, for single files (M4B), we want to navigate internal chapters.
+    if (_player.platform is NativePlayer) {
+      final native = _player.platform as NativePlayer;
+      await native.command(['add', 'chapter', '1']);
+    } else {
+      await _player.next();
+    }
   }
 
   Future<void> previousChapter() async {
-    // Rely on native previous
-    await _player.previous();
+    if (_player.state.playlist.medias.length > 1) {
+      await _player.previous();
+      return;
+    }
+
+    if (_player.platform is NativePlayer) {
+      final native = _player.platform as NativePlayer;
+      await native.command(['add', 'chapter', '-1']);
+    } else {
+      await _player.previous();
+    }
   }
 
   Duration get position => _player.state.position;

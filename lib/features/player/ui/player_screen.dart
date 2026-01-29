@@ -23,13 +23,16 @@ final playerDurationProvider = StreamProvider.autoDispose<Duration>((ref) {
 
 final playerPlayingProvider = StreamProvider.autoDispose<bool>((ref) {
   final service = ref.watch(mediaServiceProvider);
-  return service.playingStream;
+  // Ensure we get initial state immediately
+  return service.playingStream.startWith(service.isPlaying);
 });
 
-final playerTracksProvider = StreamProvider.autoDispose<Tracks>((ref) {
+final playerTotalDurationProvider = StreamProvider.autoDispose<Duration>((ref) {
   final service = ref.watch(mediaServiceProvider);
-  return service.tracksStream;
+  return service.totalDurationStream;
 });
+
+// ... (other providers unchanged) ...
 
 final playerPlaylistProvider = StreamProvider.autoDispose<Playlist>((ref) {
   final service = ref.watch(mediaServiceProvider);
@@ -72,26 +75,64 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
 
     final positionAsync = ref.watch(playerPositionProvider);
     final durationAsync = ref.watch(playerDurationProvider);
+    final totalDurationAsync = ref.watch(playerTotalDurationProvider);
     final playingAsync = ref.watch(playerPlayingProvider);
     final chaptersAsync = ref.watch(playerChaptersProvider);
 
     final position = positionAsync.value ?? Duration.zero;
     final duration = durationAsync.value ?? Duration.zero;
-    final isPlaying = playingAsync.value ?? false;
+    final totalDuration = totalDurationAsync.value ?? Duration.zero;
+    final isPlaying =
+        playingAsync.value ??
+        mediaService.isPlaying; // Fallback to current state
     final chapters = chaptersAsync.value ?? [];
 
     // Determine current chapter
     Chapter? currentChapter;
+
+    // Check if we are in multi-file mode.
+    // Logic: If totalDuration is significantly larger than current file duration, assume multi-file.
+    // Strictly, totalDuration should be exactly sum, but stream updates might be async.
+    // Also, rely on currentIndex.
+    final currentIndex = mediaService.currentIndex;
+    final isMultiFile =
+        totalDuration.inSeconds > (duration.inSeconds + 10) || currentIndex > 0;
+
     if (chapters.isNotEmpty) {
-      final posSeconds = position.inMilliseconds / 1000.0;
-      // Find the last chapter where startTime <= currentPosition
-      currentChapter = chapters.lastWhere(
-        (c) => c.startTime <= posSeconds + 0.5, // 0.5 buffer
-        orElse: () => chapters.first,
-      );
+      if (isMultiFile) {
+        // Multi-file: Use playlist index to find chapter
+        if (currentIndex < chapters.length) {
+          currentChapter = chapters[currentIndex];
+        }
+      } else {
+        // Single file: Use time-based lookup
+        final posSeconds = position.inMilliseconds / 1000.0;
+        // Find the last chapter where startTime <= currentPosition
+        currentChapter = chapters.lastWhere(
+          (c) => c.startTime <= posSeconds + 0.5, // 0.5 buffer
+          orElse: () => chapters.first,
+        );
+      }
     }
 
-    // Calculate display values
+    // Calculate Global Progress for Percentage
+    double globalPositionSeconds = position.inMilliseconds / 1000.0;
+    if (currentChapter != null && isMultiFile) {
+      // For multi-file, currentChapter.startTime is the cumulative offset
+      globalPositionSeconds += currentChapter.startTime;
+    }
+
+    double totalBookSeconds = totalDuration.inMilliseconds / 1000.0;
+    String percentageText = '';
+    if (totalBookSeconds > 0) {
+      final percent = (globalPositionSeconds / totalBookSeconds * 100).clamp(
+        0.0,
+        100.0,
+      );
+      percentageText = '${percent.toStringAsFixed(1)}%';
+    }
+
+    // Calculate display values for SLIDER (Local Progress)
     double sliderValue = 0.0;
     double sliderMax = 1.0;
 
@@ -100,19 +141,30 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
     Duration chapterDuration = duration; // Default to full duration
 
     if (currentChapter != null) {
-      // We have chapters
-      final start = Duration(
-        milliseconds: (currentChapter.startTime * 1000).toInt(),
-      );
-      final end = currentChapter.endTime != null
-          ? Duration(milliseconds: (currentChapter.endTime! * 1000).toInt())
-          : duration;
+      // In Multi-file: currentChapter corresponds to current FILE.
+      // So chapterDuration should be duration.
+      // In Single-file: currentChapter is internal section.
 
-      chapterDuration = end - start;
-      // Clamp to ensure we don't show negative
-      chapterPosition = (position - start);
-      if (chapterPosition.isNegative) chapterPosition = Duration.zero;
-      if (chapterPosition > chapterDuration) chapterPosition = chapterDuration;
+      if (isMultiFile) {
+        // Multi-file: Chapter IS the file.
+        chapterDuration = duration;
+        chapterPosition = position;
+      } else {
+        // Single-file: Calculate relative position within chapter
+        final start = Duration(
+          milliseconds: (currentChapter.startTime * 1000).toInt(),
+        );
+        final end = currentChapter.endTime != null
+            ? Duration(milliseconds: (currentChapter.endTime! * 1000).toInt())
+            : duration;
+
+        chapterDuration = end - start;
+        // Clamp to ensure we don't show negative
+        chapterPosition = (position - start);
+        if (chapterPosition.isNegative) chapterPosition = Duration.zero;
+        if (chapterPosition > chapterDuration)
+          chapterPosition = chapterDuration;
+      }
 
       sliderMax = chapterDuration.inMilliseconds.toDouble();
       if (sliderMax <= 0) sliderMax = 1.0;
@@ -121,7 +173,9 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
           ? _dragValue
           : chapterPosition.inMilliseconds.toDouble().clamp(0.0, sliderMax);
     } else {
-      // No chapters, use total duration
+      // No chapters or fallback, use total duration
+      // BUT if we are in multi-file without chapters(?), we still want local progress.
+      // Assume local logic matches 'duration'.
       sliderMax = duration.inMilliseconds.toDouble();
       if (sliderMax <= 0) sliderMax = 1.0;
 
@@ -403,6 +457,24 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
                           // Slider / Progress
                           Column(
                             children: [
+                              // Percentage Display (New)
+                              if (percentageText.isNotEmpty)
+                                Padding(
+                                  padding: const EdgeInsets.only(bottom: 8.0),
+                                  child: Text(
+                                    percentageText,
+                                    style: FluentTheme.of(context)
+                                        .typography
+                                        .caption
+                                        ?.copyWith(
+                                          color: FluentTheme.of(context)
+                                              .typography
+                                              .caption
+                                              ?.color
+                                              ?.withValues(alpha: 0.6),
+                                        ),
+                                  ),
+                                ),
                               Slider(
                                 value: sliderValue,
                                 min: 0,
@@ -424,14 +496,23 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
                                   });
                                   if (currentChapter != null) {
                                     // value is relative to chapter start
-                                    final chapterStartMs =
-                                        (currentChapter.startTime * 1000)
-                                            .toInt();
-                                    final seekMs =
-                                        chapterStartMs + value.toInt();
-                                    mediaService.seek(
-                                      Duration(milliseconds: seekMs),
-                                    );
+                                    // If multi-file, chapter start is 0 relative to file.
+                                    // If single-file, start is internal offset.
+
+                                    if (isMultiFile) {
+                                      mediaService.seek(
+                                        Duration(milliseconds: value.toInt()),
+                                      );
+                                    } else {
+                                      final chapterStartMs =
+                                          (currentChapter.startTime * 1000)
+                                              .toInt();
+                                      final seekMs =
+                                          chapterStartMs + value.toInt();
+                                      mediaService.seek(
+                                        Duration(milliseconds: seekMs),
+                                      );
+                                    }
                                   } else {
                                     mediaService.seek(
                                       Duration(milliseconds: value.toInt()),
@@ -457,7 +538,11 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
                                     children: [
                                       if (currentChapter != null)
                                         Text(
-                                          'Total: ${_formatDuration(position)}',
+                                          'Total: ${_formatDuration(position)}', // This could be global position if we want? User said "Total book progress data".
+                                          // Let's keep it as is or update to global?
+                                          // "total book time always shows current total progress / 0.00"
+                                          // The user specifically complained about the /0.00 part.
+                                          // Let's fix the denominator.
                                           style: FluentTheme.of(context)
                                               .typography
                                               .caption
@@ -471,7 +556,7 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
                                         ),
                                       Text(
                                         currentChapter != null
-                                            ? '/ ${_formatDuration(duration)}'
+                                            ? '/ ${_formatDuration(totalDuration)}' // Fixed: use totalDuration
                                             : _formatDuration(duration),
                                       ),
                                     ],

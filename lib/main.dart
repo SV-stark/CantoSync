@@ -14,6 +14,7 @@ import 'package:canto_sync/core/services/tray_service.dart';
 import 'package:canto_sync/core/services/update_service.dart';
 import 'package:canto_sync/core/services/app_settings_service.dart';
 import 'package:canto_sync/core/ui/window_buttons.dart';
+import 'package:canto_sync/core/constants/app_constants.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 void main() async {
@@ -31,7 +32,7 @@ void main() async {
   await Hive.initFlutter();
   Hive.registerAdapter(BookAdapter());
   Hive.registerAdapter(BookmarkAdapter());
-  await Hive.openBox<Book>('library');
+  await Hive.openBox<Book>(AppConstants.libraryBox);
 
   // Initialize Window Manager
   await windowManager.ensureInitialized();
@@ -52,8 +53,8 @@ void main() async {
 
   // Load System Theme Accent Color
   await SystemTheme.accentColor.load();
-  await Hive.openBox<Book>('books');
-  await Hive.openBox('settings');
+  await Hive.openBox<Book>(AppConstants.booksBox);
+  await Hive.openBox(AppConstants.settingsBox);
 
   runApp(const ProviderScope(child: CantoSyncApp()));
 }

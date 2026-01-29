@@ -29,6 +29,9 @@ class PlaybackSyncService {
   StreamSubscription? _subscription;
   String? _currentPath;
   Timer? _debounceTimer;
+  double _lastPosition = 0;
+  int _lastTrackIndex = 0;
+  bool _pendingSave = false;
 
   PlaybackSyncService(this._mediaService, this._libraryService, this._ref) {
     _init();
@@ -120,15 +123,38 @@ class PlaybackSyncService {
   }
 
   void _debounceSave(String path, double seconds, int trackIndex) {
+    _lastPosition = seconds;
+    _lastTrackIndex = trackIndex;
+    _pendingSave = true;
+
     if (_debounceTimer?.isActive ?? false) return;
 
     _debounceTimer = Timer(const Duration(seconds: 2), () {
-      _libraryService.updateProgress(path, seconds, trackIndex: trackIndex);
+      _performSave();
     });
+  }
+
+  Future<void> _performSave() async {
+    if (_currentPath != null) {
+      _pendingSave = false;
+      await _libraryService.updateProgress(
+        _currentPath!,
+        _lastPosition,
+        trackIndex: _lastTrackIndex,
+      );
+    }
   }
 
   void dispose() {
     _subscription?.cancel();
     _debounceTimer?.cancel();
+    if (_pendingSave && _currentPath != null) {
+      // Best effort save on dispose
+      _libraryService.updateProgress(
+        _currentPath!,
+        _lastPosition,
+        trackIndex: _lastTrackIndex,
+      );
+    }
   }
 }

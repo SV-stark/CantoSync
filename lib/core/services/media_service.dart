@@ -114,18 +114,23 @@ class MediaService {
 
           for (int i = 0; i < result.length; i++) {
             final e = result[i];
-            final startTime = (e['time'] as num).toDouble();
+            if (e is! Map) continue; // Skip invalid entries
+
+            final startTime = (e['time'] as num?)?.toDouble() ?? 0.0;
             double? endTime;
 
             if (i < result.length - 1) {
-              endTime = (result[i + 1]['time'] as num).toDouble();
+              final next = result[i + 1];
+              if (next is Map) {
+                endTime = (next['time'] as num?)?.toDouble();
+              }
             } else if (totalDuration > 0) {
               endTime = totalDuration;
             }
 
             chapters.add(
               Chapter(
-                title: e['title'] ?? 'Chapter ${i + 1}',
+                title: e['title']?.toString() ?? 'Chapter ${i + 1}',
                 startTime: startTime,
                 endTime: endTime,
               ),
@@ -133,8 +138,8 @@ class MediaService {
           }
           return chapters;
         }
-      } catch (e) {
-        debugPrint('Error fetching chapters: $e');
+      } catch (e, stack) {
+        debugPrint('Error fetching/parsing chapters: $e\n$stack');
       }
     }
     return [];

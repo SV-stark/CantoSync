@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:canto_sync/core/services/media_service.dart';
+import 'package:canto_sync/core/constants/app_constants.dart';
 
 enum AudioPreset {
   flat('Flat', ''),
@@ -45,7 +46,7 @@ class AppSettingsNotifier extends Notifier<AppSettings> {
 
   @override
   AppSettings build() {
-    _box = Hive.box('settings');
+    _box = Hive.box(AppConstants.settingsBox);
 
     final themeIndex = _box.get(
       'themeMode',

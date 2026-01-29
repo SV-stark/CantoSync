@@ -6,10 +6,11 @@ import 'package:metadata_god/metadata_god.dart';
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
 import 'package:crypto/crypto.dart';
+import 'package:canto_sync/core/constants/app_constants.dart';
 import 'book.dart';
 
 final libraryServiceProvider = Provider<LibraryService>((ref) {
-  return LibraryService(Hive.box<Book>('library'));
+  return LibraryService(Hive.box<Book>(AppConstants.libraryBox));
 });
 
 class LibrarySearchQuery extends Notifier<String> {

@@ -18,9 +18,9 @@ Name: "english"; MessagesFile: "compiler:Default.isl"
 Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{cm:AdditionalIcons}"; Flags: unchecked
 
 [Files]
-Source: "..\build\windows\runner\Release\canto_sync.exe"; DestDir: "{app}"; Flags: ignoreversion
-Source: "..\build\windows\runner\Release\*.dll"; DestDir: "{app}"; Flags: ignoreversion
-Source: "..\build\windows\runner\Release\data\*"; DestDir: "{app}\data"; Flags: ignoreversion recursesubdirs createallsubdirs
+Source: "..\build\windows\x64\runner\Release\canto_sync.exe"; DestDir: "{app}"; Flags: ignoreversion
+Source: "..\build\windows\x64\runner\Release\*.dll"; DestDir: "{app}"; Flags: ignoreversion
+Source: "..\build\windows\x64\runner\Release\data\*"; DestDir: "{app}\data"; Flags: ignoreversion recursesubdirs createallsubdirs
 
 [Icons]
 Name: "{autoprograms}\CantoSync"; Filename: "{app}\canto_sync.exe"

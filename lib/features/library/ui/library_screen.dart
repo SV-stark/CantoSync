@@ -6,6 +6,17 @@ import 'package:canto_sync/features/library/data/book.dart';
 import 'package:canto_sync/features/library/data/library_service.dart';
 import 'package:canto_sync/core/services/playback_sync_service.dart';
 
+class LibraryViewMode extends Notifier<bool> {
+  @override
+  bool build() => true; // Grid by default
+
+  void toggle() => state = !state;
+}
+
+final libraryViewModeProvider = NotifierProvider<LibraryViewMode, bool>(
+  LibraryViewMode.new,
+);
+
 class LibraryScreen extends ConsumerWidget {
   const LibraryScreen({super.key});
 
@@ -19,12 +30,22 @@ class LibraryScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final booksAsync = ref.watch(libraryBooksProvider);
+    final isGridView = ref.watch(libraryViewModeProvider);
 
     return ScaffoldPage.withPadding(
       header: PageHeader(
         title: const Text('Library'),
         commandBar: CommandBar(
           primaryItems: [
+            CommandBarButton(
+              icon: Icon(
+                isGridView ? FluentIcons.view_all : FluentIcons.bulleted_list,
+              ),
+              label: Text(isGridView ? 'Grid View' : 'List View'),
+              onPressed: () =>
+                  ref.read(libraryViewModeProvider.notifier).toggle(),
+            ),
+            const CommandBarSeparator(),
             CommandBarButton(
               icon: const Icon(FluentIcons.add),
               label: const Text('Add Folder'),
@@ -52,19 +73,46 @@ class LibraryScreen extends ConsumerWidget {
               ),
             );
           }
-          return GridView.builder(
-            gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
-              maxCrossAxisExtent: 200,
-              childAspectRatio: 0.7,
-              crossAxisSpacing: 16,
-              mainAxisSpacing: 16,
-            ),
-            itemCount: books.length,
-            itemBuilder: (context, index) {
-              final book = books[index];
-              return BookCard(book: book);
-            },
-          );
+
+          if (isGridView) {
+            return GridView.builder(
+              gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
+                maxCrossAxisExtent: 200,
+                childAspectRatio: 0.7,
+                crossAxisSpacing: 16,
+                mainAxisSpacing: 16,
+              ),
+              itemCount: books.length,
+              itemBuilder: (context, index) {
+                final book = books[index];
+                return BookCard(book: book);
+              },
+            );
+          } else {
+            return ListView.builder(
+              itemCount: books.length,
+              itemBuilder: (context, index) {
+                final book = books[index];
+                return ListTile(
+                  leading: SizedBox(
+                    width: 40,
+                    height: 40,
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(4),
+                      child: book.coverPath != null
+                          ? Image.file(File(book.coverPath!), fit: BoxFit.cover)
+                          : const Icon(FluentIcons.music_note),
+                    ),
+                  ),
+                  title: Text(book.title),
+                  subtitle: Text(book.author ?? 'Unknown Author'),
+                  onPressed: () {
+                    ref.read(playbackSyncProvider).resumeBook(book.path);
+                  },
+                );
+              },
+            );
+          }
         },
         loading: () => const Center(child: ProgressRing()),
         error: (err, stack) => Center(child: Text('Error: $err')),

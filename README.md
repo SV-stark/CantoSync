@@ -28,9 +28,10 @@
 | Feature | Description |
 | :--- | :--- |
 | 🚀 **High-Performance** | Powered by `media_kit` (libmpv) for unmatched stability and format support (M4B, MP3, FLAC, OPUS, and more). |
-| 🔖 **Native Chapters** | Direct interface with the audio engine to parse embedded chapters (ID3/M4B) for easy navigation. |
-| 🧠 **Smart Resume** | Remembers the exact second where you left off for *every* audio file in your library. |
-| 🎨 **Fluent Design** | A beautiful interface built with `fluent_ui`, featuring Mica and Acrylic effects on Windows. |
+| 📚 **Smart Library** | Recursive folder scanning with automatic metadata extraction (Title, Artist, Album) and cover art caching. |
+| 🔖 **Native Chapters** | Instant access to embedded chapters (ID3/M4B) via a dedicated sidebar for seamless navigation. |
+| 🧠 **Smart Resume** | Persistent storage of your playback position for every file—never lose your place again. |
+| 🎨 **Fluent Design** | Premium UI built with `fluent_ui`, featuring Mica/Acrylic effects and full Dark/Light theme support. |
 
 ---
 
@@ -39,7 +40,7 @@
 - **Framework**: [Flutter](https://flutter.dev)
 - **UI Library**: [fluent_ui](https://pub.dev/packages/fluent_ui)
 - **Audio Engine**: [media_kit](https://pub.dev/packages/media_kit)
-- **State Management**: [Riverpod](https://riverpod.dev)
+- **Metadata**: [metadata_god](https://pub.dev/packages/metadata_god)
 - **Database**: [Hive](https://docs.hivedb.dev/)
 
 ---
@@ -72,8 +73,9 @@ flutter run -d windows # or linux
 - [x] Core Playback & Seek
 - [x] Native Chapter Navigation
 - [x] Position Persistence
-- [ ] **Library Management**: Recursive folder scanning
-- [ ] **Cover Art**: Visual grid view for collections
+- [x] **Smart Library**: Recursive scanning & Metadata extraction
+- [x] **Cover Art**: Automatic extraction & caching
+- [ ] **Grid View**: Visual library browser for your collection
 - [ ] **Sleep Timer**: Auto-pause functionality
 - [ ] **Sync**: Cloud progress synchronization
 

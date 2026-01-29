@@ -18,9 +18,13 @@ class SleepTimerService extends Notifier<Duration?> {
   void startTimer(Duration duration) {
     cancelTimer();
     state = duration;
-    _timer = Timer(duration, () {
-      ref.read(mediaServiceProvider).pause();
-      state = null; // Timer finished
+    _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
+      if (state == null || state! <= Duration.zero) {
+        ref.read(mediaServiceProvider).pause();
+        cancelTimer();
+      } else {
+        state = state! - const Duration(seconds: 1);
+      }
     });
   }
 

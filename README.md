@@ -1,4 +1,4 @@
-# CantoSync 🎧
+# <img src="assets/logo.svg" height="60" valign="middle" alt="Logo"/> CantoSync
 
 ![Flutter](https://img.shields.io/badge/Flutter-02569B?style=for-the-badge&logo=flutter&logoColor=white)
 ![Windows](https://img.shields.io/badge/Windows-0078D6?style=for-the-badge&logo=windows&logoColor=white)

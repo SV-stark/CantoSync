@@ -112,41 +112,59 @@ class MediaService {
     if (_player.platform is NativePlayer) {
       final native = _player.platform as NativePlayer;
       try {
-        // libmpv returns chapters as a list of maps
-        // We use 'chapter-list' property
-        final resultString = await native.getProperty('chapter-list');
-        if (resultString.isEmpty) return [];
+        // Retry logic to handle race conditions where chapters/metadata aren't loaded yet.
+        // We allow up to 5 attempts (approx 2.5 seconds max wait).
+        for (int i = 0; i < 5; i++) {
+          final resultString = await native.getProperty('chapter-list');
 
-        final result = jsonDecode(resultString);
-        if (result is List) {
-          final totalDuration = _player.state.duration.inMilliseconds / 1000.0;
-          final List<Chapter> chapters = [];
+          if (resultString.isNotEmpty) {
+            final result = jsonDecode(resultString);
 
-          for (int i = 0; i < result.length; i++) {
-            final e = result[i];
-            if (e is! Map) continue; // Skip invalid entries
+            // Check current duration to help deciding if we should keep waiting
+            final currentDuration =
+                _player.state.duration.inMilliseconds / 1000.0;
 
-            final startTime = (e['time'] as num?)?.toDouble() ?? 0.0;
-            double? endTime;
+            if (result is List) {
+              if (result.isNotEmpty) {
+                // We have chapters! Parse and return.
+                final List<Chapter> chapters = [];
 
-            if (i < result.length - 1) {
-              final next = result[i + 1];
-              if (next is Map) {
-                endTime = (next['time'] as num?)?.toDouble();
+                for (int j = 0; j < result.length; j++) {
+                  final e = result[j];
+                  if (e is! Map) continue;
+
+                  final startTime = (e['time'] as num?)?.toDouble() ?? 0.0;
+                  double? endTime;
+
+                  if (j < result.length - 1) {
+                    final next = result[j + 1];
+                    if (next is Map) {
+                      endTime = (next['time'] as num?)?.toDouble();
+                    }
+                  } else if (currentDuration > 0) {
+                    endTime = currentDuration;
+                  }
+
+                  chapters.add(
+                    Chapter(
+                      title: e['title']?.toString() ?? 'Chapter ${j + 1}',
+                      startTime: startTime,
+                      endTime: endTime,
+                    ),
+                  );
+                }
+                return chapters;
+              } else if (currentDuration > 0) {
+                // List is empty AND we have a valid duration.
+                // This implies metadata is loaded but there are truly no chapters.
+                // Stop waiting and return empty.
+                return [];
               }
-            } else if (totalDuration > 0) {
-              endTime = totalDuration;
             }
-
-            chapters.add(
-              Chapter(
-                title: e['title']?.toString() ?? 'Chapter ${i + 1}',
-                startTime: startTime,
-                endTime: endTime,
-              ),
-            );
           }
-          return chapters;
+          // If we are here, we either have empty resultString, or empty list with 0 duration (still loading).
+          // Wait and retry.
+          await Future.delayed(const Duration(milliseconds: 500));
         }
       } catch (e, stack) {
         debugPrint('Error fetching/parsing chapters: $e\n$stack');

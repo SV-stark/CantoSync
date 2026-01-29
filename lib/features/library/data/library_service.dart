@@ -1,4 +1,6 @@
+import 'dart:async';
 import 'dart:io';
+import 'package:media_kit/media_kit.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:hive_flutter/hive_flutter.dart';
@@ -7,10 +9,11 @@ import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
 import 'package:crypto/crypto.dart';
 import 'package:canto_sync/core/constants/app_constants.dart';
+import 'package:canto_sync/core/services/app_settings_service.dart';
 import 'book.dart';
 
 final libraryServiceProvider = Provider<LibraryService>((ref) {
-  return LibraryService(Hive.box<Book>(AppConstants.libraryBox));
+  return LibraryService(Hive.box<Book>(AppConstants.libraryBox), ref: ref);
 });
 
 class LibrarySearchQuery extends Notifier<String> {
@@ -68,8 +71,9 @@ final libraryGroupedBooksProvider =
 
 class LibraryService {
   final Box<Book> _box;
+  final Ref? ref;
 
-  LibraryService(this._box);
+  LibraryService(this._box, {this.ref});
 
   List<Book> get books => _box.values.toList();
 
@@ -80,9 +84,67 @@ class LibraryService {
         .startWith(_box.values.toList());
   }
 
+  Future<void> rescanLibraries() async {
+    if (ref == null) return;
+
+    final settings = ref!.read(appSettingsProvider);
+    final libraryPaths = settings.libraryPaths;
+
+    // Create shared player for metadata extraction
+    final probePlayer = Player(
+      configuration: const PlayerConfiguration(vo: 'null'),
+    );
+
+    final Set<String> allFoundBookPaths = {};
+
+    try {
+      for (final path in libraryPaths) {
+        final found = await _scanDirectory(path, probePlayer);
+        allFoundBookPaths.addAll(found);
+      }
+
+      // Prune books that are no longer in the libraries
+      final booksToRemove = <dynamic>[];
+
+      for (final book in _box.values) {
+        // Check if book is within any of the managed library paths
+        bool isManaged = false;
+        for (final libPath in libraryPaths) {
+          if (p.isWithin(libPath, book.path) || p.equals(libPath, book.path)) {
+            isManaged = true;
+            break;
+          }
+        }
+
+        if (isManaged) {
+          if (!allFoundBookPaths.contains(book.path)) {
+            // Book is in a managed folder but was not found in scan -> deleted
+            booksToRemove.add(book.key);
+          }
+        }
+      }
+
+      await _box.deleteAll(booksToRemove);
+    } finally {
+      await probePlayer.dispose();
+    }
+  }
+
+  // Wrapper for backward compatibility if called directly, but preferred to use rescanLibraries
   Future<void> scanDirectory(String path) async {
+    final probePlayer = Player(
+      configuration: const PlayerConfiguration(vo: 'null'),
+    );
+    try {
+      await _scanDirectory(path, probePlayer);
+    } finally {
+      await probePlayer.dispose();
+    }
+  }
+
+  Future<List<String>> _scanDirectory(String path, Player probePlayer) async {
     final dir = Directory(path);
-    if (!await dir.exists()) return;
+    if (!await dir.exists()) return [];
 
     final List<FileSystemEntity> entities = await dir
         .list(recursive: true, followLinks: false)
@@ -103,48 +165,44 @@ class LibraryService {
       }
     }
 
+    final List<String> foundBookPaths = [];
+
     for (final entry in dirBasedGroups.entries) {
       final parentPath = entry.key;
       final files = entry.value;
 
-      // Sort files by name to ensure correct order
       files.sort((a, b) => a.path.compareTo(b.path));
 
       if (files.length == 1 &&
           files.first.parent.path == dir.path &&
           files.length == 1) {
-        // Single file book in strictly the root scan dir?
-        // Actually, user wants "Short_Stories_Collection (Single MP3)/Full_Audiobook.mp3" -> One book
-        // "Modern_Thriller_Special (Single M4B)/Book_Title.m4b" -> One book
-        // "Audiobooks/The_Great_Epic (Multipart)/Part01.mp3" -> One book
-
-        // Logic:
-        // If a folder contains audio files, that folder IS the book container.
-        // Even if it has only 1 file.
-        // Use directory as the key/path for the Book entry.
-        // This is consistent.
         final filePaths = files.map((f) => f.path).toList();
         await _addBookIfNotExists(
           parentPath,
           isDirectory: true,
           audioFiles: filePaths,
+          probePlayer: probePlayer,
         );
+        foundBookPaths.add(parentPath);
       } else {
-        // Same logic: Treat folder as book.
         final filePaths = files.map((f) => f.path).toList();
         await _addBookIfNotExists(
           parentPath,
           isDirectory: true,
           audioFiles: filePaths,
+          probePlayer: probePlayer,
         );
+        foundBookPaths.add(parentPath);
       }
     }
+    return foundBookPaths;
   }
 
   Future<void> _addBookIfNotExists(
     String path, {
     required bool isDirectory,
     List<String>? audioFiles,
+    required Player probePlayer,
   }) async {
     // Check if already in DB
     final exists = _box.values.any((b) => b.path == path);
@@ -154,6 +212,7 @@ class LibraryService {
     String? author;
     String? album;
     String? coverPath;
+    String? description;
     double duration = 0;
 
     // Use the first file to extract metadata
@@ -173,6 +232,10 @@ class LibraryService {
           metadataSourcePath,
         );
       }
+
+      // Extract description using the shared media_kit player
+      // We pass the already created player to avoid overhead
+      description = await _extractDescription(metadataSourcePath, probePlayer);
 
       // Calculate total duration
       if (audioFiles != null) {
@@ -206,6 +269,7 @@ class LibraryService {
       lastPlayed: DateTime.now(),
       audioFiles: audioFiles,
       isDirectory: isDirectory,
+      description: description,
     );
 
     await _box.add(book);
@@ -279,6 +343,37 @@ class LibraryService {
     } catch (e) {
       debugPrint('Error removing bookmark: $e');
     }
+  }
+
+  Future<String?> _extractDescription(String path, Player player) async {
+    try {
+      await player.open(Media(path), play: false);
+
+      // Wait for metadata to be populated.
+      // MediaKit doesn't have a direct "awaitUntilMetadataLoaded" but probing is usually fast.
+      // We can check if metadata is already present or wait a tiny bit?
+      // Actually, opening a file triggers metadata loading.
+      // Let's retry a few times to get 'comment' or 'description'.
+
+      // We don't want to block for too long.
+      for (int i = 0; i < 5; i++) {
+        // Safe check for native platform
+        if (player.platform is NativePlayer) {
+          final native = player.platform as NativePlayer;
+
+          // Try specific common keys
+          final comment = await native.getProperty('metadata/by-key/comment');
+          if (comment.isNotEmpty) return comment;
+
+          final desc = await native.getProperty('metadata/by-key/description');
+          if (desc.isNotEmpty) return desc;
+        }
+        await Future.delayed(const Duration(milliseconds: 50));
+      }
+    } catch (e) {
+      debugPrint('Error extracting description with media_kit: $e');
+    }
+    return null;
   }
 }
 

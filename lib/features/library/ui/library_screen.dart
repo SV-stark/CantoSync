@@ -31,6 +31,42 @@ class LibraryScreen extends ConsumerWidget {
     }
   }
 
+  Future<void> _rescanLibrary(BuildContext context, WidgetRef ref) async {
+    displayInfoBar(
+      context,
+      builder: (context, close) {
+        return InfoBar(
+          title: const Text('Scanning Library...'),
+          content: const Text('Updating books and metadata'),
+          action: IconButton(
+            icon: const Icon(FluentIcons.clear),
+            onPressed: close,
+          ),
+          severity: InfoBarSeverity.info,
+        );
+      },
+    );
+
+    await ref.read(libraryServiceProvider).rescanLibraries();
+
+    if (context.mounted) {
+      displayInfoBar(
+        context,
+        builder: (context, close) {
+          return InfoBar(
+            title: const Text('Scan Complete'),
+            content: const Text('Library updated successfully'),
+            action: IconButton(
+              icon: const Icon(FluentIcons.clear),
+              onPressed: close,
+            ),
+            severity: InfoBarSeverity.success,
+          );
+        },
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final booksAsync = ref.watch(libraryBooksProvider);
@@ -82,6 +118,12 @@ class LibraryScreen extends ConsumerWidget {
                         onPressed: () {},
                       )
                       as CommandBarItem,
+            ),
+            const CommandBarSeparator(),
+            CommandBarButton(
+              icon: const Icon(FluentIcons.sync),
+              label: const Text('Rescan'),
+              onPressed: () => _rescanLibrary(context, ref),
             ),
             const CommandBarSeparator(),
             CommandBarButton(

@@ -179,7 +179,7 @@ class _CantoSyncAppState extends ConsumerState<CantoSyncApp>
         pane: NavigationPane(
           selected: _index,
           onChanged: (i) => setState(() => _index = i),
-          displayMode: PaneDisplayMode.auto,
+          displayMode: PaneDisplayMode.compact,
           items: [
             PaneItem(
               icon: const Icon(FluentIcons.library),

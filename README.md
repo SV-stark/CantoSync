@@ -1,92 +1,84 @@
-# <img src="assets/logo.svg" height="60" valign="middle" alt="Logo"/> CantoSync
+<p align="center">
+  <img src="assets/logo.svg" height="120" alt="CantoSync Logo"/>
+</p>
 
-![Flutter](https://img.shields.io/badge/Flutter-02569B?style=for-the-badge&logo=flutter&logoColor=white)
-![Windows](https://img.shields.io/badge/Windows-0078D6?style=for-the-badge&logo=windows&logoColor=white)
-![Linux](https://img.shields.io/badge/Linux-FCC624?style=for-the-badge&logo=linux&logoColor=black)
-![License](https://img.shields.io/badge/License-MIT-green.svg?style=for-the-badge)
+<h1 align="center">CantoSync</h1>
 
-**CantoSync** is a modern, high-performance audiobook player built for Windows and Linux. Designed with a focus on aesthetics and functionality, it bridges the gap between powerful audio engines and native user experiences.
+<p align="center">
+  <strong>A modern, high-performance audiobook player for Windows and Linux.</strong>
+</p>
+
+<p align="center">
+  <img src="https://img.shields.io/badge/Flutter-02569B?style=for-the-badge&logo=flutter&logoColor=white" alt="Flutter"/>
+  <img src="https://img.shields.io/badge/Windows-0078D6?style=for-the-badge&logo=windows&logoColor=white" alt="Windows"/>
+  <img src="https://img.shields.io/badge/Linux-FCC624?style=for-the-badge&logo=linux&logoColor=black" alt="Linux"/>
+  <img src="https://img.shields.io/badge/License-MIT-green.svg?style=for-the-badge" alt="License"/>
+</p>
+
+---
+
+## 📖 About CantoSync
+
+**CantoSync** is designed with a focus on aesthetics and functionality, bridging the gap between powerful audio engines and native user experiences. It provides an industry-leading playback experience for audiobook enthusiasts.
 
 ---
 
 ## ✨ Key Features
 
-### 🚀 **High-Performance Audio Engine**
-Powered by **`media_kit`** (libmpv), CantoSync enables industry-leading playback stability and supports virtually all audio formats, including:
--   **M4B** (Audiobooks)
--   **MP3, FLAC, OGG, WAV**
--   **OPUS, AAC**
-
-### 🔖 **Native Chapter Support**
-Navigate complex audiobooks with ease. CantoSync directly interfaces with the underlying engine to parse **embedded chapters** (ID3/M4B), offering:
--   Instant chapter access via a dedicated sidebar.
--   Precise timestamps and duration display.
--   No external dependency bloat—it just works.
-
-### 🧠 **Smart Resume (Persistence)**
-Never lose your place again.
--   **Per-File Memory**: CantoSync remembers the exact second where you left off for *every* audio file in your library.
--   **Instant Resume**: Re-opening the app automatically cues up your last played book.
-
-### 🎨 **Beautiful Fluent Design**
-Built with **`fluent_ui`**, the interface feels right at home on Windows 11.
--   **Mica & Acrylic** effects (Windows).
--   Clean, distraction-free "Now Playing" mode.
--   Dark & Light theme support.
+| Feature | Description |
+| :--- | :--- |
+| 🚀 **High-Performance** | Powered by `media_kit` (libmpv) for unmatched stability and format support (M4B, MP3, FLAC, OPUS, and more). |
+| 🔖 **Native Chapters** | Direct interface with the audio engine to parse embedded chapters (ID3/M4B) for easy navigation. |
+| 🧠 **Smart Resume** | Remembers the exact second where you left off for *every* audio file in your library. |
+| 🎨 **Fluent Design** | A beautiful interface built with `fluent_ui`, featuring Mica and Acrylic effects on Windows. |
 
 ---
 
 ## 🛠️ Tech Stack
 
--   **Framework**: [Flutter](https://flutter.dev)
--   **UI Library**: [fluent_ui](https://pub.dev/packages/fluent_ui)
--   **Audio Engine**: [media_kit](https://pub.dev/packages/media_kit) (libmpv)
--   **State Management**: [Riverpod](https://riverpod.dev)
--   **Database**: [Hive](https://docs.hivedb.dev/) (NoSQL)
+- **Framework**: [Flutter](https://flutter.dev)
+- **UI Library**: [fluent_ui](https://pub.dev/packages/fluent_ui)
+- **Audio Engine**: [media_kit](https://pub.dev/packages/media_kit)
+- **State Management**: [Riverpod](https://riverpod.dev)
+- **Database**: [Hive](https://docs.hivedb.dev/)
 
 ---
 
 ## 🚀 Getting Started
 
 ### Prerequisites
--   [Flutter SDK](https://docs.flutter.dev/get-started/install/windows) (3.10+)
--   Visual Studio Build Tools (for Windows C++ compilation)
--   MPV dependencies (Linux only)
+- **Flutter SDK** (3.10+)
+- **Visual Studio Build Tools** (Windows)
+- **MPV dependencies** (Linux)
 
-### Installation
+### Quick Start
 
-1.  **Clone the repository**
-    ```bash
-    git clone https://github.com/yourusername/cantosync.git
-    cd cantosync
-    ```
+```bash
+# 1. Clone the repository
+git clone https://github.com/yourusername/cantosync.git
 
-2.  **Install dependencies**
-    ```bash
-    flutter pub get
-    ```
+# 2. Install dependencies
+cd cantosync
+flutter pub get
 
-3.  **Run the app**
-    ```bash
-    # For Windows
-    flutter run -d windows
-
-    # For Linux
-    flutter run -d linux
-    ```
+# 3. Run the app
+flutter run -d windows # or linux
+```
 
 ---
 
 ## 🗺️ Roadmap
 
--   [x] Core Playback & Seek
--   [x] Native Chapter Navigation
--   [x] Position Persistence
--   [ ] **Library Management**: Scan folders recursively & extract metadata
--   [ ] **Cover Art**: Visual grid view for your collection
--   [ ] **Sleep Timer**: Auto-pause after set duration
--   [ ] **Sync**: Cloud progress synchronization
+- [x] Core Playback & Seek
+- [x] Native Chapter Navigation
+- [x] Position Persistence
+- [ ] **Library Management**: Recursive folder scanning
+- [ ] **Cover Art**: Visual grid view for collections
+- [ ] **Sleep Timer**: Auto-pause functionality
+- [ ] **Sync**: Cloud progress synchronization
 
 ---
 
-Made with ❤️ by SV-Stark
+<p align="center">
+  Made with ❤️ by SV-Stark
+</p>

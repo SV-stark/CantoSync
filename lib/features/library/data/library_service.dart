@@ -366,6 +366,10 @@ class LibraryService {
           final comment = await native.getProperty('metadata/by-key/comment');
           if (comment.isNotEmpty) return comment;
 
+          // User requested explicit check for uppercase 'COMMENT' which some taggers use
+          final commentUpper = await native.getProperty('metadata/COMMENT');
+          if (commentUpper.isNotEmpty) return commentUpper;
+
           final desc = await native.getProperty('metadata/by-key/description');
           if (desc.isNotEmpty) return desc;
 

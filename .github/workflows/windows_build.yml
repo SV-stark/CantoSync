@@ -1,0 +1,59 @@
+name: Windows Build
+
+on:
+  push:
+    branches: [ "main" ]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: windows-latest
+
+    permissions:
+        contents: write
+
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: 'stable'
+          cache: true
+          
+      - name: Enable Windows Support
+        run: flutter config --enable-windows-desktop
+          
+      - name: Cache Inno Setup
+        id: cache-innosetup
+        uses: actions/cache@v5
+        with:
+          path: "C:\\Program Files (x86)\\Inno Setup 6"
+          key: ${{ runner.os }}-innosetup
+
+      - name: Install Inno Setup
+        if: steps.cache-innosetup.outputs.cache-hit != 'true'
+        run: choco install innosetup --allow-empty-checksums --no-progress
+
+      - name: Install Dependencies
+        run: flutter pub get
+        
+      - name: Generate Icons
+        run: flutter pub run flutter_launcher_icons
+
+      - name: Build Windows
+        run: flutter build windows --release
+          
+      - name: Compile Installer
+        run: |
+          & "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" installers/inno_script.iss
+          
+      - name: Update Nightly Release
+        uses: softprops/action-gh-release@v2
+        if: github.event_name == 'push'
+        with:
+            name: "Nightly Build"
+            tag_name: nightly
+            files: installers/InvoBharat_Setup.exe
+            prerelease: true
+            body: "Auto-generated nightly build from commit ${{ github.sha }}."

@@ -1,0 +1,95 @@
+name: Linux Build
+
+on:
+  push:
+    branches: [ "main" ]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: write
+
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: 'stable'
+          cache: true
+
+      - name: Cache Pub Dependencies
+        uses: actions/cache@v5
+        with:
+          path: ~/.pub-cache
+          key: ${{ runner.os }}-pub-${{ hashFiles('**/pubspec.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-pub-
+
+      - name: Cache System Dependencies
+        uses: actions/cache@v5
+        with:
+          path: /var/cache/apt/archives
+          key: ${{ runner.os }}-apt-${{ hashFiles('.github/workflows/linux_build.yml') }}
+          restore-keys: |
+            ${{ runner.os }}-apt-
+
+      - name: Install System Dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y clang cmake ninja-build pkg-config libgtk-3-dev liblzma-dev libfuse2 libsecret-1-dev libjsoncpp-dev
+
+      - name: Install Project Dependencies
+        run: flutter pub get
+
+      - name: Build Linux
+        run: flutter build linux --release
+
+      - name: Create AppImage
+        run: |
+          # Install linuxdeploy
+          wget https://github.com/linuxdeploy/linuxdeploy/releases/download/continuous/linuxdeploy-x86_64.AppImage
+          chmod +x linuxdeploy-x86_64.AppImage
+
+          # Prepare AppDir
+          mkdir -p AppDir/usr/bin
+          mkdir -p AppDir/usr/lib
+          mkdir -p AppDir/usr/share/applications
+          mkdir -p AppDir/usr/share/icons/hicolor/256x256/apps
+
+          # Copy binaries and resources
+          cp -r build/linux/x64/release/bundle/* AppDir/usr/bin/
+          
+          # Setup icon and desktop file
+          # Use pre-sized icon
+          cp linux/packaging/invobharat.png AppDir/usr/share/icons/hicolor/256x256/apps/invobharat.png
+          
+          # Create .desktop file
+          cat > AppDir/usr/share/applications/invobharat.desktop <<EOF
+          [Desktop Entry]
+          Name=InvoBharat
+          Exec=invobharat
+          Icon=invobharat
+          Type=Application
+          Categories=Utility;
+          EOF
+
+          # Run linuxdeploy
+          # Provide the correct 256x256 icon
+          ./linuxdeploy-x86_64.AppImage --appdir AppDir --output appimage --icon-file linux/packaging/invobharat.png --desktop-file AppDir/usr/share/applications/invobharat.desktop
+
+          # Rename for upload
+          mv InvoBharat-*.AppImage InvoBharat-Linux.AppImage
+
+      - name: Update Nightly Release
+        uses: softprops/action-gh-release@v2
+        if: github.event_name == 'push'
+        with:
+          name: "Nightly Build"
+          tag_name: nightly
+          files: InvoBharat-Linux.AppImage
+          prerelease: true
+          body: "Auto-generated nightly build from commit ${{ github.sha }}."

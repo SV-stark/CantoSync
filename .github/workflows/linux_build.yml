@@ -48,6 +48,12 @@ jobs:
       - name: Build Linux
         run: flutter build linux --release
 
+      - name: Install UPX
+        run: sudo apt-get install -y upx
+
+      - name: Compress with UPX
+        run: upx --best --lzma build/linux/x64/release/bundle/canto_sync
+
       - name: Create AppImage
         run: |
           # Install linuxdeploy
@@ -64,25 +70,25 @@ jobs:
           cp -r build/linux/x64/release/bundle/* AppDir/usr/bin/
           
           # Setup icon and desktop file
-          # Use pre-sized icon
-          cp linux/packaging/invobharat.png AppDir/usr/share/icons/hicolor/256x256/apps/invobharat.png
+          # Use placeholder icon we created
+          cp linux/packaging/cantosync.png AppDir/usr/share/icons/hicolor/256x256/apps/cantosync.png
           
           # Create .desktop file
-          cat > AppDir/usr/share/applications/invobharat.desktop <<EOF
+          cat > AppDir/usr/share/applications/cantosync.desktop <<EOF
           [Desktop Entry]
-          Name=InvoBharat
-          Exec=invobharat
-          Icon=invobharat
+          Name=CantoSync
+          Exec=canto_sync
+          Icon=cantosync
           Type=Application
-          Categories=Utility;
+          Categories=Audio;AudioVideo;Player;
+          Terminal=false
           EOF
 
           # Run linuxdeploy
-          # Provide the correct 256x256 icon
-          ./linuxdeploy-x86_64.AppImage --appdir AppDir --output appimage --icon-file linux/packaging/invobharat.png --desktop-file AppDir/usr/share/applications/invobharat.desktop
+          ./linuxdeploy-x86_64.AppImage --appdir AppDir --output appimage --icon-file linux/packaging/cantosync.png --desktop-file AppDir/usr/share/applications/cantosync.desktop
 
           # Rename for upload
-          mv InvoBharat-*.AppImage InvoBharat-Linux.AppImage
+          mv CantoSync-*.AppImage CantoSync-Linux.AppImage
 
       - name: Update Nightly Release
         uses: softprops/action-gh-release@v2
@@ -90,6 +96,6 @@ jobs:
         with:
           name: "Nightly Build"
           tag_name: nightly
-          files: InvoBharat-Linux.AppImage
+          files: CantoSync-Linux.AppImage
           prerelease: true
           body: "Auto-generated nightly build from commit ${{ github.sha }}."

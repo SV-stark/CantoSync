@@ -34,6 +34,12 @@ void main() async {
   Hive.registerAdapter(BookmarkAdapter());
   await Hive.openBox<Book>(AppConstants.libraryBox);
 
+  // Load System Theme Accent Color & Critical Boxes
+  // We need these before the app builds because our providers read them synchronously in build()
+  await SystemTheme.accentColor.load();
+  await Hive.openBox<Book>(AppConstants.booksBox);
+  await Hive.openBox(AppConstants.settingsBox);
+
   // Initialize Window Manager
   await windowManager.ensureInitialized();
 
@@ -46,17 +52,15 @@ void main() async {
     titleBarStyle: TitleBarStyle.hidden,
   );
 
-  await windowManager.waitUntilReadyToShow(windowOptions, () async {
+  // Start the UI *before* waiting for the window to be ready to show.
+  // This prevents the "waiting for window" <-> "waiting for frame" deadlock.
+  runApp(const ProviderScope(child: CantoSyncApp()));
+
+  // Show window when ready
+  windowManager.waitUntilReadyToShow(windowOptions, () async {
     await windowManager.show();
     await windowManager.focus();
   });
-
-  // Load System Theme Accent Color
-  await SystemTheme.accentColor.load();
-  await Hive.openBox<Book>(AppConstants.booksBox);
-  await Hive.openBox(AppConstants.settingsBox);
-
-  runApp(const ProviderScope(child: CantoSyncApp()));
 }
 
 class CantoSyncApp extends ConsumerStatefulWidget {

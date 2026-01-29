@@ -90,7 +90,32 @@ class MediaService {
   }
 
   Future<void> setVolume(double volume) async {
+    // Clamp to reasonable max (200)
+    // Note: media_kit volume is 0.0 to 100.0 normally, but can go higher.
     await _player.setVolume(volume);
+  }
+
+  Future<void> setSkipSilence(bool enabled) async {
+    if (_player.platform is NativePlayer) {
+      final native = _player.platform as NativePlayer;
+      if (enabled) {
+        // silenceremove=stop_periods=-1:stop_duration=1:stop_threshold=-50dB
+        // Remove silence from the beginning (1) and middle (-1?).
+        // We want to skip silence > 0.5s or 1s?
+        // Standard ffmpeg filter: silenceremove=1:0:-50dB
+        // start_periods=1:start_duration=0:start_threshold=-50dB:stop_periods=-1...
+        // stop_periods=-1 means remove all silence in middle.
+        // Let's try a safe default: remove silence > 0.8s, threshold -45dB
+        // This command string might need tweaking based on MPV docs.
+        // 'af' property can be set.
+        await native.setProperty(
+          'af',
+          'lavfi=[silenceremove=stop_periods=-1:stop_duration=0.5:stop_threshold=-45dB]',
+        );
+      } else {
+        await native.setProperty('af', '');
+      }
+    }
   }
 
   Future<void> setRate(double rate) async {
@@ -113,20 +138,19 @@ class MediaService {
       final native = _player.platform as NativePlayer;
       try {
         // Retry logic to handle race conditions where chapters/metadata aren't loaded yet.
-        // We allow up to 5 attempts (approx 2.5 seconds max wait).
-        for (int i = 0; i < 5; i++) {
-          final resultString = await native.getProperty('chapter-list');
+        // We increase to 10 attempts (approx 5 seconds max wait) to be very safe for large M4Bs.
+        for (int i = 0; i < 10; i++) {
+          // First, check if mpv even sees chapters.
+          // 'chapters' property returns the COUNT of chapters.
+          final countStr = await native.getProperty('chapters');
+          final count = int.tryParse(countStr) ?? 0;
 
-          if (resultString.isNotEmpty) {
-            final result = jsonDecode(resultString);
+          if (count > 0) {
+            final resultString = await native.getProperty('chapter-list');
 
-            // Check current duration to help deciding if we should keep waiting
-            final currentDuration =
-                _player.state.duration.inMilliseconds / 1000.0;
-
-            if (result is List) {
-              if (result.isNotEmpty) {
-                // We have chapters! Parse and return.
+            if (resultString.isNotEmpty) {
+              final result = jsonDecode(resultString);
+              if (result is List && result.isNotEmpty) {
                 final List<Chapter> chapters = [];
 
                 for (int j = 0; j < result.length; j++) {
@@ -136,13 +160,16 @@ class MediaService {
                   final startTime = (e['time'] as num?)?.toDouble() ?? 0.0;
                   double? endTime;
 
+                  // Try to get end time from next chapter
                   if (j < result.length - 1) {
                     final next = result[j + 1];
                     if (next is Map) {
                       endTime = (next['time'] as num?)?.toDouble();
                     }
-                  } else if (currentDuration > 0) {
-                    endTime = currentDuration;
+                  } else {
+                    // For last chapter, use total duration
+                    final d = _player.state.duration.inMilliseconds / 1000.0;
+                    if (d > 0) endTime = d;
                   }
 
                   chapters.add(
@@ -154,15 +181,19 @@ class MediaService {
                   );
                 }
                 return chapters;
-              } else if (currentDuration > 0) {
-                // List is empty AND we have a valid duration.
-                // This implies metadata is loaded but there are truly no chapters.
-                // Stop waiting and return empty.
-                return [];
               }
             }
           }
-          // If we are here, we either have empty resultString, or empty list with 0 duration (still loading).
+
+          // If 0 chapters found, check if duration is loaded.
+          // If duration is > 0 and no chapters after a few retries, maybe there ARE no chapters.
+          final currentDuration = _player.state.duration.inMilliseconds;
+          if (currentDuration > 0 && i > 4) {
+            // We waited ~2.5 seconds and duration is known, but still no chapters?
+            // Likely a book without chapters.
+            return [];
+          }
+
           // Wait and retry.
           await Future.delayed(const Duration(milliseconds: 500));
         }

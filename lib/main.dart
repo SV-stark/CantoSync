@@ -135,6 +135,20 @@ class _CantoSyncAppState extends ConsumerState<CantoSyncApp>
   void onWindowClose() async {
     bool isPreventClose = await windowManager.isPreventClose();
     if (isPreventClose) {
+      // Check if we should minimize to tray or actually close
+      // For now, let's assume close behavior needs to save data.
+      // If the setting is 'minimize to tray', we hide.
+      // If 'close app', we save and close.
+      // But standard window close button usually triggers this.
+
+      // Let's implement the Safety Fix: Force Save.
+      await ref.read(playbackSyncProvider).forceSave();
+
+      // Currently, default behavior in this app seems to be "Hide to tray" on close?
+      // "await windowManager.hide();"
+      // If so, the app is not terminating, so data is safe in memory.
+      // BUT if the user quits via Tray or Taskbar => different flow.
+      // If this is the main close event:
       await windowManager.hide();
     }
   }

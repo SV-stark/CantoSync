@@ -356,7 +356,8 @@ class LibraryService {
       // Let's retry a few times to get 'comment' or 'description'.
 
       // We don't want to block for too long.
-      for (int i = 0; i < 5; i++) {
+      // We wait up to 5 seconds (100 * 50ms) to be safe for slow drives/heavy files.
+      for (int i = 0; i < 100; i++) {
         // Safe check for native platform
         if (player.platform is NativePlayer) {
           final native = player.platform as NativePlayer;
@@ -367,6 +368,9 @@ class LibraryService {
 
           final desc = await native.getProperty('metadata/by-key/description');
           if (desc.isNotEmpty) return desc;
+
+          final synopsis = await native.getProperty('metadata/by-key/synopsis');
+          if (synopsis.isNotEmpty) return synopsis;
         }
         await Future.delayed(const Duration(milliseconds: 50));
       }

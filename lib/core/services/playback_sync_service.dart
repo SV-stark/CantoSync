@@ -4,6 +4,7 @@ import 'package:metadata_god/metadata_god.dart';
 import 'package:path/path.dart' as p;
 import 'package:canto_sync/core/services/media_service.dart';
 import 'package:canto_sync/features/library/data/library_service.dart';
+import 'package:canto_sync/features/library/data/book.dart';
 
 final playbackSyncProvider = Provider<PlaybackSyncService>((ref) {
   final mediaService = ref.watch(mediaServiceProvider);
@@ -93,43 +94,72 @@ class PlaybackSyncService {
 
       final List<Chapter> chapters = [];
       double totalDurationSeconds = 0;
+      List<Map<String, dynamic>> fileDataList = [];
 
-      // We process sequentially or parallel? Parallel is faster.
-      // But we need strict order.
-      // Let's do a map and wait.
+      Book? bookObj;
       try {
-        // Create futures list
-        final futures = audioFiles.map((filePath) async {
-          String fileTitle = p.basename(filePath);
-          double? fileDuration;
+        bookObj = _libraryService.books.firstWhere((b) => b.path == path);
+      } catch (_) {}
 
-          try {
-            // We can optimize this by caching chapter data in the Book object if possible,
-            // but for now, we read on open (might be slightly slow for huge books).
-            // TODO: Optimize by caching in library.
-            final meta = await MetadataGod.readMetadata(file: filePath);
-            if (meta.title != null && meta.title!.isNotEmpty) {
-              fileTitle = meta.title!;
+      try {
+        if (bookObj?.filesMetadata != null &&
+            bookObj!.filesMetadata!.length == audioFiles.length) {
+          fileDataList = bookObj.filesMetadata!
+              .map(
+                (m) => {
+                  'title': m.title,
+                  'duration': m.duration,
+                  'path': m.path,
+                },
+              )
+              .toList();
+        } else {
+          // Create futures list
+          final futures = audioFiles.map((filePath) async {
+            String fileTitle = p.basename(filePath);
+            double? fileDuration;
+
+            try {
+              // We can optimize this by caching chapter data in the Book object if possible,
+              // but for now, we read on open (might be slightly slow for huge books).
+              final meta = await MetadataGod.readMetadata(file: filePath);
+              if (meta.title != null && meta.title!.isNotEmpty) {
+                fileTitle = meta.title!;
+              }
+              if (meta.durationMs != null) {
+                fileDuration = meta.durationMs! / 1000.0;
+              }
+            } catch (e) {
+              // Ignore metadata errors, rely on basename
             }
-            if (meta.durationMs != null) {
-              fileDuration = meta.durationMs! / 1000.0;
-            }
-          } catch (e) {
-            // Ignore metadata errors, rely on basename
+            return {
+              'title': fileTitle,
+              'duration': fileDuration,
+              'path': filePath,
+            };
+          }).toList();
+
+          fileDataList = await Future.wait(futures);
+
+          // Cache the results
+          if (bookObj != null) {
+            bookObj.filesMetadata = fileDataList
+                .map(
+                  (d) => FileMetadata(
+                    title: d['title'] as String,
+                    duration: d['duration'] as double?,
+                    path: d['path'] as String,
+                  ),
+                )
+                .toList();
+            await bookObj.save();
           }
-          return {
-            'title': fileTitle,
-            'duration': fileDuration,
-            'path': filePath,
-          };
-        }).toList();
-
-        final results = await Future.wait(futures);
+        }
 
         // now build chapters securely in order
         double currentStartTime = 0;
-        for (var i = 0; i < results.length; i++) {
-          final data = results[i];
+        for (var i = 0; i < fileDataList.length; i++) {
+          final data = fileDataList[i];
           final duration = data['duration'] as double?;
           final title = data['title'] as String;
 
@@ -226,6 +256,12 @@ class PlaybackSyncService {
         trackIndex: _lastTrackIndex,
       );
     }
+  }
+
+  /// Forces a save immediately. Used during app shutdown.
+  Future<void> forceSave() async {
+    _debounceTimer?.cancel();
+    await _performSave();
   }
 
   void dispose() {

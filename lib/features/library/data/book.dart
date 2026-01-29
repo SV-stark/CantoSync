@@ -46,6 +46,9 @@ class Book extends HiveObject {
   @HiveField(13)
   String? description;
 
+  @HiveField(14)
+  List<FileMetadata>? filesMetadata;
+
   Book({
     required this.path,
     required this.title,
@@ -61,6 +64,7 @@ class Book extends HiveObject {
     this.isDirectory = false,
     this.lastTrackIndex,
     this.description,
+    this.filesMetadata,
   }) {
     this.lastPlayed = lastPlayed ?? DateTime.now();
     bookmarks ??= [];
@@ -84,4 +88,18 @@ class Bookmark {
     required this.timestampSeconds,
     DateTime? createdAt,
   }) : createdAt = createdAt ?? DateTime.now();
+}
+
+@HiveType(typeId: 2)
+class FileMetadata {
+  @HiveField(0)
+  final String title;
+
+  @HiveField(1)
+  final double? duration;
+
+  @HiveField(2)
+  final String path;
+
+  FileMetadata({required this.title, this.duration, required this.path});
 }

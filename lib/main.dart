@@ -18,50 +18,42 @@ import 'package:canto_sync/core/constants/app_constants.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 void main() async {
-  // ... existing init code ...
-
   WidgetsFlutterBinding.ensureInitialized();
-
-  // Initialize MediaKit (Audio/Video Engine)
-  MediaKit.ensureInitialized();
-
-  // Initialize Metadata Reader
-  MetadataGod.initialize();
-
-  // Initialize Hive (Database)
-  await Hive.initFlutter();
-  Hive.registerAdapter(BookAdapter());
-  Hive.registerAdapter(BookmarkAdapter());
-
-  // Open Hive boxes strictly. If this fails, we want it to fail here
-  // rather than crashing the UI later.
-  await Hive.openBox<Book>(AppConstants.libraryBox);
-  await SystemTheme.accentColor.load();
-  await Hive.openBox<Book>(AppConstants.booksBox);
-  await Hive.openBox(AppConstants.settingsBox);
-
-  // Initialize Window Manager
   await windowManager.ensureInitialized();
+
+  // Best-effort initialization to ensure process doesn't exit silently
+  try {
+    MediaKit.ensureInitialized();
+    MetadataGod.initialize();
+    await Hive.initFlutter();
+
+    Hive.registerAdapter(BookAdapter());
+    Hive.registerAdapter(BookmarkAdapter());
+
+    await Hive.openBox<Book>(AppConstants.libraryBox);
+    await SystemTheme.accentColor.load();
+    await Hive.openBox<Book>(AppConstants.booksBox);
+    await Hive.openBox(AppConstants.settingsBox);
+  } catch (e) {
+    debugPrint('Critical Initialization Error: $e');
+    // Continue anyway so the user sees a window/UI, even if broken
+  }
 
   WindowOptions windowOptions = const WindowOptions(
     size: Size(1000, 700),
     minimumSize: Size(400, 500),
     center: true,
-    // Use a solid background color to ensure window visibility.
-    // Transparent can cause 'ghost' windows if acrylic is not active.
     backgroundColor: Colors.black,
     skipTaskbar: false,
     titleBarStyle: TitleBarStyle.hidden,
   );
 
-  // Fix: Start UI immediately to prevent deadlock
-  runApp(const ProviderScope(child: CantoSyncApp()));
-
-  // Show window asynchronously when ready
+  // Configure window but don't wait for it to show
   windowManager.waitUntilReadyToShow(windowOptions, () async {
-    await windowManager.show();
-    await windowManager.focus();
+    // We handle showing in initState to ensure Flutter is painting first
   });
+
+  runApp(const ProviderScope(child: CantoSyncApp()));
 }
 
 class CantoSyncApp extends ConsumerStatefulWidget {
@@ -79,6 +71,13 @@ class _CantoSyncAppState extends ConsumerState<CantoSyncApp>
   void initState() {
     super.initState();
     windowManager.addListener(this);
+
+    // Force show window once the frame is definitely ready
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      await windowManager.show();
+      await windowManager.focus();
+    });
+
     _initServices();
   }
 

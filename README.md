@@ -12,7 +12,7 @@
   <img src="https://img.shields.io/badge/Flutter-02569B?style=for-the-badge&logo=flutter&logoColor=white" alt="Flutter"/>
   <img src="https://img.shields.io/badge/Windows-0078D6?style=for-the-badge&logo=windows&logoColor=white" alt="Windows"/>
   <img src="https://img.shields.io/badge/Linux-FCC624?style=for-the-badge&logo=linux&logoColor=black" alt="Linux"/>
-  <img src="https://img.shields.io/badge/License-MIT-green.svg?style=for-the-badge" alt="License"/>
+  <img src="https://img.shields.io/badge/License-GPLv3-green.svg?style=for-the-badge" alt="License"/>
 </p>
 
 ---
@@ -28,10 +28,9 @@
 | Feature | Description |
 | :--- | :--- |
 | 🚀 **High-Performance** | Powered by `media_kit` (libmpv) for unmatched stability and format support (M4B, MP3, FLAC, OPUS, and more). |
-| 📚 **Smart Library** | Recursive folder scanning with automatic metadata extraction (Title, Artist, Album) and cover art caching. |
-| 🔖 **Native Chapters** | Instant access to embedded chapters (ID3/M4B) via a dedicated sidebar for seamless navigation. |
-| 🧠 **Smart Resume** | Persistent storage of your playback position for every file—never lose your place again. |
-| 🎨 **Fluent Design** | Premium UI built with `fluent_ui`, featuring Mica/Acrylic effects and full Dark/Light theme support. |
+| 🔖 **Native Chapters** | Direct interface with the audio engine to parse embedded chapters (ID3/M4B) for easy navigation. |
+| 🧠 **Smart Resume** | Remembers the exact second where you left off for *every* audio file in your library. |
+| 🎨 **Fluent Design** | A beautiful interface built with `fluent_ui`, featuring Mica and Acrylic effects on Windows. |
 
 ---
 
@@ -40,7 +39,7 @@
 - **Framework**: [Flutter](https://flutter.dev)
 - **UI Library**: [fluent_ui](https://pub.dev/packages/fluent_ui)
 - **Audio Engine**: [media_kit](https://pub.dev/packages/media_kit)
-- **Metadata**: [metadata_god](https://pub.dev/packages/metadata_god)
+- **State Management**: [Riverpod](https://riverpod.dev)
 - **Database**: [Hive](https://docs.hivedb.dev/)
 
 ---
@@ -73,9 +72,8 @@ flutter run -d windows # or linux
 - [x] Core Playback & Seek
 - [x] Native Chapter Navigation
 - [x] Position Persistence
-- [x] **Smart Library**: Recursive scanning & Metadata extraction
-- [x] **Cover Art**: Automatic extraction & caching
-- [ ] **Grid View**: Visual library browser for your collection
+- [ ] **Library Management**: Recursive folder scanning
+- [ ] **Cover Art**: Visual grid view for collections
 - [ ] **Sleep Timer**: Auto-pause functionality
 - [ ] **Sync**: Cloud progress synchronization
 

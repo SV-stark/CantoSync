@@ -9,6 +9,7 @@ import 'package:canto_sync/features/library/data/book.dart';
 import 'package:canto_sync/features/player/ui/widgets/ambient_background.dart';
 import 'package:canto_sync/features/player/ui/widgets/glass_player_card.dart';
 import 'package:canto_sync/core/services/sleep_timer_service.dart';
+import 'package:canto_sync/features/library/ui/metadata_editor.dart';
 
 // Stream Providers
 final playerPositionProvider = StreamProvider.autoDispose<Duration>((ref) {
@@ -229,6 +230,7 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
                                   totalDuration: totalDuration,
                                   mediaService: mediaService,
                                   remainingTimer: remainingTimer,
+                                  isMultiPlaylist: isMultiFile,
                                 ),
                               ),
                             ),
@@ -264,6 +266,7 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
                             totalDuration: totalDuration,
                             mediaService: mediaService,
                             remainingTimer: remainingTimer,
+                            isMultiPlaylist: isMultiFile,
                           ),
                         ),
                       ),
@@ -271,18 +274,6 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
                   ),
                 );
               }
-            },
-          ),
-        ),
-
-        // Back Button (Top Left)
-        Positioned(
-          top: 20,
-          left: 20,
-          child: IconButton(
-            icon: const Icon(FluentIcons.back, size: 24, color: Colors.white),
-            onPressed: () {
-              // Assuming navigation stack handling; usually handled by parent
             },
           ),
         ),
@@ -332,6 +323,7 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
     required Duration totalDuration,
     required MediaService mediaService,
     required Duration? remainingTimer,
+    required bool isMultiPlaylist,
   }) {
     // Standard Fluent Accent Color or Custom Golden if desired.
     final accentColor = FluentTheme.of(context).accentColor;
@@ -368,6 +360,21 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
                   });
                 }
               },
+            ),
+            const SizedBox(width: 8),
+            IconButton(
+              icon: Icon(FluentIcons.edit, color: white70),
+              onPressed: currentBook == null
+                  ? null
+                  : () {
+                      Navigator.push(
+                        context,
+                        FluentPageRoute(
+                          builder: (context) =>
+                              MetadataEditor(book: currentBook),
+                        ),
+                      );
+                    },
             ),
           ],
         ),
@@ -428,9 +435,8 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
             setState(() => _dragValue = val);
           },
           onChangeEnd: (val) async {
-            // Simplify seek logic
-            if (currentChapter != null &&
-                !isMultiFile(totalDuration, chapterDuration)) {
+            // Fix: M4B seek must be chapter-relative if it's a single file
+            if (currentChapter != null && !isMultiPlaylist) {
               final startMs = (currentChapter.startTime * 1000).toInt();
               await mediaService.seek(
                 Duration(milliseconds: startMs + val.toInt()),
@@ -627,6 +633,14 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
                 );
               },
             ),
+            _FooterButton(
+              icon: FluentIcons.equalizer,
+              label: 'EQ',
+              onTap: () {
+                // Show simple EQ menu
+                _showEQMenu(context, mediaService);
+              },
+            ),
             // Volume Slider (Mini)
             Row(
               mainAxisSize: MainAxisSize.min,
@@ -658,9 +672,44 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
     );
   }
 
-  // Helper
-  bool isMultiFile(Duration total, Duration current) {
-    return total.inSeconds > (current.inSeconds + 10);
+  void _showEQMenu(BuildContext context, MediaService mediaService) {
+    showDialog(
+      context: context,
+      builder: (context) => ContentDialog(
+        title: const Text('Equalizer Presets'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            _EQOption(
+              label: 'Flat (Off)',
+              onTap: () => mediaService.setAudioFilter(''),
+            ),
+            _EQOption(
+              label: 'Spoken Word (Optimized)',
+              onTap: () => mediaService.setAudioFilter(
+                'lavfi=[highpass=f=200,lowpass=f=3000]',
+              ),
+            ),
+            _EQOption(
+              label: 'Bass Boost',
+              onTap: () =>
+                  mediaService.setAudioFilter('lavfi=[bass=g=10:f=100]'),
+            ),
+            _EQOption(
+              label: 'Treble Boost',
+              onTap: () =>
+                  mediaService.setAudioFilter('lavfi=[treble=g=10:f=5000]'),
+            ),
+          ],
+        ),
+        actions: [
+          Button(
+            child: const Text('Close'),
+            onPressed: () => Navigator.pop(context),
+          ),
+        ],
+      ),
+    );
   }
 
   void _showAddBookmarkDialog(
@@ -841,6 +890,24 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
             ),
           ],
         );
+      },
+    );
+  }
+}
+
+class _EQOption extends StatelessWidget {
+  final String label;
+  final VoidCallback onTap;
+
+  const _EQOption({required this.label, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return ListTile(
+      title: Text(label),
+      onPressed: () {
+        onTap();
+        Navigator.pop(context);
       },
     );
   }

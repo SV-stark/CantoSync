@@ -6,34 +6,44 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:canto_sync/features/library/data/book.dart';
 import 'package:canto_sync/features/library/data/library_service.dart';
 import 'package:canto_sync/core/services/playback_sync_service.dart';
-
 import 'package:canto_sync/core/services/app_settings_service.dart';
 import 'package:canto_sync/features/library/ui/metadata_editor.dart';
 import 'package:canto_sync/features/library/ui/book_info_dialog.dart';
 
-class LibraryViewMode extends Notifier<bool> {
+class LibraryViewModeNotifier extends Notifier<bool> {
   @override
-  bool build() => true; // Grid by default
-
+  bool build() => true;
   void toggle() => state = !state;
 }
 
-final libraryViewModeProvider = NotifierProvider<LibraryViewMode, bool>(
-  LibraryViewMode.new,
+final libraryViewModeProvider = NotifierProvider<LibraryViewModeNotifier, bool>(
+  LibraryViewModeNotifier.new,
 );
 
-class LibraryScreen extends ConsumerWidget {
+class LibraryScreen extends ConsumerStatefulWidget {
   const LibraryScreen({super.key});
 
-  Future<void> _pickFolder(WidgetRef ref) async {
+  @override
+  ConsumerState<LibraryScreen> createState() => _LibraryScreenState();
+}
+
+class _LibraryScreenState extends ConsumerState<LibraryScreen> {
+  final FlyoutController _flyoutController = FlyoutController();
+
+  @override
+  void dispose() {
+    _flyoutController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _pickFolder() async {
     String? selectedDirectory = await FilePicker.platform.getDirectoryPath();
     if (selectedDirectory != null) {
       ref.read(appSettingsProvider.notifier).addLibraryPath(selectedDirectory);
-      ref.read(libraryServiceProvider).scanDirectory(selectedDirectory);
     }
   }
 
-  Future<void> _rescanLibrary(BuildContext context, WidgetRef ref) async {
+  Future<void> _rescanLibrary(BuildContext context) async {
     displayInfoBar(
       context,
       builder: (context, close) {
@@ -69,14 +79,8 @@ class LibraryScreen extends ConsumerWidget {
     }
   }
 
-  void _showBookContextMenu(
-    BuildContext context,
-    WidgetRef ref,
-    Book book,
-    Offset position,
-  ) {
-    final controller = FlyoutController();
-    controller.showFlyout(
+  void _showBookContextMenu(BuildContext context, Book book, Offset position) {
+    _flyoutController.showFlyout(
       position: position,
       builder: (context) {
         return MenuFlyout(
@@ -148,68 +152,42 @@ class LibraryScreen extends ConsumerWidget {
   }
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  Widget build(BuildContext context) {
     final booksAsync = ref.watch(libraryBooksProvider);
-    final isGridView = ref.watch(libraryViewModeProvider);
+    final viewMode = ref.watch(libraryViewModeProvider);
     final isGroupingEnabled = ref.watch(libraryGroupingModeProvider);
 
-    return ScaffoldPage.withPadding(
+    return ScaffoldPage(
       header: PageHeader(
         title: const Text('Library'),
         commandBar: CommandBar(
+          mainAxisAlignment: MainAxisAlignment.end,
           primaryItems: [
             CommandBarButton(
-              icon: Icon(
-                isGridView ? FluentIcons.view_all : FluentIcons.bulleted_list,
-              ),
-              label: Text(isGridView ? 'Grid View' : 'List View'),
-              onPressed: () =>
-                  ref.read(libraryViewModeProvider.notifier).toggle(),
+              icon: const Icon(FluentIcons.refresh),
+              label: const Text('Rescan All'),
+              onPressed: () => _rescanLibrary(context),
             ),
-            const CommandBarSeparator(),
+            CommandBarButton(
+              icon: Icon(viewMode ? FluentIcons.list : FluentIcons.view_all),
+              label: Text(viewMode ? 'List View' : 'Grid View'),
+              onPressed: () {
+                ref.read(libraryViewModeProvider.notifier).toggle();
+              },
+            ),
             CommandBarButton(
               icon: Icon(
                 isGroupingEnabled ? FluentIcons.group_list : FluentIcons.group,
               ),
               label: const Text('Group by Series'),
-              onPressed: () =>
-                  ref.read(libraryGroupingModeProvider.notifier).toggle(),
+              onPressed: () {
+                ref.read(libraryGroupingModeProvider.notifier).toggle();
+              },
             ),
-            CommandBarBuilderItem(
-              builder: (context, mode, w) => Padding(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 8.0,
-                  vertical: 4.0,
-                ),
-                child: TextBox(
-                  placeholder: 'Search library...',
-                  onChanged: (text) => ref
-                      .read(librarySearchQueryProvider.notifier)
-                      .updateQuery(text),
-                  suffix: const Padding(
-                    padding: EdgeInsets.symmetric(horizontal: 8.0),
-                    child: Icon(FluentIcons.search),
-                  ),
-                ),
-              ),
-              wrappedItem:
-                  CommandBarButton(
-                        icon: const Icon(FluentIcons.search),
-                        onPressed: () {},
-                      )
-                      as CommandBarItem,
-            ),
-            const CommandBarSeparator(),
-            CommandBarButton(
-              icon: const Icon(FluentIcons.sync),
-              label: const Text('Rescan'),
-              onPressed: () => _rescanLibrary(context, ref),
-            ),
-            const CommandBarSeparator(),
             CommandBarButton(
               icon: const Icon(FluentIcons.add),
               label: const Text('Add Folder'),
-              onPressed: () => _pickFolder(ref),
+              onPressed: () => _pickFolder(),
             ),
           ],
         ),
@@ -221,11 +199,11 @@ class LibraryScreen extends ConsumerWidget {
           }
         },
         child: isGroupingEnabled
-            ? _buildGroupedView(context, ref)
+            ? _buildGroupedView(context)
             : booksAsync.when(
                 data: (books) {
-                  if (books.isEmpty) return _buildEmptyState(ref);
-                  return _buildBookList(context, books, isGridView, ref);
+                  if (books.isEmpty) return _buildEmptyState();
+                  return _buildBookList(context, books, viewMode);
                 },
                 loading: () => const Center(child: ProgressRing()),
                 error: (err, stack) => Center(child: Text('Error: $err')),
@@ -234,7 +212,7 @@ class LibraryScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildEmptyState(WidgetRef ref) {
+  Widget _buildEmptyState() {
     return Center(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
@@ -246,7 +224,7 @@ class LibraryScreen extends ConsumerWidget {
           const Text('Drag and drop a folder here to import books'),
           const SizedBox(height: 16),
           FilledButton(
-            onPressed: () => _pickFolder(ref),
+            onPressed: () => _pickFolder(),
             child: const Text('Add Folder'),
           ),
         ],
@@ -258,7 +236,6 @@ class LibraryScreen extends ConsumerWidget {
     BuildContext context,
     List<Book> books,
     bool isGridView,
-    WidgetRef ref,
   ) {
     if (isGridView) {
       return GridView.builder(
@@ -273,8 +250,7 @@ class LibraryScreen extends ConsumerWidget {
           final book = books[index];
           return BookCard(
             book: book,
-            onSecondaryTap: (pos) =>
-                _showBookContextMenu(context, ref, book, pos),
+            onSecondaryTap: (pos) => _showBookContextMenu(context, book, pos),
           );
         },
       );
@@ -285,7 +261,7 @@ class LibraryScreen extends ConsumerWidget {
           final book = books[index];
           return GestureDetector(
             onSecondaryTapDown: (detail) {
-              _showBookContextMenu(context, ref, book, detail.globalPosition);
+              _showBookContextMenu(context, book, detail.globalPosition);
             },
             child: ListTile(
               leading: SizedBox(
@@ -310,13 +286,13 @@ class LibraryScreen extends ConsumerWidget {
     }
   }
 
-  Widget _buildGroupedView(BuildContext context, WidgetRef ref) {
+  Widget _buildGroupedView(BuildContext context) {
     final groupedBooksAsync = ref.watch(libraryGroupedBooksProvider);
-    final isGridView = ref.watch(libraryViewModeProvider);
+    final viewMode = ref.watch(libraryViewModeProvider);
 
     return groupedBooksAsync.when(
       data: (groups) {
-        if (groups.isEmpty) return _buildEmptyState(ref);
+        if (groups.isEmpty) return _buildEmptyState();
 
         final sortedKeys = groups.keys.toList()..sort();
 
@@ -335,11 +311,10 @@ class LibraryScreen extends ConsumerWidget {
                   style: FluentTheme.of(context).typography.subtitle,
                 ),
                 content: SizedBox(
-                  // Dynamic height based on view mode and item count
-                  height: isGridView
+                  height: viewMode
                       ? 300
                       : (books.length * 60.0).clamp(100.0, 500.0),
-                  child: _buildBookList(context, books, isGridView, ref),
+                  child: _buildBookList(context, books, viewMode),
                 ),
               ),
             );
@@ -386,15 +361,6 @@ class BookCard extends ConsumerWidget {
                           borderRadius: const BorderRadius.vertical(
                             top: Radius.circular(8),
                           ),
-                          boxShadow: states.isHovered
-                              ? [
-                                  BoxShadow(
-                                    color: Colors.black.withValues(alpha: 0.2),
-                                    blurRadius: 10,
-                                    offset: const Offset(0, 4),
-                                  ),
-                                ]
-                              : [],
                         ),
                         width: double.infinity,
                         child: ClipRRect(
@@ -405,12 +371,11 @@ class BookCard extends ConsumerWidget {
                               ? Image.file(
                                   File(book.coverPath!),
                                   fit: BoxFit.cover,
-                                  errorBuilder: (context, error, stackTrace) {
-                                    return const Icon(
-                                      FluentIcons.music_note,
-                                      size: 48,
-                                    );
-                                  },
+                                  errorBuilder: (context, error, stackTrace) =>
+                                      const Icon(
+                                        FluentIcons.music_note,
+                                        size: 48,
+                                      ),
                                 )
                               : const Icon(FluentIcons.music_note, size: 48),
                         ),
@@ -434,45 +399,27 @@ class BookCard extends ConsumerWidget {
                             book.author ?? 'Unknown Author',
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
-                            style: FluentTheme.of(context).typography.caption
-                                ?.copyWith(
-                                  color: FluentTheme.of(context)
-                                      .typography
-                                      .caption
-                                      ?.color
-                                      ?.withValues(alpha: 0.7),
-                                ),
+                            style: FluentTheme.of(context).typography.caption,
                           ),
                         ],
                       ),
                     ),
                   ],
                 ),
-                // Edit Button (Visible on Hover)
                 if (states.isHovered)
                   Positioned(
                     top: 8,
                     right: 8,
-                    child: Container(
-                      decoration: BoxDecoration(
-                        color: Colors.black.withValues(alpha: 0.5),
-                        borderRadius: BorderRadius.circular(16),
-                      ),
-                      child: IconButton(
-                        icon: const Icon(
-                          FluentIcons.edit,
-                          color: Colors.white,
-                          size: 16,
-                        ),
-                        onPressed: () {
-                          Navigator.push(
-                            context,
-                            FluentPageRoute(
-                              builder: (context) => MetadataEditor(book: book),
-                            ),
-                          );
-                        },
-                      ),
+                    child: IconButton(
+                      icon: const Icon(FluentIcons.edit),
+                      onPressed: () {
+                        Navigator.push(
+                          context,
+                          FluentPageRoute(
+                            builder: (context) => MetadataEditor(book: book),
+                          ),
+                        );
+                      },
                     ),
                   ),
               ],

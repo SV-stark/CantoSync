@@ -89,11 +89,15 @@ class _BookInfoDialogState extends ConsumerState<BookInfoDialog> {
                             : const Icon(FluentIcons.music_note, size: 64),
                       ),
                     ),
-                    const SizedBox(height: 12),
-                    Button(
-                      onPressed: _pickNewCover,
-                      child: const Text('Change Cover'),
+                    const SizedBox(height: 16),
+                    SizedBox(
+                      width: 150,
+                      child: FilledButton(
+                        onPressed: _pickNewCover,
+                        child: const Text('Change Cover'),
+                      ),
                     ),
+                    const SizedBox(height: 8),
                   ],
                 ),
                 const SizedBox(width: 24),

@@ -9,6 +9,7 @@ import 'package:canto_sync/features/library/data/book.dart';
 import 'package:canto_sync/features/player/ui/player_screen.dart';
 import 'package:canto_sync/features/library/ui/library_screen.dart';
 import 'package:canto_sync/features/settings/ui/settings_screen.dart';
+import 'package:canto_sync/features/player/ui/widgets/mini_player.dart';
 import 'package:canto_sync/core/services/hotkey_service.dart';
 import 'package:canto_sync/core/services/tray_service.dart';
 import 'package:canto_sync/core/services/update_service.dart';
@@ -200,44 +201,52 @@ class _CantoSyncAppState extends ConsumerState<CantoSyncApp>
           glowFactor: is10footScreen(context) ? 2.0 : 0.0,
         ),
       ),
-      home: NavigationView(
-        appBar: const NavigationAppBar(
-          title: DragToMoveArea(
-            child: Align(
-              alignment: AlignmentDirectional.centerStart,
-              child: Text('CantoSync'),
+      home: Column(
+        children: [
+          Expanded(
+            child: NavigationView(
+              appBar: const NavigationAppBar(
+                title: DragToMoveArea(
+                  child: Align(
+                    alignment: AlignmentDirectional.centerStart,
+                    child: Text('CantoSync'),
+                  ),
+                ),
+                automaticallyImplyLeading: true,
+                actions: Row(
+                  mainAxisAlignment: MainAxisAlignment.end,
+                  children: [Spacer(), WindowButtons()],
+                ),
+              ),
+              pane: NavigationPane(
+                selected: _index,
+                onChanged: (i) => setState(() => _index = i),
+                displayMode: PaneDisplayMode.compact,
+                items: [
+                  PaneItem(
+                    icon: const Icon(FluentIcons.library),
+                    title: const Text('Library'),
+                    body: const LibraryScreen(),
+                  ),
+                  PaneItem(
+                    icon: const Icon(FluentIcons.music_in_collection),
+                    title: const Text('Player'),
+                    body: const PlayerScreen(),
+                  ),
+                ],
+                footerItems: [
+                  PaneItem(
+                    icon: const Icon(FluentIcons.settings),
+                    title: const Text('Settings'),
+                    body: const SettingsScreen(),
+                  ),
+                ],
+              ),
             ),
           ),
-          automaticallyImplyLeading: true,
-          actions: Row(
-            mainAxisAlignment: MainAxisAlignment.end,
-            children: [Spacer(), WindowButtons()],
-          ),
-        ),
-        pane: NavigationPane(
-          selected: _index,
-          onChanged: (i) => setState(() => _index = i),
-          displayMode: PaneDisplayMode.compact,
-          items: [
-            PaneItem(
-              icon: const Icon(FluentIcons.library),
-              title: const Text('Library'),
-              body: const LibraryScreen(),
-            ),
-            PaneItem(
-              icon: const Icon(FluentIcons.music_in_collection),
-              title: const Text('Player'),
-              body: const PlayerScreen(),
-            ),
-          ],
-          footerItems: [
-            PaneItem(
-              icon: const Icon(FluentIcons.settings),
-              title: const Text('Settings'),
-              body: const SettingsScreen(),
-            ),
-          ],
-        ),
+          // Show MiniPlayer only if NOT on Player screen (index 1)
+          if (_index != 1) MiniPlayer(onTap: () => setState(() => _index = 1)),
+        ],
       ),
     );
   }

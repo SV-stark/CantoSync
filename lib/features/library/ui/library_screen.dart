@@ -9,6 +9,7 @@ import 'package:canto_sync/core/services/playback_sync_service.dart';
 
 import 'package:canto_sync/core/services/app_settings_service.dart';
 import 'package:canto_sync/features/library/ui/metadata_editor.dart';
+import 'package:canto_sync/features/library/ui/book_info_dialog.dart';
 
 class LibraryViewMode extends Notifier<bool> {
   @override
@@ -66,6 +67,84 @@ class LibraryScreen extends ConsumerWidget {
         },
       );
     }
+  }
+
+  void _showBookContextMenu(
+    BuildContext context,
+    WidgetRef ref,
+    Book book,
+    Offset position,
+  ) {
+    final controller = FlyoutController();
+    controller.showFlyout(
+      position: position,
+      builder: (context) {
+        return MenuFlyout(
+          items: [
+            MenuFlyoutItem(
+              leading: const Icon(FluentIcons.play),
+              text: const Text('Play'),
+              onPressed: () {
+                ref.read(playbackSyncProvider).resumeBook(book.path);
+              },
+            ),
+            MenuFlyoutItem(
+              leading: const Icon(FluentIcons.info),
+              text: const Text('INFO'),
+              onPressed: () {
+                showDialog(
+                  context: context,
+                  builder: (context) => BookInfoDialog(book: book),
+                );
+              },
+            ),
+            const MenuFlyoutSeparator(),
+            MenuFlyoutItem(
+              leading: const Icon(FluentIcons.sync),
+              text: const Text('Rescan'),
+              onPressed: () {
+                ref
+                    .read(libraryServiceProvider)
+                    .scanDirectory(book.path, forceUpdate: true);
+              },
+            ),
+            MenuFlyoutItem(
+              leading: const Icon(FluentIcons.delete),
+              text: const Text('Delete'),
+              onPressed: () {
+                showDialog(
+                  context: context,
+                  builder: (context) => ContentDialog(
+                    title: const Text('Delete Book?'),
+                    content: Text(
+                      'Are you sure you want to remove "${book.title}" from your library? This will not delete the files from your disk.',
+                    ),
+                    actions: [
+                      Button(
+                        child: const Text('Cancel'),
+                        onPressed: () => Navigator.pop(context),
+                      ),
+                      FilledButton(
+                        style: ButtonStyle(
+                          backgroundColor: WidgetStatePropertyAll(Colors.red),
+                        ),
+                        onPressed: () {
+                          ref
+                              .read(libraryServiceProvider)
+                              .deleteBook(book.path);
+                          Navigator.pop(context);
+                        },
+                        child: const Text('Delete'),
+                      ),
+                    ],
+                  ),
+                );
+              },
+            ),
+          ],
+        );
+      },
+    );
   }
 
   @override
@@ -192,7 +271,11 @@ class LibraryScreen extends ConsumerWidget {
         itemCount: books.length,
         itemBuilder: (context, index) {
           final book = books[index];
-          return BookCard(book: book);
+          return BookCard(
+            book: book,
+            onSecondaryTap: (pos) =>
+                _showBookContextMenu(context, ref, book, pos),
+          );
         },
       );
     } else {
@@ -200,22 +283,27 @@ class LibraryScreen extends ConsumerWidget {
         itemCount: books.length,
         itemBuilder: (context, index) {
           final book = books[index];
-          return ListTile(
-            leading: SizedBox(
-              width: 40,
-              height: 40,
-              child: ClipRRect(
-                borderRadius: BorderRadius.circular(4),
-                child: book.coverPath != null
-                    ? Image.file(File(book.coverPath!), fit: BoxFit.cover)
-                    : const Icon(FluentIcons.music_note),
-              ),
-            ),
-            title: Text(book.title),
-            subtitle: Text(book.author ?? 'Unknown Author'),
-            onPressed: () {
-              ref.read(playbackSyncProvider).resumeBook(book.path);
+          return GestureDetector(
+            onSecondaryTapDown: (detail) {
+              _showBookContextMenu(context, ref, book, detail.globalPosition);
             },
+            child: ListTile(
+              leading: SizedBox(
+                width: 40,
+                height: 40,
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(4),
+                  child: book.coverPath != null
+                      ? Image.file(File(book.coverPath!), fit: BoxFit.cover)
+                      : const Icon(FluentIcons.music_note),
+                ),
+              ),
+              title: Text(book.title),
+              subtitle: Text(book.author ?? 'Unknown Author'),
+              onPressed: () {
+                ref.read(playbackSyncProvider).resumeBook(book.path);
+              },
+            ),
           );
         },
       );
@@ -266,122 +354,132 @@ class LibraryScreen extends ConsumerWidget {
 
 class BookCard extends ConsumerWidget {
   final Book book;
+  final Function(Offset)? onSecondaryTap;
 
-  const BookCard({required this.book, super.key});
+  const BookCard({required this.book, this.onSecondaryTap, super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    return HoverButton(
-      onPressed: () {
-        ref.read(playbackSyncProvider).resumeBook(book.path);
+    return GestureDetector(
+      onSecondaryTapDown: (detail) {
+        if (onSecondaryTap != null) {
+          onSecondaryTap!(detail.globalPosition);
+        }
       },
-      builder: (context, states) {
-        return Card(
-          padding: EdgeInsets.zero,
-          borderRadius: BorderRadius.circular(8),
-          child: Stack(
-            children: [
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Expanded(
+      child: HoverButton(
+        onPressed: () {
+          ref.read(playbackSyncProvider).resumeBook(book.path);
+        },
+        builder: (context, states) {
+          return Card(
+            padding: EdgeInsets.zero,
+            borderRadius: BorderRadius.circular(8),
+            child: Stack(
+              children: [
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Expanded(
+                      child: Container(
+                        decoration: BoxDecoration(
+                          color: Colors.grey.withValues(alpha: 0.2),
+                          borderRadius: const BorderRadius.vertical(
+                            top: Radius.circular(8),
+                          ),
+                          boxShadow: states.isHovered
+                              ? [
+                                  BoxShadow(
+                                    color: Colors.black.withValues(alpha: 0.2),
+                                    blurRadius: 10,
+                                    offset: const Offset(0, 4),
+                                  ),
+                                ]
+                              : [],
+                        ),
+                        width: double.infinity,
+                        child: ClipRRect(
+                          borderRadius: const BorderRadius.vertical(
+                            top: Radius.circular(8),
+                          ),
+                          child: book.coverPath != null
+                              ? Image.file(
+                                  File(book.coverPath!),
+                                  fit: BoxFit.cover,
+                                  errorBuilder: (context, error, stackTrace) {
+                                    return const Icon(
+                                      FluentIcons.music_note,
+                                      size: 48,
+                                    );
+                                  },
+                                )
+                              : const Icon(FluentIcons.music_note, size: 48),
+                        ),
+                      ),
+                    ),
+                    Padding(
+                      padding: const EdgeInsets.all(12.0),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            book.title,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: FluentTheme.of(
+                              context,
+                            ).typography.bodyStrong,
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            book.author ?? 'Unknown Author',
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: FluentTheme.of(context).typography.caption
+                                ?.copyWith(
+                                  color: FluentTheme.of(context)
+                                      .typography
+                                      .caption
+                                      ?.color
+                                      ?.withValues(alpha: 0.7),
+                                ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+                // Edit Button (Visible on Hover)
+                if (states.isHovered)
+                  Positioned(
+                    top: 8,
+                    right: 8,
                     child: Container(
                       decoration: BoxDecoration(
-                        color: Colors.grey.withValues(alpha: 0.2),
-                        borderRadius: const BorderRadius.vertical(
-                          top: Radius.circular(8),
-                        ),
-                        boxShadow: states.isHovered
-                            ? [
-                                BoxShadow(
-                                  color: Colors.black.withValues(alpha: 0.2),
-                                  blurRadius: 10,
-                                  offset: const Offset(0, 4),
-                                ),
-                              ]
-                            : [],
+                        color: Colors.black.withValues(alpha: 0.5),
+                        borderRadius: BorderRadius.circular(16),
                       ),
-                      width: double.infinity,
-                      child: ClipRRect(
-                        borderRadius: const BorderRadius.vertical(
-                          top: Radius.circular(8),
+                      child: IconButton(
+                        icon: const Icon(
+                          FluentIcons.edit,
+                          color: Colors.white,
+                          size: 16,
                         ),
-                        child: book.coverPath != null
-                            ? Image.file(
-                                File(book.coverPath!),
-                                fit: BoxFit.cover,
-                                errorBuilder: (context, error, stackTrace) {
-                                  return const Icon(
-                                    FluentIcons.music_note,
-                                    size: 48,
-                                  );
-                                },
-                              )
-                            : const Icon(FluentIcons.music_note, size: 48),
+                        onPressed: () {
+                          Navigator.push(
+                            context,
+                            FluentPageRoute(
+                              builder: (context) => MetadataEditor(book: book),
+                            ),
+                          );
+                        },
                       ),
                     ),
                   ),
-                  Padding(
-                    padding: const EdgeInsets.all(12.0),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          book.title,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: FluentTheme.of(context).typography.bodyStrong,
-                        ),
-                        const SizedBox(height: 4),
-                        Text(
-                          book.author ?? 'Unknown Author',
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: FluentTheme.of(context).typography.caption
-                              ?.copyWith(
-                                color: FluentTheme.of(context)
-                                    .typography
-                                    .caption
-                                    ?.color
-                                    ?.withValues(alpha: 0.7),
-                              ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-              // Edit Button (Visible on Hover)
-              if (states.isHovered)
-                Positioned(
-                  top: 8,
-                  right: 8,
-                  child: Container(
-                    decoration: BoxDecoration(
-                      color: Colors.black.withValues(alpha: 0.5),
-                      borderRadius: BorderRadius.circular(16),
-                    ),
-                    child: IconButton(
-                      icon: const Icon(
-                        FluentIcons.edit,
-                        color: Colors.white,
-                        size: 16,
-                      ),
-                      onPressed: () {
-                        Navigator.push(
-                          context,
-                          FluentPageRoute(
-                            builder: (context) => MetadataEditor(book: book),
-                          ),
-                        );
-                      },
-                    ),
-                  ),
-                ),
-            ],
-          ),
-        );
-      },
+              ],
+            ),
+          );
+        },
+      ),
     );
   }
 }

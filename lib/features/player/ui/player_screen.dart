@@ -955,7 +955,6 @@ class _SpeedControlDialogState extends State<_SpeedControlDialog> {
                     setState(() => _rate = preset);
                     widget.onRateChanged(preset);
                   },
-                  child: Text('${preset}x'),
                   style: ButtonStyle(
                     backgroundColor: _rate == preset
                         ? WidgetStateProperty.all(
@@ -963,6 +962,7 @@ class _SpeedControlDialogState extends State<_SpeedControlDialog> {
                           )
                         : null,
                   ),
+                  child: Text('${preset}x'),
                 ),
             ],
           ),

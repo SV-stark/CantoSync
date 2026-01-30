@@ -130,19 +130,50 @@ class LibraryService {
     }
   }
 
-  // Wrapper for backward compatibility if called directly, but preferred to use rescanLibraries
-  Future<void> scanDirectory(String path) async {
+  Future<void> scanDirectory(String path, {bool forceUpdate = false}) async {
     final probePlayer = Player(
       configuration: const PlayerConfiguration(vo: 'null'),
     );
     try {
-      await _scanDirectory(path, probePlayer);
+      await _scanDirectory(path, probePlayer, forceUpdate: forceUpdate);
     } finally {
       await probePlayer.dispose();
     }
   }
 
-  Future<List<String>> _scanDirectory(String path, Player probePlayer) async {
+  Future<void> deleteBook(String path) async {
+    final book = _box.values.cast<Book?>().firstWhere(
+      (b) => b?.path == path,
+      orElse: () => null,
+    );
+    if (book != null) {
+      await book.delete();
+    }
+  }
+
+  Future<void> updateBookCover(Book book, String newCoverFile) async {
+    try {
+      final bookDir = book.isDirectory ? book.path : p.dirname(book.path);
+      final ext = p.extension(newCoverFile);
+      final targetPath = p.join(bookDir, 'CoverSC$ext');
+
+      // Copy file to book directory
+      final sourceFile = File(newCoverFile);
+      await sourceFile.copy(targetPath);
+
+      // Update book metadata
+      book.coverPath = targetPath;
+      await book.save();
+    } catch (e) {
+      debugPrint('Error updating book cover: $e');
+    }
+  }
+
+  Future<List<String>> _scanDirectory(
+    String path,
+    Player probePlayer, {
+    bool forceUpdate = false,
+  }) async {
     final dir = Directory(path);
     if (!await dir.exists()) return [];
 
@@ -182,6 +213,7 @@ class LibraryService {
           isDirectory: true,
           audioFiles: filePaths,
           probePlayer: probePlayer,
+          forceUpdate: forceUpdate,
         );
         foundBookPaths.add(parentPath);
       } else {
@@ -191,6 +223,7 @@ class LibraryService {
           isDirectory: true,
           audioFiles: filePaths,
           probePlayer: probePlayer,
+          forceUpdate: forceUpdate,
         );
         foundBookPaths.add(parentPath);
       }
@@ -203,10 +236,14 @@ class LibraryService {
     required bool isDirectory,
     List<String>? audioFiles,
     required Player probePlayer,
+    bool forceUpdate = false,
   }) async {
     // Check if already in DB
-    final exists = _box.values.any((b) => b.path == path);
-    if (exists) return;
+    final existingBook = _box.values.cast<Book?>().firstWhere(
+      (b) => b?.path == path,
+      orElse: () => null,
+    );
+    if (existingBook != null && !forceUpdate) return;
 
     String? title;
     String? author;
@@ -259,20 +296,31 @@ class LibraryService {
       debugPrint('Error reading metadata for $path: $e');
     }
 
-    final book = Book(
-      path: path,
-      title: title ?? folderName,
-      author: author,
-      album: album,
-      durationSeconds: duration > 0 ? duration : null,
-      coverPath: coverPath,
-      lastPlayed: DateTime.now(),
-      audioFiles: audioFiles,
-      isDirectory: isDirectory,
-      description: description,
-    );
-
-    await _box.add(book);
+    if (existingBook != null) {
+      existingBook.title = title ?? folderName;
+      existingBook.author = author;
+      existingBook.album = album;
+      existingBook.durationSeconds = duration > 0 ? duration : null;
+      existingBook.coverPath = coverPath ?? existingBook.coverPath;
+      existingBook.audioFiles = audioFiles;
+      existingBook.isDirectory = isDirectory;
+      existingBook.description = description;
+      await existingBook.save();
+    } else {
+      final book = Book(
+        path: path,
+        title: title ?? folderName,
+        author: author,
+        album: album,
+        durationSeconds: duration > 0 ? duration : null,
+        coverPath: coverPath,
+        lastPlayed: DateTime.now(),
+        audioFiles: audioFiles,
+        isDirectory: isDirectory,
+        description: description,
+      );
+      await _box.add(book);
+    }
   }
 
   Future<String?> _extractAndCacheCover(

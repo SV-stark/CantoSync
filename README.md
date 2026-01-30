@@ -69,13 +69,16 @@ flutter run -d windows # or linux
 
 ## 🗺️ Roadmap
 
-- [x] Core Playback & Seek
-- [x] Native Chapter Navigation
-- [x] Position Persistence
-- [ ] **Library Management**: Recursive folder scanning
-- [ ] **Cover Art**: Visual grid view for collections
-- [ ] **Sleep Timer**: Auto-pause functionality
-- [ ] **Sync**: Cloud progress synchronization
+- [x] **High-Performance Audio Engine**: Powered by libmpv for native M4B/M4A support.
+- [x] **Native Chapter Navigation**: Direct interface for embedded chapter markers.
+- [x] **Smart Library Management**: Recursive folder scanning and metadata extraction.
+- [x] **Visual Grid View**: Elegant cover-art-first library layout.
+- [x] **Information & Context**: Detailed info screens with description & custom cover overrides.
+- [x] **Integrated Sleep Timer**: Advanced auto-pause (timed or end-of-chapter).
+- [x] **System Integration**: Global hotkeys, Tray control, and Window state persistence.
+- [ ] **Cloud Sync**: Cross-device progress synchronization (NextCloud/WebDAV).
+- [ ] **Audio DSP**: Per-file equalizer presets and playback rate optimization.
+- [ ] **Smart Filters**: Dynamic grouping and advanced library search.
 
 ---
 

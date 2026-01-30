@@ -46,23 +46,36 @@ class AppSettingsNotifier extends Notifier<AppSettings> {
 
   @override
   AppSettings build() {
-    _box = Hive.box(AppConstants.settingsBox);
+    try {
+      _box = Hive.box(AppConstants.settingsBox);
 
-    final themeIndex = _box.get(
-      'themeMode',
-      defaultValue: ThemeMode.system.index,
-    );
-    final presetIndex = _box.get(
-      'audioPreset',
-      defaultValue: AudioPreset.flat.index,
-    );
-    final paths = _box.get('libraryPaths', defaultValue: <String>[]);
+      final themeIndex = _box.get(
+        'themeMode',
+        defaultValue: ThemeMode.system.index,
+      );
+      final presetIndex = _box.get(
+        'audioPreset',
+        defaultValue: AudioPreset.flat.index,
+      );
+      final pathsRaw = _box.get('libraryPaths', defaultValue: <String>[]);
+      List<String> paths = [];
+      if (pathsRaw is List) {
+        paths = pathsRaw.cast<String>().toList();
+      } else {
+        // Corrupted data, reset
+        _box.delete('libraryPaths');
+      }
 
-    return AppSettings(
-      themeMode: ThemeMode.values[themeIndex],
-      audioPreset: AudioPreset.values[presetIndex],
-      libraryPaths: List<String>.from(paths),
-    );
+      return AppSettings(
+        themeMode: ThemeMode.values[themeIndex],
+        audioPreset: AudioPreset.values[presetIndex],
+        libraryPaths: paths,
+      );
+    } catch (e) {
+      debugPrint('Error loading AppSettings: $e');
+      // Fallback to default
+      return AppSettings();
+    }
   }
 
   void setThemeMode(ThemeMode mode) {

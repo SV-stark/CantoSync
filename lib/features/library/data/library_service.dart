@@ -215,12 +215,15 @@ class LibraryService {
     String? description;
     double duration = 0;
 
-    // Use the first file to extract metadata
-    final metadataSourcePath = (audioFiles != null && audioFiles.isNotEmpty)
-        ? audioFiles.first
-        : path;
+    // Fallback title to folder name
+    final folderName = p.basename(path);
 
     try {
+      String metadataSourcePath = path;
+      if (isDirectory && audioFiles != null && audioFiles.isNotEmpty) {
+        metadataSourcePath = audioFiles.first;
+      }
+
       final metadata = await MetadataGod.readMetadata(file: metadataSourcePath);
       title = metadata.title;
       author = metadata.artist;
@@ -255,9 +258,6 @@ class LibraryService {
     } catch (e) {
       debugPrint('Error reading metadata for $path: $e');
     }
-
-    // Fallback title to folder name
-    final folderName = p.basename(path);
 
     final book = Book(
       path: path,

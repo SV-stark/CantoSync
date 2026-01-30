@@ -266,6 +266,8 @@ class MediaService {
   Duration get position => _player.state.position;
   Duration get duration => _player.state.duration;
   bool get isPlaying => _player.state.playing;
+  double get volume => _player.state.volume;
+  double get playRate => _player.state.rate;
   int get currentIndex => _player.state.playlist.index;
   Tracks get tracks => _player.state.tracks;
   Track get track => _player.state.track;

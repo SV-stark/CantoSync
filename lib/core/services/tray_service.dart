@@ -18,7 +18,7 @@ class TrayService extends TrayListener {
 
     // Set tray icon (using the same logo.png we updated earlier)
     String iconPath = Platform.isWindows
-        ? 'assets/logo.png'
+        ? 'assets/app_icon.ico'
         : 'assets/logo.png';
     // Note: tray_manager on Windows needs an .ico usually or a png in the actual assets folder
     // But it can load from file system if path is absolute or from assets.

@@ -31,6 +31,13 @@ final playerTotalDurationProvider = StreamProvider.autoDispose<Duration>((ref) {
   return service.totalDurationStream;
 });
 
+final currentBookProvider = FutureProvider.autoDispose<Book?>((ref) async {
+  final path = ref.watch(currentBookPathProvider);
+  if (path == null) return null;
+  final books = ref.watch(libraryBooksProvider).value ?? [];
+  return books.where((b) => b.path == path).firstOrNull;
+});
+
 final playlistProvider = StreamProvider.autoDispose<Playlist>((ref) {
   final service = ref.watch(mediaServiceProvider);
   return service.playlistStream;
@@ -69,10 +76,28 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
     final mediaService = ref.watch(mediaServiceProvider);
     final remainingTimer = ref.watch(sleepTimerServiceProvider);
 
+    // Book Info
+    final currentPath = ref.watch(currentBookPathProvider);
+    final books = ref.watch(libraryBooksProvider).value ?? [];
+    final currentBook = currentPath != null
+        ? books.where((b) => b.path == currentPath).firstOrNull
+        : null;
+
     final position = ref.watch(playerPositionProvider).value ?? Duration.zero;
     final duration = ref.watch(playerDurationProvider).value ?? Duration.zero;
-    final totalDuration =
+
+    var totalDuration =
         ref.watch(playerTotalDurationProvider).value ?? Duration.zero;
+
+    // Fallback: If player reports 0 duration (common with heavy m4b or initial load),
+    // use metadata from library scan.
+    if (totalDuration.inSeconds == 0 && currentBook?.durationSeconds != null) {
+      final metaSeconds = currentBook!.durationSeconds!;
+      if (metaSeconds > 0) {
+        totalDuration = Duration(milliseconds: (metaSeconds * 1000).toInt());
+      }
+    }
+
     final isPlaying =
         ref.watch(playerPlayingProvider).value ?? mediaService.isPlaying;
 
@@ -156,13 +181,6 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
     double sliderValue = _isDragging
         ? _dragValue
         : chapterPosition.inMilliseconds.toDouble().clamp(0.0, sliderMax);
-
-    // Book Info
-    final currentPath = ref.watch(currentBookPathProvider);
-    final books = ref.watch(libraryBooksProvider).value ?? [];
-    final currentBook = currentPath != null
-        ? books.where((b) => b.path == currentPath).firstOrNull
-        : null;
 
     // --- UI Structure ---
     return Stack(
@@ -265,12 +283,7 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
             icon: const Icon(FluentIcons.back, size: 24, color: Colors.white),
             onPressed: () {
               // Assuming navigation stack handling; usually handled by parent
-              // generic navigation, but here we might want to pop or just let user click library sidebar
             },
-            // Actually, existing app uses NavigationPane which handles switching.
-            // We don't really need a back button if it's a pane item, unless full screen?
-            // Existing had 'CommandBar' in header.
-            // We'll leave it clean for now or add a clear 'Library' button if needed?
           ),
         ),
       ],
@@ -511,11 +524,11 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
             // Replay 15 (Rewind)
             IconButton(
               icon: const Icon(FluentIcons.rewind, color: Colors.white),
-              onPressed: () => mediaService.seek(
-                Duration(
-                  milliseconds: (globalPositionSeconds * 1000).toInt() - 15000,
-                ),
-              ),
+              onPressed: () {
+                final newPos =
+                    mediaService.position - const Duration(seconds: 15);
+                mediaService.seek(newPos.isNegative ? Duration.zero : newPos);
+              },
               style: ButtonStyle(iconSize: WidgetStateProperty.all(20)),
             ),
 
@@ -569,10 +582,7 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
             GestureDetector(
               onTap: () {
                 mediaService.seek(
-                  Duration(
-                    milliseconds:
-                        (globalPositionSeconds * 1000).toInt() + 30000,
-                  ),
+                  mediaService.position + const Duration(seconds: 30),
                 );
               },
               child: Stack(
@@ -593,11 +603,15 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
           children: [
             _FooterButton(
               icon: FluentIcons.playback_rate1x,
-              label: '${mediaService.playRate}x',
+              label: '${mediaService.playRate.toStringAsFixed(2)}x',
               onTap: () {
-                double newRate = mediaService.playRate + 0.25;
-                if (newRate > 2.0) newRate = 0.5;
-                mediaService.setRate(newRate);
+                showDialog(
+                  context: context,
+                  builder: (context) => _SpeedControlDialog(
+                    initialRate: mediaService.playRate,
+                    onRateChanged: (rate) => mediaService.setRate(rate),
+                  ),
+                );
               },
             ),
             _FooterButton(
@@ -614,15 +628,29 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
               },
             ),
             // Volume Slider (Mini)
-            SizedBox(
-              width: 100,
-              child: Slider(
-                value: mediaService.volume,
-                min: 0,
-                max: 100,
-                onChanged: (v) => mediaService.setVolume(v),
-                style: SliderThemeData(thumbRadius: WidgetStateProperty.all(6)),
-              ),
+            Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Icon(
+                  FluentIcons.ringer,
+                  size: 16,
+                  color: Colors
+                      .white, // white70 might fail if variable scope issue, using literal or constant
+                ),
+                const SizedBox(width: 8),
+                SizedBox(
+                  width: 100,
+                  child: Slider(
+                    value: mediaService.volume,
+                    min: 0,
+                    max: 100,
+                    onChanged: (v) => mediaService.setVolume(v),
+                    style: SliderThemeData(
+                      thumbRadius: WidgetStateProperty.all(6),
+                    ),
+                  ),
+                ),
+              ],
             ),
           ],
         ),
@@ -641,21 +669,51 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
     Book book,
     Duration position,
   ) {
+    final textController = TextEditingController();
     showDialog(
       context: context,
       builder: (context) => ContentDialog(
         title: const Text('Add Bookmark'),
-        content: Text(
-          'Placeholder for adding bookmark at ${_formatDuration(position)}',
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text('Add bookmark at ${_formatDuration(position)}'),
+            const SizedBox(height: 10),
+            TextBox(
+              controller: textController,
+              placeholder: 'Bookmark Label (Optional)',
+            ),
+          ],
         ),
         actions: [
           Button(
-            child: const Text('Close'),
+            child: const Text('Cancel'),
             onPressed: () => Navigator.pop(context),
+          ),
+          FilledButton(
+            child: const Text('Save'),
+            onPressed: () async {
+              final label = textController.text.trim().isEmpty
+                  ? 'Bookmark at ${_formatDuration(position)}'
+                  : textController.text.trim();
+
+              book.bookmarks?.add(
+                Bookmark(
+                  label: label,
+                  timestampSeconds: globalPositionSecondsWrapper(ref, position),
+                ),
+              );
+              await book.save();
+              if (context.mounted) Navigator.pop(context);
+            },
           ),
         ],
       ),
     );
+  }
+
+  double globalPositionSecondsWrapper(WidgetRef ref, Duration pos) {
+    return pos.inMilliseconds / 1000.0;
   }
 
   void _showChaptersList(
@@ -677,8 +735,8 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
               return ListTile(
                 title: Text(c.title),
                 onPressed: () {
-                  // Seek logic
                   Navigator.pop(context);
+                  ref.read(mediaServiceProvider).jumpToChapter(index);
                 },
               );
             },
@@ -730,6 +788,49 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
               _TimerOption(
                 label: 'End of Chapter',
                 onTap: () => timerService.startTimer(remainingChapter),
+              ),
+              SizedBox(
+                width: double.infinity,
+                child: Button(
+                  onPressed: () {
+                    Navigator.pop(context); // Close menu first
+                    showDialog(
+                      context: context,
+                      builder: (context) {
+                        final controller = TextEditingController();
+                        return ContentDialog(
+                          title: const Text('Set Sleep Timer'),
+                          content: TextBox(
+                            controller: controller,
+                            placeholder: 'Minutes',
+                            keyboardType: TextInputType.number,
+                          ),
+                          actions: [
+                            Button(
+                              child: const Text('Cancel'),
+                              onPressed: () => Navigator.pop(context),
+                            ),
+                            FilledButton(
+                              child: const Text('Start'),
+                              onPressed: () {
+                                final mins =
+                                    int.tryParse(controller.text) ?? 30;
+                                timerService.startTimer(
+                                  Duration(minutes: mins),
+                                );
+                                Navigator.pop(context);
+                              },
+                            ),
+                          ],
+                        );
+                      },
+                    );
+                  },
+                  child: const Align(
+                    alignment: Alignment.centerLeft,
+                    child: Text('Custom...'),
+                  ),
+                ),
               ),
             ],
           ),
@@ -793,6 +894,86 @@ class _FooterButton extends StatelessWidget {
           ],
         );
       },
+    );
+  }
+}
+
+class _SpeedControlDialog extends StatefulWidget {
+  final double initialRate;
+  final ValueChanged<double> onRateChanged;
+
+  const _SpeedControlDialog({
+    required this.initialRate,
+    required this.onRateChanged,
+  });
+
+  @override
+  State<_SpeedControlDialog> createState() => _SpeedControlDialogState();
+}
+
+class _SpeedControlDialogState extends State<_SpeedControlDialog> {
+  late double _rate;
+
+  @override
+  void initState() {
+    super.initState();
+    _rate = widget.initialRate;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return ContentDialog(
+      title: const Text('Playback Speed'),
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(
+            '${_rate.toStringAsFixed(2)}x',
+            style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+          ),
+          const SizedBox(height: 20),
+          Slider(
+            value: _rate,
+            min: 0.5,
+            max: 3.0,
+            onChanged: (v) {
+              // Snap to 0.05
+              final snapped = (v * 20).round() / 20.0;
+              setState(() => _rate = snapped);
+              widget.onRateChanged(snapped);
+            },
+          ),
+          const SizedBox(height: 20),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            alignment: WrapAlignment.center,
+            children: [
+              for (final preset in [1.0, 1.25, 1.5, 1.75, 2.0, 2.5])
+                FilledButton(
+                  onPressed: () {
+                    setState(() => _rate = preset);
+                    widget.onRateChanged(preset);
+                  },
+                  child: Text('${preset}x'),
+                  style: ButtonStyle(
+                    backgroundColor: _rate == preset
+                        ? WidgetStateProperty.all(
+                            FluentTheme.of(context).accentColor,
+                          )
+                        : null,
+                  ),
+                ),
+            ],
+          ),
+        ],
+      ),
+      actions: [
+        Button(
+          child: const Text('Done'),
+          onPressed: () => Navigator.pop(context),
+        ),
+      ],
     );
   }
 }

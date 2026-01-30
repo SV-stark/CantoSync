@@ -8,6 +8,7 @@ import 'package:canto_sync/features/library/data/library_service.dart';
 import 'package:canto_sync/core/services/playback_sync_service.dart';
 
 import 'package:canto_sync/core/services/app_settings_service.dart';
+import 'package:canto_sync/features/library/ui/metadata_editor.dart';
 
 class LibraryViewMode extends Notifier<bool> {
   @override
@@ -278,72 +279,105 @@ class BookCard extends ConsumerWidget {
         return Card(
           padding: EdgeInsets.zero,
           borderRadius: BorderRadius.circular(8),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+          child: Stack(
             children: [
-              Expanded(
-                child: Container(
-                  decoration: BoxDecoration(
-                    color: Colors.grey.withValues(alpha: 0.2),
-                    borderRadius: const BorderRadius.vertical(
-                      top: Radius.circular(8),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Expanded(
+                    child: Container(
+                      decoration: BoxDecoration(
+                        color: Colors.grey.withValues(alpha: 0.2),
+                        borderRadius: const BorderRadius.vertical(
+                          top: Radius.circular(8),
+                        ),
+                        boxShadow: states.isHovered
+                            ? [
+                                BoxShadow(
+                                  color: Colors.black.withValues(alpha: 0.2),
+                                  blurRadius: 10,
+                                  offset: const Offset(0, 4),
+                                ),
+                              ]
+                            : [],
+                      ),
+                      width: double.infinity,
+                      child: ClipRRect(
+                        borderRadius: const BorderRadius.vertical(
+                          top: Radius.circular(8),
+                        ),
+                        child: book.coverPath != null
+                            ? Image.file(
+                                File(book.coverPath!),
+                                fit: BoxFit.cover,
+                                errorBuilder: (context, error, stackTrace) {
+                                  return const Icon(
+                                    FluentIcons.music_note,
+                                    size: 48,
+                                  );
+                                },
+                              )
+                            : const Icon(FluentIcons.music_note, size: 48),
+                      ),
                     ),
-                    boxShadow: states.isHovered
-                        ? [
-                            BoxShadow(
-                              color: Colors.black.withValues(alpha: 0.2),
-                              blurRadius: 10,
-                              offset: const Offset(0, 4),
-                            ),
-                          ]
-                        : [],
                   ),
-                  width: double.infinity,
-                  child: ClipRRect(
-                    borderRadius: const BorderRadius.vertical(
-                      top: Radius.circular(8),
+                  Padding(
+                    padding: const EdgeInsets.all(12.0),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          book.title,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: FluentTheme.of(context).typography.bodyStrong,
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          book.author ?? 'Unknown Author',
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: FluentTheme.of(context).typography.caption
+                              ?.copyWith(
+                                color: FluentTheme.of(context)
+                                    .typography
+                                    .caption
+                                    ?.color
+                                    ?.withValues(alpha: 0.7),
+                              ),
+                        ),
+                      ],
                     ),
-                    child: book.coverPath != null
-                        ? Image.file(
-                            File(book.coverPath!),
-                            fit: BoxFit.cover,
-                            errorBuilder: (context, error, stackTrace) {
-                              return const Icon(
-                                FluentIcons.music_note,
-                                size: 48,
-                              );
-                            },
-                          )
-                        : const Icon(FluentIcons.music_note, size: 48),
                   ),
-                ),
+                ],
               ),
-              Padding(
-                padding: const EdgeInsets.all(12.0),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      book.title,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: FluentTheme.of(context).typography.bodyStrong,
+              // Edit Button (Visible on Hover)
+              if (states.isHovered)
+                Positioned(
+                  top: 8,
+                  right: 8,
+                  child: Container(
+                    decoration: BoxDecoration(
+                      color: Colors.black.withValues(alpha: 0.5),
+                      borderRadius: BorderRadius.circular(16),
                     ),
-                    const SizedBox(height: 4),
-                    Text(
-                      book.author ?? 'Unknown Author',
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: FluentTheme.of(context).typography.caption
-                          ?.copyWith(
-                            color: FluentTheme.of(
-                              context,
-                            ).typography.caption?.color?.withValues(alpha: 0.7),
+                    child: IconButton(
+                      icon: const Icon(
+                        FluentIcons.edit,
+                        color: Colors.white,
+                        size: 16,
+                      ),
+                      onPressed: () {
+                        Navigator.push(
+                          context,
+                          FluentPageRoute(
+                            builder: (context) => MetadataEditor(book: book),
                           ),
+                        );
+                      },
                     ),
-                  ],
+                  ),
                 ),
-              ),
             ],
           ),
         );

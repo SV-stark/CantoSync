@@ -62,31 +62,10 @@ class MediaService {
     _customTotalDuration = totalDuration;
 
     if (mediaSource is String) {
-      await _player.open(
-        Media(
-          mediaSource,
-          httpHeaders: {
-            'title': title ?? '',
-            'artist': artist ?? '',
-            'album': album ?? '',
-          },
-        ),
-        play: autoPlay,
-      );
+      await _player.open(Media(mediaSource), play: autoPlay);
     } else if (mediaSource is List<String>) {
       final playlist = Playlist(
-        mediaSource
-            .map(
-              (path) => Media(
-                path,
-                httpHeaders: {
-                  'title': title ?? '',
-                  'artist': artist ?? '',
-                  'album': album ?? '',
-                },
-              ),
-            )
-            .toList(),
+        mediaSource.map((path) => Media(path)).toList(),
       );
       await _player.open(playlist, play: autoPlay);
     }
@@ -147,20 +126,21 @@ class MediaService {
         }
 
         if (_skipSilence) {
+          // Robust silence removal: removes silences longer than 0.5s with -50dB threshold
           filters.add(
-            'lavfi=[silenceremove=stop_periods=-1:stop_duration=0.5:stop_threshold=-45dB]',
+            'silenceremove=stop_periods=-1:stop_duration=0.5:stop_threshold=-50dB',
           );
         }
 
         if (_loudnessNormalization) {
-          filters.add('lavfi=[loudnorm]');
+          filters.add('loudnorm');
         }
 
-        if (filters.isEmpty) {
-          await platform.setProperty('af', '');
-        } else {
-          await platform.setProperty('af', filters.join(','));
-        }
+        final filterString = filters.join(',');
+        debugPrint('Applying audio filters: "$filterString"');
+
+        // We use 'af' property to set audio filters in mpv
+        await platform.setProperty('af', filterString);
       }
     } catch (e) {
       debugPrint('Error applying filters in MediaService: $e');
@@ -192,17 +172,18 @@ class MediaService {
         final native = platform;
         try {
           // Retry logic to handle race conditions where chapters/metadata aren't loaded yet.
-          // We increase to 10 attempts (approx 5 seconds max wait) to be very safe for large M4Bs.
-          for (int i = 0; i < 10; i++) {
-            // First, check if mpv even sees chapters.
-            // 'chapters' property returns the COUNT of chapters.
+          for (int i = 0; i < 15; i++) {
+            // Increased retries to ~7.5 seconds
             final countStr = await native.getProperty('chapters');
-            final count = int.tryParse(countStr) ?? 0;
+            final count = int.tryParse(countStr ?? '') ?? 0;
+
+            debugPrint('Chapter check attempt $i: count = $count');
 
             if (count > 0) {
               final resultString = await native.getProperty('chapter-list');
+              debugPrint('Chapter list raw string: $resultString');
 
-              if (resultString.isNotEmpty) {
+              if (resultString != null && resultString.isNotEmpty) {
                 final result = jsonDecode(resultString);
                 if (result is List && result.isNotEmpty) {
                   final List<Chapter> chapters = [];
@@ -214,14 +195,12 @@ class MediaService {
                     final startTime = (e['time'] as num?)?.toDouble() ?? 0.0;
                     double? endTime;
 
-                    // Try to get end time from next chapter
                     if (j < result.length - 1) {
                       final next = result[j + 1];
                       if (next is Map) {
                         endTime = (next['time'] as num?)?.toDouble();
                       }
                     } else {
-                      // For last chapter, use total duration
                       final d = _player.state.duration.inMilliseconds / 1000.0;
                       if (d > 0) endTime = d;
                     }
@@ -234,26 +213,29 @@ class MediaService {
                       ),
                     );
                   }
+                  debugPrint('Found ${chapters.length} chapters internally.');
                   return chapters;
                 }
               }
             }
 
-            // If 0 chapters found, check if duration is loaded.
-            // If duration is > 0 and no chapters after a few retries, maybe there ARE no chapters.
             final currentDuration = _player.state.duration.inMilliseconds;
-            if (currentDuration > 0 && i > 4) {
-              // We waited ~2.5 seconds and duration is known, but still no chapters?
-              // Likely a book without chapters.
+            if (currentDuration > 0 && i > 8) {
+              debugPrint(
+                'Duration loaded but no chapters found after $i attempts. Likely no internal chapters.',
+              );
               return [];
             }
 
-            // Wait and retry.
             await Future.delayed(const Duration(milliseconds: 500));
           }
         } catch (e, stack) {
           debugPrint('Error fetching/parsing chapters: $e\n$stack');
         }
+      } else {
+        debugPrint(
+          'Player platform is not NativePlayer, cannot fetch internal chapters via mpv properties.',
+        );
       }
     } finally {
       _isFetchingChapters = false;

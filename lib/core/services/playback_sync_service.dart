@@ -48,7 +48,7 @@ class PlaybackSyncService {
 
   void _init() {
     Duration lastPosition = Duration.zero;
-    
+
     _subscription = _mediaService.positionStream.listen((position) {
       if (_currentPath != null && _mediaService.isPlaying) {
         _debounceSave(
@@ -56,7 +56,7 @@ class PlaybackSyncService {
           position.inMilliseconds / 1000.0,
           _mediaService.currentIndex,
         );
-        
+
         // Track stats - calculate time delta
         if (position > lastPosition) {
           final deltaSeconds = (position - lastPosition).inSeconds;
@@ -87,12 +87,16 @@ class PlaybackSyncService {
 
   void _recordStatsSession(int seconds) async {
     if (_currentBook == null) return;
-    
+
     try {
       final statsService = _ref.read(listeningStatsServiceProvider);
       // Get current playback speed from media service
       final speed = 1.0; // Default speed since we don't track speed changes yet
-      await statsService.recordListeningTime(_currentBook!, seconds, playbackSpeed: speed);
+      await statsService.recordListeningTime(
+        _currentBook!,
+        seconds,
+        playbackSpeed: speed,
+      );
     } catch (e) {
       debugPrint('Error recording stats: $e');
     }
@@ -101,7 +105,7 @@ class PlaybackSyncService {
   /// Marks current book as completed in stats
   void onPlaybackCompleted() async {
     if (_currentBook == null) return;
-    
+
     try {
       final statsService = _ref.read(listeningStatsServiceProvider);
       await statsService.markBookAsCompleted(_currentBook!);
@@ -281,18 +285,16 @@ class PlaybackSyncService {
       album: album,
     );
 
-    if (lastPosition != null && lastPosition > 0) {
-      await _mediaService.seek(
-        Duration(milliseconds: (lastPosition * 1000).toInt()),
-      );
+    if (lastPosition != null && lastPosition > 0.1) {
+      await Future.delayed(const Duration(milliseconds: 200));
+      try {
+        await _mediaService.seek(
+          Duration(milliseconds: (lastPosition * 1000).toInt()),
+        );
+      } catch (e) {
+        debugPrint('Error seeking during resume: $e');
+      }
     }
-
-    // Resume playback is handled by autoPlay: true in open by default now, or explicit play
-    // Check if open already plays. My modified open has autoPlay=true default.
-    // So we don't strictly need _mediaService.play() providing we ensure open handles it.
-    // But let's verify MediaService implementation.
-    // Modified open uses `play: autoPlay`.
-    // So we can remove explicit play if we want, or keep it safe.
   }
 
   void _debounceSave(String path, double seconds, int trackIndex) {
@@ -329,12 +331,12 @@ class PlaybackSyncService {
     _completedSubscription?.cancel();
     _debounceTimer?.cancel();
     _statsTimer?.cancel();
-    
+
     // Record any pending stats time
     if (_sessionSeconds > 0) {
       _recordStatsSession(_sessionSeconds);
     }
-    
+
     if (_pendingSave && _currentPath != null) {
       // Best effort save on dispose
       _libraryService.updateProgress(

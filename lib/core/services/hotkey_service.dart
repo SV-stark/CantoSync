@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:hotkey_manager/hotkey_manager.dart';
@@ -13,63 +14,73 @@ class HotkeyService {
   HotkeyService(this._ref);
 
   Future<void> init() async {
-    await hotKeyManager.unregisterAll();
+    try {
+      await hotKeyManager.unregisterAll();
+    } catch (e) {
+      debugPrint('Error unregistering hotkeys: $e');
+    }
 
     // Play/Pause: Alt + Space
-    await hotKeyManager.register(
+    await _registerHotKey(
       HotKey(
         key: LogicalKeyboardKey.space,
         modifiers: [HotKeyModifier.alt],
         scope: HotKeyScope.system,
       ),
-      keyDownHandler: (hotKey) {
-        _ref.read(mediaServiceProvider).playOrPause();
-      },
+      () => _ref.read(mediaServiceProvider).playOrPause(),
     );
 
     // Skip Forward: Alt + ArrowRight
-    await hotKeyManager.register(
+    await _registerHotKey(
       HotKey(
         key: LogicalKeyboardKey.arrowRight,
         modifiers: [HotKeyModifier.alt],
         scope: HotKeyScope.system,
       ),
-      keyDownHandler: (hotKey) {
+      () {
         final media = _ref.read(mediaServiceProvider);
         media.seek(media.position + const Duration(seconds: 15));
       },
     );
 
     // Skip Backward: Alt + ArrowLeft
-    await hotKeyManager.register(
+    await _registerHotKey(
       HotKey(
         key: LogicalKeyboardKey.arrowLeft,
         modifiers: [HotKeyModifier.alt],
         scope: HotKeyScope.system,
       ),
-      keyDownHandler: (hotKey) {
+      () {
         final media = _ref.read(mediaServiceProvider);
         media.seek(media.position - const Duration(seconds: 15));
       },
     );
 
     // Standard Media Keys
-    await hotKeyManager.register(
+    await _registerHotKey(
       HotKey(key: LogicalKeyboardKey.mediaPlayPause, scope: HotKeyScope.system),
-      keyDownHandler: (_) => _ref.read(mediaServiceProvider).playOrPause(),
+      () => _ref.read(mediaServiceProvider).playOrPause(),
     );
 
-    await hotKeyManager.register(
+    await _registerHotKey(
       HotKey(key: LogicalKeyboardKey.mediaTrackNext, scope: HotKeyScope.system),
-      keyDownHandler: (_) => _ref.read(mediaServiceProvider).nextChapter(),
+      () => _ref.read(mediaServiceProvider).nextChapter(),
     );
 
-    await hotKeyManager.register(
+    await _registerHotKey(
       HotKey(
         key: LogicalKeyboardKey.mediaTrackPrevious,
         scope: HotKeyScope.system,
       ),
-      keyDownHandler: (_) => _ref.read(mediaServiceProvider).previousChapter(),
+      () => _ref.read(mediaServiceProvider).previousChapter(),
     );
+  }
+
+  Future<void> _registerHotKey(HotKey hotKey, VoidCallback onDown) async {
+    try {
+      await hotKeyManager.register(hotKey, keyDownHandler: (_) => onDown());
+    } catch (e) {
+      debugPrint('Failed to register hotkey ${hotKey.key}: $e');
+    }
   }
 }

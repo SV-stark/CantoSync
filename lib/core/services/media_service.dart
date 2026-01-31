@@ -24,14 +24,25 @@ class MediaService {
   Stream<Playlist> get playlistStream => _player.stream.playlist;
 
   MediaService(this._ref) {
-    _player = Player();
+    try {
+      _player = Player();
+      _initFilters();
+    } catch (e) {
+      debugPrint('Error creating Player in MediaService: $e');
+    }
+  }
 
-    // Initialize filters from settings
-    final settings = _ref.read(appSettingsProvider);
-    _skipSilence = settings.skipSilence;
-    _loudnessNormalization = settings.loudnessNormalization;
-    _activePresetFilter = settings.audioPreset.filter;
-    _applyFilters();
+  void _initFilters() {
+    try {
+      // Initialize filters from settings
+      final settings = _ref.read(appSettingsProvider);
+      _skipSilence = settings.skipSilence;
+      _loudnessNormalization = settings.loudnessNormalization;
+      _activePresetFilter = settings.audioPreset.filter;
+      _applyFilters();
+    } catch (e) {
+      debugPrint('Error initializing filters in MediaService: $e');
+    }
   }
 
   List<Chapter>? _customChapters;
@@ -125,29 +136,33 @@ class MediaService {
   }
 
   Future<void> _applyFilters() async {
-    if (_player.platform is NativePlayer) {
-      final native = _player.platform as NativePlayer;
-      final List<String> filters = [];
+    try {
+      if (_player.platform is NativePlayer) {
+        final native = _player.platform as NativePlayer;
+        final List<String> filters = [];
 
-      if (_activePresetFilter.isNotEmpty) {
-        filters.add(_activePresetFilter);
-      }
+        if (_activePresetFilter.isNotEmpty) {
+          filters.add(_activePresetFilter);
+        }
 
-      if (_skipSilence) {
-        filters.add(
-          'lavfi=[silenceremove=stop_periods=-1:stop_duration=0.5:stop_threshold=-45dB]',
-        );
-      }
+        if (_skipSilence) {
+          filters.add(
+            'lavfi=[silenceremove=stop_periods=-1:stop_duration=0.5:stop_threshold=-45dB]',
+          );
+        }
 
-      if (_loudnessNormalization) {
-        filters.add('lavfi=[loudnorm]');
-      }
+        if (_loudnessNormalization) {
+          filters.add('lavfi=[loudnorm]');
+        }
 
-      if (filters.isEmpty) {
-        await native.setProperty('af', '');
-      } else {
-        await native.setProperty('af', filters.join(','));
+        if (filters.isEmpty) {
+          await native.setProperty('af', '');
+        } else {
+          await native.setProperty('af', filters.join(','));
+        }
       }
+    } catch (e) {
+      debugPrint('Error applying filters in MediaService: $e');
     }
   }
 

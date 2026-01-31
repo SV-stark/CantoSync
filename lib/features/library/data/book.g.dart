@@ -20,6 +20,7 @@ class BookAdapter extends TypeAdapter<Book> {
       path: fields[0] as String,
       title: fields[1] as String,
       author: fields[2] as String?,
+      narrator: fields[15] as String?,
       durationSeconds: fields[3] as double?,
       positionSeconds: fields[4] as double?,
       lastPlayed: fields[5] as DateTime?,
@@ -31,13 +32,15 @@ class BookAdapter extends TypeAdapter<Book> {
       isDirectory: fields[11] as bool,
       lastTrackIndex: fields[12] as int?,
       description: fields[13] as String?,
+      filesMetadata: (fields[14] as List?)?.cast<FileMetadata>(),
+      collections: (fields[16] as List?)?.cast<String>(),
     );
   }
 
   @override
   void write(BinaryWriter writer, Book obj) {
     writer
-      ..writeByte(13)
+      ..writeByte(17)
       ..writeByte(0)
       ..write(obj.path)
       ..writeByte(1)
@@ -65,7 +68,13 @@ class BookAdapter extends TypeAdapter<Book> {
       ..writeByte(12)
       ..write(obj.lastTrackIndex)
       ..writeByte(13)
-      ..write(obj.description);
+      ..write(obj.description)
+      ..writeByte(14)
+      ..write(obj.filesMetadata)
+      ..writeByte(15)
+      ..write(obj.narrator)
+      ..writeByte(16)
+      ..write(obj.collections);
   }
 
   @override
@@ -115,6 +124,46 @@ class BookmarkAdapter extends TypeAdapter<Bookmark> {
   bool operator ==(Object other) =>
       identical(this, other) ||
       other is BookmarkAdapter &&
+          runtimeType == other.runtimeType &&
+          typeId == other.typeId;
+}
+
+class FileMetadataAdapter extends TypeAdapter<FileMetadata> {
+  @override
+  final int typeId = 2;
+
+  @override
+  FileMetadata read(BinaryReader reader) {
+    final numOfFields = reader.readByte();
+    final fields = <int, dynamic>{
+      for (int i = 0; i < numOfFields; i++) reader.readByte(): reader.read(),
+    };
+    return FileMetadata(
+      title: fields[0] as String,
+      duration: fields[1] as double?,
+      path: fields[2] as String,
+    );
+  }
+
+  @override
+  void write(BinaryWriter writer, FileMetadata obj) {
+    writer
+      ..writeByte(3)
+      ..writeByte(0)
+      ..write(obj.title)
+      ..writeByte(1)
+      ..write(obj.duration)
+      ..writeByte(2)
+      ..write(obj.path);
+  }
+
+  @override
+  int get hashCode => typeId.hashCode;
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is FileMetadataAdapter &&
           runtimeType == other.runtimeType &&
           typeId == other.typeId;
 }

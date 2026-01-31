@@ -1,3 +1,5 @@
+import 'dart:async';
+import 'package:flutter/foundation.dart';
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:hive_flutter/hive_flutter.dart';
@@ -19,78 +21,101 @@ import 'package:canto_sync/core/ui/window_buttons.dart';
 import 'package:canto_sync/core/constants/app_constants.dart';
 
 void main() async {
-  // [DEBUG] Start of main
-  debugPrint('DEBUG: App starting...');
-  WidgetsFlutterBinding.ensureInitialized();
-  debugPrint('DEBUG: WidgetsFlutterBinding initialized');
+  runZonedGuarded(
+    () async {
+      WidgetsFlutterBinding.ensureInitialized();
 
-  await windowManager.ensureInitialized();
-  debugPrint('DEBUG: WindowManager initialized');
+      // Catch Flutter errors
+      FlutterError.onError = (FlutterErrorDetails details) {
+        FlutterError.presentError(details);
+        debugPrint('FLUTTER ERROR: ${details.exception}');
+        debugPrint('${details.stack}');
+      };
 
-  // Best-effort initialization to ensure process doesn't exit silently
-  try {
-    MediaKit.ensureInitialized();
-    debugPrint('DEBUG: MediaKit initialized');
+      // Catch platform errors
+      PlatformDispatcher.instance.onError = (error, stack) {
+        debugPrint('PLATFORM ERROR: $error');
+        debugPrint('$stack');
+        return true;
+      };
 
-    MetadataGod.initialize();
-    debugPrint('DEBUG: MetadataGod initialized');
+      debugPrint('DEBUG: App starting...');
+      debugPrint('DEBUG: WidgetsFlutterBinding initialized');
 
-    await Hive.initFlutter();
-    debugPrint('DEBUG: Hive initialized');
+      await windowManager.ensureInitialized();
+      debugPrint('DEBUG: WindowManager initialized');
 
-    Hive.registerAdapter(BookAdapter());
-    Hive.registerAdapter(BookmarkAdapter());
+      // Best-effort initialization to ensure process doesn't exit silently
+      try {
+        MediaKit.ensureInitialized();
+        debugPrint('DEBUG: MediaKit initialized');
 
-    // Open boxes with corruption recovery
-    try {
-      await Hive.openBox<Book>(AppConstants.libraryBox);
-    } catch (e) {
-      debugPrint('Error opening libraryBox: $e. Reseting...');
-      await Hive.deleteBoxFromDisk(AppConstants.libraryBox);
-      await Hive.openBox<Book>(AppConstants.libraryBox);
-    }
+        MetadataGod.initialize();
+        debugPrint('DEBUG: MetadataGod initialized');
 
-    await SystemTheme.accentColor.load();
+        await Hive.initFlutter();
+        debugPrint('DEBUG: Hive initialized');
 
-    try {
-      await Hive.openBox<Book>(AppConstants.booksBox);
-    } catch (e) {
-      debugPrint('Error opening booksBox: $e. Reseting...');
-      await Hive.deleteBoxFromDisk(AppConstants.booksBox);
-      await Hive.openBox<Book>(AppConstants.booksBox);
-    }
+        Hive.registerAdapter(BookAdapter());
+        Hive.registerAdapter(BookmarkAdapter());
+        Hive.registerAdapter(FileMetadataAdapter());
 
-    try {
-      await Hive.openBox(AppConstants.settingsBox);
-    } catch (e) {
-      debugPrint('Error opening settingsBox: $e. Reseting...');
-      await Hive.deleteBoxFromDisk(AppConstants.settingsBox);
-      await Hive.openBox(AppConstants.settingsBox);
-    }
+        // Open boxes with corruption recovery
+        try {
+          await Hive.openBox<Book>(AppConstants.libraryBox);
+        } catch (e) {
+          debugPrint('Error opening libraryBox: $e. Reseting...');
+          await Hive.deleteBoxFromDisk(AppConstants.libraryBox);
+          await Hive.openBox<Book>(AppConstants.libraryBox);
+        }
 
-    debugPrint('DEBUG: Hive boxes opened');
-  } catch (e) {
-    debugPrint('Critical Initialization Error: $e');
-    // Continue anyway so the user sees a window/UI, even if broken
-  }
+        await SystemTheme.accentColor.load();
 
-  WindowOptions windowOptions = const WindowOptions(
-    size: Size(1000, 700),
-    minimumSize: Size(400, 500),
-    center: true,
-    backgroundColor: Colors.black,
-    skipTaskbar: false,
-    titleBarStyle: TitleBarStyle.hidden,
+        try {
+          await Hive.openBox<Book>(AppConstants.booksBox);
+        } catch (e) {
+          debugPrint('Error opening booksBox: $e. Reseting...');
+          await Hive.deleteBoxFromDisk(AppConstants.booksBox);
+          await Hive.openBox<Book>(AppConstants.booksBox);
+        }
+
+        try {
+          await Hive.openBox(AppConstants.settingsBox);
+        } catch (e) {
+          debugPrint('Error opening settingsBox: $e. Reseting...');
+          await Hive.deleteBoxFromDisk(AppConstants.settingsBox);
+          await Hive.openBox(AppConstants.settingsBox);
+        }
+
+        debugPrint('DEBUG: Hive boxes opened');
+      } catch (e) {
+        debugPrint('Critical Initialization Error: $e');
+        // Continue anyway so the user sees a window/UI, even if broken
+      }
+
+      WindowOptions windowOptions = const WindowOptions(
+        size: Size(1000, 700),
+        minimumSize: Size(400, 500),
+        center: true,
+        backgroundColor: Colors.black,
+        skipTaskbar: false,
+        titleBarStyle: TitleBarStyle.hidden,
+      );
+
+      // Configure window but don't wait for it to show
+      windowManager.waitUntilReadyToShow(windowOptions, () async {
+        // We handle showing in initState to ensure Flutter is painting first
+        debugPrint('DEBUG: waitUntilReadyToShow callback');
+      });
+
+      debugPrint('DEBUG: Running App');
+      runApp(const ProviderScope(child: CantoSyncApp()));
+    },
+    (error, stack) {
+      debugPrint('CRITICAL GLOBAL ERROR: $error');
+      debugPrint('$stack');
+    },
   );
-
-  // Configure window but don't wait for it to show
-  windowManager.waitUntilReadyToShow(windowOptions, () async {
-    // We handle showing in initState to ensure Flutter is painting first
-    debugPrint('DEBUG: waitUntilReadyToShow callback');
-  });
-
-  debugPrint('DEBUG: Running App');
-  runApp(const ProviderScope(child: CantoSyncApp()));
 }
 
 class CantoSyncApp extends ConsumerStatefulWidget {
@@ -146,10 +171,8 @@ class _CantoSyncAppState extends ConsumerState<CantoSyncApp>
   }
 
   Future<void> _checkUpdates() async {
-    // ... (existing code, seemingly safe)
     try {
       await ref.read(updateServiceProvider).checkForUpdates();
-      // ... implementation hidden for brevity
     } catch (e) {
       debugPrint('DEBUG: Update check failed: $e');
     }
@@ -159,20 +182,7 @@ class _CantoSyncAppState extends ConsumerState<CantoSyncApp>
   void onWindowClose() async {
     bool isPreventClose = await windowManager.isPreventClose();
     if (isPreventClose) {
-      // Check if we should minimize to tray or actually close
-      // For now, let's assume close behavior needs to save data.
-      // If the setting is 'minimize to tray', we hide.
-      // If 'close app', we save and close.
-      // But standard window close button usually triggers this.
-
-      // Let's implement the Safety Fix: Force Save.
       await ref.read(playbackSyncProvider).forceSave();
-
-      // Currently, default behavior in this app seems to be "Hide to tray" on close?
-      // "await windowManager.hide();"
-      // If so, the app is not terminating, so data is safe in memory.
-      // BUT if the user quits via Tray or Taskbar => different flow.
-      // If this is the main close event:
       await windowManager.hide();
     }
   }
@@ -180,74 +190,80 @@ class _CantoSyncAppState extends ConsumerState<CantoSyncApp>
   @override
   Widget build(BuildContext context) {
     debugPrint('DEBUG: Building UI');
-    final settings = ref.watch(appSettingsProvider);
+    try {
+      final settings = ref.watch(appSettingsProvider);
 
-    return FluentApp(
-      title: 'CantoSync',
-      themeMode: settings.themeMode,
-      debugShowCheckedModeBanner: false,
-      theme: FluentThemeData(
-        accentColor: SystemTheme.accentColor.accent.toAccentColor(),
-        visualDensity: VisualDensity.standard,
-        focusTheme: FocusThemeData(
-          glowFactor: is10footScreen(context) ? 2.0 : 0.0,
+      return FluentApp(
+        title: 'CantoSync',
+        themeMode: settings.themeMode,
+        debugShowCheckedModeBanner: false,
+        theme: FluentThemeData(
+          accentColor: SystemTheme.accentColor.accent.toAccentColor(),
+          visualDensity: VisualDensity.standard,
+          focusTheme: FocusThemeData(
+            glowFactor: is10footScreen(context) ? 2.0 : 0.0,
+          ),
         ),
-      ),
-      darkTheme: FluentThemeData(
-        brightness: Brightness.dark,
-        accentColor: SystemTheme.accentColor.accent.toAccentColor(),
-        visualDensity: VisualDensity.standard,
-        focusTheme: FocusThemeData(
-          glowFactor: is10footScreen(context) ? 2.0 : 0.0,
+        darkTheme: FluentThemeData(
+          brightness: Brightness.dark,
+          accentColor: SystemTheme.accentColor.accent.toAccentColor(),
+          visualDensity: VisualDensity.standard,
+          focusTheme: FocusThemeData(
+            glowFactor: is10footScreen(context) ? 2.0 : 0.0,
+          ),
         ),
-      ),
-      home: Column(
-        children: [
-          Expanded(
-            child: NavigationView(
-              appBar: const NavigationAppBar(
-                title: DragToMoveArea(
-                  child: Align(
-                    alignment: AlignmentDirectional.centerStart,
-                    child: Text('CantoSync'),
+        home: Column(
+          children: [
+            Expanded(
+              child: NavigationView(
+                appBar: const NavigationAppBar(
+                  title: DragToMoveArea(
+                    child: Align(
+                      alignment: AlignmentDirectional.centerStart,
+                      child: Text('CantoSync'),
+                    ),
+                  ),
+                  automaticallyImplyLeading: true,
+                  actions: Row(
+                    mainAxisAlignment: MainAxisAlignment.end,
+                    children: [Spacer(), WindowButtons()],
                   ),
                 ),
-                automaticallyImplyLeading: true,
-                actions: Row(
-                  mainAxisAlignment: MainAxisAlignment.end,
-                  children: [Spacer(), WindowButtons()],
+                pane: NavigationPane(
+                  selected: _index,
+                  onChanged: (i) => setState(() => _index = i),
+                  displayMode: PaneDisplayMode.compact,
+                  items: [
+                    PaneItem(
+                      icon: const Icon(FluentIcons.library),
+                      title: const Text('Library'),
+                      body: const LibraryScreen(),
+                    ),
+                    PaneItem(
+                      icon: const Icon(FluentIcons.music_in_collection),
+                      title: const Text('Player'),
+                      body: const PlayerScreen(),
+                    ),
+                  ],
+                  footerItems: [
+                    PaneItem(
+                      icon: const Icon(FluentIcons.settings),
+                      title: const Text('Settings'),
+                      body: const SettingsScreen(),
+                    ),
+                  ],
                 ),
-              ),
-              pane: NavigationPane(
-                selected: _index,
-                onChanged: (i) => setState(() => _index = i),
-                displayMode: PaneDisplayMode.compact,
-                items: [
-                  PaneItem(
-                    icon: const Icon(FluentIcons.library),
-                    title: const Text('Library'),
-                    body: const LibraryScreen(),
-                  ),
-                  PaneItem(
-                    icon: const Icon(FluentIcons.music_in_collection),
-                    title: const Text('Player'),
-                    body: const PlayerScreen(),
-                  ),
-                ],
-                footerItems: [
-                  PaneItem(
-                    icon: const Icon(FluentIcons.settings),
-                    title: const Text('Settings'),
-                    body: const SettingsScreen(),
-                  ),
-                ],
               ),
             ),
-          ),
-          // Show MiniPlayer only if NOT on Player screen (index 1)
-          if (_index != 1) MiniPlayer(onTap: () => setState(() => _index = 1)),
-        ],
-      ),
-    );
+            if (_index != 1)
+              MiniPlayer(onTap: () => setState(() => _index = 1)),
+          ],
+        ),
+      );
+    } catch (e, stack) {
+      debugPrint('UI BUILD ERROR: $e');
+      debugPrint('$stack');
+      return Center(child: Text('Fatal UI Error: $e'));
+    }
   }
 }

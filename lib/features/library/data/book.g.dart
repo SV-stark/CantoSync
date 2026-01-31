@@ -27,6 +27,7 @@ class BookAdapter extends TypeAdapter<Book> {
       coverPath: fields[6] as String?,
       album: fields[7] as String?,
       series: fields[8] as String?,
+      seriesIndex: fields[17] as int?,
       bookmarks: (fields[9] as List?)?.cast<Bookmark>(),
       audioFiles: (fields[10] as List?)?.cast<String>(),
       isDirectory: fields[11] as bool,
@@ -40,7 +41,7 @@ class BookAdapter extends TypeAdapter<Book> {
   @override
   void write(BinaryWriter writer, Book obj) {
     writer
-      ..writeByte(17)
+      ..writeByte(18)
       ..writeByte(0)
       ..write(obj.path)
       ..writeByte(1)
@@ -59,6 +60,8 @@ class BookAdapter extends TypeAdapter<Book> {
       ..write(obj.album)
       ..writeByte(8)
       ..write(obj.series)
+      ..writeByte(17)
+      ..write(obj.seriesIndex)
       ..writeByte(9)
       ..write(obj.bookmarks)
       ..writeByte(10)

@@ -8,9 +8,12 @@ import 'package:metadata_god/metadata_god.dart';
 import 'package:system_theme/system_theme.dart';
 import 'package:window_manager/window_manager.dart';
 import 'package:canto_sync/features/library/data/book.dart';
+import 'package:canto_sync/features/stats/data/listening_stats.dart';
+import 'package:canto_sync/core/data/keyboard_shortcuts.dart';
 import 'package:canto_sync/features/player/ui/player_screen.dart';
 import 'package:canto_sync/features/library/ui/library_screen.dart';
 import 'package:canto_sync/features/settings/ui/settings_screen.dart';
+import 'package:canto_sync/features/stats/ui/stats_screen.dart';
 import 'package:canto_sync/features/player/ui/widgets/mini_player.dart';
 import 'package:canto_sync/core/services/hotkey_service.dart';
 import 'package:canto_sync/core/services/tray_service.dart';
@@ -47,6 +50,15 @@ void main() async {
         Hive.registerAdapter(BookAdapter());
         Hive.registerAdapter(BookmarkAdapter());
         Hive.registerAdapter(FileMetadataAdapter());
+        
+        // Register stats adapters
+        Hive.registerAdapter(DailyListeningStatsAdapter());
+        Hive.registerAdapter(AuthorStatsAdapter());
+        Hive.registerAdapter(BookCompletionStatsAdapter());
+        Hive.registerAdapter(ListeningSpeedPreferenceAdapter());
+        
+        // Register keyboard shortcuts adapter
+        Hive.registerAdapter(KeyboardShortcutAdapter());
 
         // Open boxes with corruption recovery
         try {
@@ -74,6 +86,48 @@ void main() async {
           await Hive.deleteBoxFromDisk(AppConstants.settingsBox);
           await Hive.openBox(AppConstants.settingsBox);
         }
+        
+        // Open stats boxes with corruption recovery
+        try {
+          await Hive.openBox<DailyListeningStats>(AppConstants.dailyStatsBox);
+        } catch (e) {
+          debugPrint('Error opening dailyStatsBox: $e. Reseting...');
+          await Hive.deleteBoxFromDisk(AppConstants.dailyStatsBox);
+          await Hive.openBox<DailyListeningStats>(AppConstants.dailyStatsBox);
+        }
+        
+        try {
+          await Hive.openBox<AuthorStats>(AppConstants.authorStatsBox);
+        } catch (e) {
+          debugPrint('Error opening authorStatsBox: $e. Reseting...');
+          await Hive.deleteBoxFromDisk(AppConstants.authorStatsBox);
+          await Hive.openBox<AuthorStats>(AppConstants.authorStatsBox);
+        }
+        
+        try {
+          await Hive.openBox<BookCompletionStats>(AppConstants.bookStatsBox);
+        } catch (e) {
+          debugPrint('Error opening bookStatsBox: $e. Reseting...');
+          await Hive.deleteBoxFromDisk(AppConstants.bookStatsBox);
+          await Hive.openBox<BookCompletionStats>(AppConstants.bookStatsBox);
+        }
+        
+        try {
+          await Hive.openBox<ListeningSpeedPreference>(AppConstants.speedStatsBox);
+        } catch (e) {
+          debugPrint('Error opening speedStatsBox: $e. Reseting...');
+          await Hive.deleteBoxFromDisk(AppConstants.speedStatsBox);
+          await Hive.openBox<ListeningSpeedPreference>(AppConstants.speedStatsBox);
+        }
+        
+        // Open keyboard shortcuts box with corruption recovery
+        try {
+          await Hive.openBox<KeyboardShortcut>(AppConstants.keyboardShortcutsBox);
+        } catch (e) {
+          debugPrint('Error opening keyboardShortcutsBox: $e. Reseting...');
+          await Hive.deleteBoxFromDisk(AppConstants.keyboardShortcutsBox);
+          await Hive.openBox<KeyboardShortcut>(AppConstants.keyboardShortcutsBox);
+        }
       } catch (e) {
         debugPrint('Critical Initialization Error: $e');
       }
@@ -87,7 +141,7 @@ void main() async {
         titleBarStyle: TitleBarStyle.hidden,
       );
 
-      windowManager.waitUntilReadyToShow(windowOptions);
+      await windowManager.waitUntilReadyToShow(windowOptions);
       runApp(const ProviderScope(child: CantoSyncApp()));
     },
     (error, stack) {
@@ -215,6 +269,11 @@ class _CantoSyncAppState extends ConsumerState<CantoSyncApp>
                       icon: const Icon(FluentIcons.music_in_collection),
                       title: const Text('Player'),
                       body: const PlayerScreen(),
+                    ),
+                    PaneItem(
+                      icon: const Icon(FluentIcons.pie_double),
+                      title: const Text('Statistics'),
+                      body: const StatsScreen(),
                     ),
                   ],
                   footerItems: [

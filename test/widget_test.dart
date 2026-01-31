@@ -16,6 +16,6 @@ void main() {
 
     // Verify that the Library pane item exists.
     expect(find.text('Library'), findsOneWidget);
-    expect(find.text('Now Playing'), findsOneWidget);
+    expect(find.text('Player'), findsOneWidget);
   });
 }

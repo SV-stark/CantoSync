@@ -1,10 +1,12 @@
 import 'dart:async';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:metadata_god/metadata_god.dart';
 import 'package:path/path.dart' as p;
 import 'package:canto_sync/core/services/media_service.dart';
 import 'package:canto_sync/features/library/data/library_service.dart';
 import 'package:canto_sync/features/library/data/book.dart';
+import 'package:canto_sync/features/stats/data/stats_service.dart';
 
 final playbackSyncProvider = Provider<PlaybackSyncService>((ref) {
   final mediaService = ref.watch(mediaServiceProvider);
@@ -30,17 +32,23 @@ class PlaybackSyncService {
   final LibraryService _libraryService;
   final Ref _ref;
   StreamSubscription? _subscription;
+  StreamSubscription? _completedSubscription;
   String? _currentPath;
   Timer? _debounceTimer;
   double _lastPosition = 0;
   int _lastTrackIndex = 0;
   bool _pendingSave = false;
+  Book? _currentBook;
+  int _sessionSeconds = 0;
+  Timer? _statsTimer;
 
   PlaybackSyncService(this._mediaService, this._libraryService, this._ref) {
     _init();
   }
 
   void _init() {
+    Duration lastPosition = Duration.zero;
+    
     _subscription = _mediaService.positionStream.listen((position) {
       if (_currentPath != null && _mediaService.isPlaying) {
         _debounceSave(
@@ -48,6 +56,20 @@ class PlaybackSyncService {
           position.inMilliseconds / 1000.0,
           _mediaService.currentIndex,
         );
+        
+        // Track stats - calculate time delta
+        if (position > lastPosition) {
+          final deltaSeconds = (position - lastPosition).inSeconds;
+          if (deltaSeconds > 0 && deltaSeconds < 60) {
+            _sessionSeconds += deltaSeconds;
+            // Batch stats recording every 30 seconds
+            if (_sessionSeconds >= 30) {
+              _recordStatsSession(_sessionSeconds);
+              _sessionSeconds = 0;
+            }
+          }
+        }
+        lastPosition = position;
       }
     });
 
@@ -63,6 +85,31 @@ class PlaybackSyncService {
     _ref.read(currentBookPathProvider.notifier).state = path;
   }
 
+  void _recordStatsSession(int seconds) async {
+    if (_currentBook == null) return;
+    
+    try {
+      final statsService = _ref.read(listeningStatsServiceProvider);
+      // Get current playback speed from media service
+      final speed = 1.0; // Default speed since we don't track speed changes yet
+      await statsService.recordListeningTime(_currentBook!, seconds, playbackSpeed: speed);
+    } catch (e) {
+      debugPrint('Error recording stats: $e');
+    }
+  }
+
+  /// Marks current book as completed in stats
+  void onPlaybackCompleted() async {
+    if (_currentBook == null) return;
+    
+    try {
+      final statsService = _ref.read(listeningStatsServiceProvider);
+      await statsService.markBookAsCompleted(_currentBook!);
+    } catch (e) {
+      debugPrint('Error marking book as completed: $e');
+    }
+  }
+
   Future<void> resumeBook(String path) async {
     _currentPath = path;
     _ref.read(currentBookPathProvider.notifier).state = path;
@@ -76,9 +123,13 @@ class PlaybackSyncService {
     bool isDirectory = false;
     int? lastTrackIndex;
 
-    try {
-      final books = _libraryService.books;
-      final book = books.firstWhere((b) => b.path == path);
+    final books = _libraryService.books;
+    final book = books.cast<Book?>().firstWhere(
+      (b) => b?.path == path,
+      orElse: () => null,
+    );
+    if (book != null) {
+      _currentBook = book;
       title = book.title;
       author = book.author;
       album = book.album;
@@ -86,7 +137,7 @@ class PlaybackSyncService {
       audioFiles = book.audioFiles;
       isDirectory = book.isDirectory;
       lastTrackIndex = book.lastTrackIndex;
-    } catch (_) {}
+    }
 
     if (isDirectory && audioFiles != null && audioFiles.isNotEmpty) {
       // FIX: Only treat as "Multi-File Book" if there is actually more than one file.
@@ -275,7 +326,15 @@ class PlaybackSyncService {
 
   void dispose() {
     _subscription?.cancel();
+    _completedSubscription?.cancel();
     _debounceTimer?.cancel();
+    _statsTimer?.cancel();
+    
+    // Record any pending stats time
+    if (_sessionSeconds > 0) {
+      _recordStatsSession(_sessionSeconds);
+    }
+    
     if (_pendingSave && _currentPath != null) {
       // Best effort save on dispose
       _libraryService.updateProgress(

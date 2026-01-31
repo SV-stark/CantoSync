@@ -17,12 +17,24 @@ enum AudioPreset {
   const AudioPreset(this.label, this.filter);
 }
 
+enum PlayerThemeMode {
+  standard('Standard'),
+  trueBlack('True Black (OLED)'),
+  adaptive('Adaptive (Cover Art)');
+
+  final String label;
+  const PlayerThemeMode(this.label);
+}
+
 class AppSettings {
   final ThemeMode themeMode;
   final AudioPreset audioPreset;
   final List<String> libraryPaths;
   final bool skipSilence;
   final bool loudnessNormalization;
+  final PlayerThemeMode playerThemeMode;
+  final bool showWaveform;
+  final bool showCoverReflection;
 
   AppSettings({
     this.themeMode = ThemeMode.system,
@@ -30,6 +42,9 @@ class AppSettings {
     this.libraryPaths = const [],
     this.skipSilence = false,
     this.loudnessNormalization = false,
+    this.playerThemeMode = PlayerThemeMode.standard,
+    this.showWaveform = true,
+    this.showCoverReflection = true,
   });
 
   AppSettings copyWith({
@@ -38,6 +53,9 @@ class AppSettings {
     List<String>? libraryPaths,
     bool? skipSilence,
     bool? loudnessNormalization,
+    PlayerThemeMode? playerThemeMode,
+    bool? showWaveform,
+    bool? showCoverReflection,
   }) {
     return AppSettings(
       themeMode: themeMode ?? this.themeMode,
@@ -46,6 +64,9 @@ class AppSettings {
       skipSilence: skipSilence ?? this.skipSilence,
       loudnessNormalization:
           loudnessNormalization ?? this.loudnessNormalization,
+      playerThemeMode: playerThemeMode ?? this.playerThemeMode,
+      showWaveform: showWaveform ?? this.showWaveform,
+      showCoverReflection: showCoverReflection ?? this.showCoverReflection,
     );
   }
 }
@@ -80,6 +101,13 @@ class AppSettingsNotifier extends Notifier<AppSettings> {
         'loudnessNormalization',
         defaultValue: false,
       );
+      
+      final playerThemeModeIndex = _box.get(
+        'playerThemeMode',
+        defaultValue: PlayerThemeMode.standard.index,
+      );
+      final showWaveform = _box.get('showWaveform', defaultValue: true);
+      final showCoverReflection = _box.get('showCoverReflection', defaultValue: true);
 
       return AppSettings(
         themeMode: ThemeMode.values[themeIndex],
@@ -87,6 +115,9 @@ class AppSettingsNotifier extends Notifier<AppSettings> {
         libraryPaths: paths,
         skipSilence: skipSilence,
         loudnessNormalization: loudnessNormalization,
+        playerThemeMode: PlayerThemeMode.values[playerThemeModeIndex],
+        showWaveform: showWaveform,
+        showCoverReflection: showCoverReflection,
       );
     } catch (e) {
       debugPrint('Error loading AppSettings: $e');
@@ -132,6 +163,21 @@ class AppSettingsNotifier extends Notifier<AppSettings> {
     final newPaths = state.libraryPaths.where((p) => p != path).toList();
     state = state.copyWith(libraryPaths: newPaths);
     _box.put('libraryPaths', newPaths);
+  }
+
+  void setPlayerThemeMode(PlayerThemeMode mode) {
+    state = state.copyWith(playerThemeMode: mode);
+    _box.put('playerThemeMode', mode.index);
+  }
+
+  void setShowWaveform(bool enabled) {
+    state = state.copyWith(showWaveform: enabled);
+    _box.put('showWaveform', enabled);
+  }
+
+  void setShowCoverReflection(bool enabled) {
+    state = state.copyWith(showCoverReflection: enabled);
+    _box.put('showCoverReflection', enabled);
   }
 }
 

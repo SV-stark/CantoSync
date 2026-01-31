@@ -16,6 +16,7 @@ class _MetadataEditorState extends State<MetadataEditor> {
   late TextEditingController _authorController;
   late TextEditingController _albumController;
   late TextEditingController _seriesController;
+  late TextEditingController _seriesIndexController;
   late TextEditingController _narratorController;
   late TextEditingController _descriptionController;
 
@@ -26,6 +27,9 @@ class _MetadataEditorState extends State<MetadataEditor> {
     _authorController = TextEditingController(text: widget.book.author);
     _albumController = TextEditingController(text: widget.book.album);
     _seriesController = TextEditingController(text: widget.book.series);
+    _seriesIndexController = TextEditingController(
+      text: widget.book.seriesIndex?.toString() ?? '',
+    );
     _narratorController = TextEditingController(text: widget.book.narrator);
     _descriptionController = TextEditingController(
       text: widget.book.description,
@@ -38,18 +42,33 @@ class _MetadataEditorState extends State<MetadataEditor> {
     _authorController.dispose();
     _albumController.dispose();
     _seriesController.dispose();
+    _seriesIndexController.dispose();
     _narratorController.dispose();
     _descriptionController.dispose();
     super.dispose();
   }
 
   Future<void> _save() async {
+    final oldSeries = widget.book.series;
     widget.book.title = _titleController.text;
     widget.book.author = _authorController.text;
     widget.book.album = _albumController.text;
-    widget.book.series = _seriesController.text;
+    widget.book.series = _seriesController.text.isNotEmpty ? _seriesController.text : null;
     widget.book.narrator = _narratorController.text;
     widget.book.description = _descriptionController.text;
+    
+    // Parse series index if provided
+    final seriesIndexText = _seriesIndexController.text.trim();
+    if (seriesIndexText.isNotEmpty) {
+      final index = int.tryParse(seriesIndexText);
+      if (index != null && index > 0) {
+        widget.book.seriesIndex = index;
+      }
+    } else if (oldSeries != widget.book.series) {
+      // Reset series index if series changed and no manual index set (will be recalculated on next grouping)
+      widget.book.seriesIndex = null;
+    }
+    
     await widget.book.save();
     if (mounted) Navigator.pop(context);
   }
@@ -111,12 +130,31 @@ class _MetadataEditorState extends State<MetadataEditor> {
               ),
             ),
             const SizedBox(height: 8),
-            InfoLabel(
-              label: 'Series',
-              child: TextBox(
-                controller: _seriesController,
-                placeholder: 'Series',
-              ),
+            Row(
+              children: [
+                Expanded(
+                  flex: 3,
+                  child: InfoLabel(
+                    label: 'Series',
+                    child: TextBox(
+                      controller: _seriesController,
+                      placeholder: 'Series',
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  flex: 1,
+                  child: InfoLabel(
+                    label: 'Book #',
+                    child: TextBox(
+                      controller: _seriesIndexController,
+                      placeholder: '#',
+                      keyboardType: TextInputType.number,
+                    ),
+                  ),
+                ),
+              ],
             ),
             const SizedBox(height: 8),
             InfoLabel(

@@ -1,8 +1,10 @@
 import 'dart:io';
+import 'dart:math' as math;
 import 'package:file_picker/file_picker.dart';
 import 'package:desktop_drop/desktop_drop.dart';
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:shimmer/shimmer.dart';
 import 'package:canto_sync/features/library/data/book.dart';
 import 'package:canto_sync/features/library/data/library_service.dart';
 import 'package:canto_sync/core/services/playback_sync_service.dart';
@@ -113,14 +115,16 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen> {
                   onPressed: () => _addToNewCollection(context, book),
                 ),
                 if (book.collections != null && book.collections!.isNotEmpty)
-                  ...book.collections!.map(
+                  ...book.collections!.toList().map(
                     (c) => MenuFlyoutItem(
                       text: Text(c),
                       trailing: const Icon(FluentIcons.remove),
                       onPressed: () async {
                         book.collections!.remove(c);
                         await book.save();
-                        setState(() {});
+                        if (mounted) {
+                          setState(() {});
+                        }
                       },
                     ),
                   ),
@@ -161,6 +165,69 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen> {
                               .read(libraryServiceProvider)
                               .deleteBook(book.path);
                           Navigator.pop(context);
+                        },
+                        child: const Text('Delete'),
+                      ),
+                    ],
+                  ),
+                );
+              },
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  void _showCollectionContextMenu(
+    BuildContext context,
+    String collectionName,
+    Offset position,
+  ) {
+    final libraryService = ref.read(libraryServiceProvider);
+    _flyoutController.showFlyout(
+      position: position,
+      builder: (context) {
+        return MenuFlyout(
+          items: [
+            MenuFlyoutItem(
+              leading: const Icon(FluentIcons.play),
+              text: const Text('Play All'),
+              onPressed: () async {
+                final books = libraryService.getBooksByCollection(
+                  collectionName,
+                );
+                if (books.isNotEmpty) {
+                  ref.read(playbackSyncProvider).resumeBook(books.first.path);
+                }
+              },
+            ),
+            const MenuFlyoutSeparator(),
+            MenuFlyoutItem(
+              leading: const Icon(FluentIcons.delete),
+              text: const Text('Delete Collection'),
+              onPressed: () {
+                showDialog(
+                  context: context,
+                  builder: (context) => ContentDialog(
+                    title: const Text('Delete Collection?'),
+                    content: Text(
+                      'Are you sure you want to delete the collection "$collectionName"? Books will remain in your library.',
+                    ),
+                    actions: [
+                      Button(
+                        child: const Text('Cancel'),
+                        onPressed: () => Navigator.pop(context),
+                      ),
+                      FilledButton(
+                        style: ButtonStyle(
+                          backgroundColor: WidgetStatePropertyAll(Colors.red),
+                        ),
+                        onPressed: () async {
+                          await libraryService.removeCollection(collectionName);
+                          if (context.mounted) {
+                            Navigator.pop(context);
+                          }
                         },
                         child: const Text('Delete'),
                       ),
@@ -291,15 +358,27 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen> {
                   },
                 ),
                 ...sortedCollections.map((c) {
-                  return ListTile.selectable(
-                    selected: selectedCollection == c,
-                    leading: const Icon(FluentIcons.library),
-                    title: Text(c),
-                    onPressed: () {
-                      ref
-                          .read(libraryCollectionFilterProvider.notifier)
-                          .setFilter(c);
-                    },
+                  return FlyoutTarget(
+                    controller: _flyoutController,
+                    child: GestureDetector(
+                      onSecondaryTapDown: (detail) {
+                        _showCollectionContextMenu(
+                          context,
+                          c,
+                          detail.globalPosition,
+                        );
+                      },
+                      child: ListTile.selectable(
+                        selected: selectedCollection == c,
+                        leading: const Icon(FluentIcons.library),
+                        title: Text(c),
+                        onPressed: () {
+                          ref
+                              .read(libraryCollectionFilterProvider.notifier)
+                              .setFilter(c);
+                        },
+                      ),
+                    ),
                   );
                 }),
               ],
@@ -354,8 +433,9 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen> {
   Widget _buildBookList(
     BuildContext context,
     List<Book> books,
-    bool isGridView,
-  ) {
+    bool isGridView, {
+    Map<String, int>? seriesTotals,
+  }) {
     if (isGridView) {
       return GridView.builder(
         gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
@@ -368,9 +448,17 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen> {
         itemCount: books.length,
         itemBuilder: (context, index) {
           final book = books[index];
-          return BookCard(
-            book: book,
-            onSecondaryTap: (pos) => _showBookContextMenu(context, book, pos),
+          final seriesTotal = book.series != null
+              ? (seriesTotals != null ? seriesTotals[book.series!] : null)
+              : null;
+          return FlyoutTarget(
+            controller: _flyoutController,
+            child: BookCard(
+              book: book,
+              onSecondaryTapDown: (pos) =>
+                  _showBookContextMenu(context, book, pos),
+              seriesTotal: seriesTotal,
+            ),
           );
         },
       );
@@ -419,6 +507,14 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen> {
 
         final sortedKeys = groups.keys.toList()..sort();
 
+        // Calculate series totals for each series
+        final seriesTotals = <String, int>{};
+        for (final entry in groups.entries) {
+          final seriesName = entry.key;
+          final booksInSeries = entry.value;
+          seriesTotals[seriesName] = booksInSeries.length;
+        }
+
         return ListView.builder(
           itemCount: sortedKeys.length,
           itemBuilder: (context, index) {
@@ -437,7 +533,12 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen> {
                   height: viewMode
                       ? 300
                       : (books.length * 60.0).clamp(100.0, 500.0),
-                  child: _buildBookList(context, books, viewMode),
+                  child: _buildBookList(
+                    context,
+                    books,
+                    viewMode,
+                    seriesTotals: seriesTotals,
+                  ),
                 ),
               ),
             );
@@ -450,23 +551,59 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen> {
   }
 }
 
-class BookCard extends ConsumerWidget {
+class BookCard extends ConsumerStatefulWidget {
   final Book book;
-  final Function(Offset)? onSecondaryTap;
+  final Function(Offset)? onSecondaryTapDown;
+  final int? seriesTotal;
 
-  const BookCard({required this.book, this.onSecondaryTap, super.key});
+  const BookCard({
+    required this.book,
+    this.onSecondaryTapDown,
+    this.seriesTotal,
+    super.key,
+  });
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<BookCard> createState() => _BookCardState();
+}
+
+class _BookCardState extends ConsumerState<BookCard> {
+  bool _imageLoaded = false;
+  bool _imageError = false;
+
+  double get _progressPercent {
+    if (widget.book.durationSeconds == null ||
+        widget.book.durationSeconds == 0) {
+      return 0;
+    }
+    final percent =
+        (widget.book.positionSeconds ?? 0) / widget.book.durationSeconds!;
+    return percent.clamp(0.0, 1.0);
+  }
+
+  bool get _hasProgress {
+    final pos = widget.book.positionSeconds ?? 0;
+    final dur = widget.book.durationSeconds ?? 0;
+    return pos > 0 && pos < dur * 0.95; // Not completed (within 95%)
+  }
+
+  bool get _isCompleted {
+    final pos = widget.book.positionSeconds ?? 0;
+    final dur = widget.book.durationSeconds ?? 0;
+    return dur > 0 && pos >= dur * 0.95;
+  }
+
+  @override
+  Widget build(BuildContext context) {
     return GestureDetector(
       onSecondaryTapDown: (detail) {
-        if (onSecondaryTap != null) {
-          onSecondaryTap!(detail.globalPosition);
+        if (widget.onSecondaryTapDown != null) {
+          widget.onSecondaryTapDown!(detail.globalPosition);
         }
       },
       child: HoverButton(
         onPressed: () {
-          ref.read(playbackSyncProvider).resumeBook(book.path);
+          ref.read(playbackSyncProvider).resumeBook(widget.book.path);
         },
         builder: (context, states) {
           return Card(
@@ -480,7 +617,7 @@ class BookCard extends ConsumerWidget {
                     Expanded(
                       child: Container(
                         decoration: BoxDecoration(
-                          color: Colors.grey.withValues(alpha: 0.2),
+                          color: Colors.grey.withAlpha(51),
                           borderRadius: const BorderRadius.vertical(
                             top: Radius.circular(8),
                           ),
@@ -490,17 +627,141 @@ class BookCard extends ConsumerWidget {
                           borderRadius: const BorderRadius.vertical(
                             top: Radius.circular(8),
                           ),
-                          child: book.coverPath != null
-                              ? Image.file(
-                                  File(book.coverPath!),
-                                  fit: BoxFit.cover,
-                                  errorBuilder: (context, error, stackTrace) =>
-                                      const Icon(
-                                        FluentIcons.music_note,
-                                        size: 48,
+                          child: Stack(
+                            fit: StackFit.expand,
+                            children: [
+                              // Cover Image or Placeholder
+                              _buildCoverImage(),
+
+                              // Shimmer Loading Effect
+                              if (!_imageLoaded && !_imageError)
+                                Shimmer.fromColors(
+                                  baseColor: Colors.grey.withAlpha(26),
+                                  highlightColor: Colors.grey.withAlpha(77),
+                                  child: Container(
+                                    color: Colors.grey.withAlpha(51),
+                                  ),
+                                ),
+
+                              // Progress Indicator Overlay
+                              if (_hasProgress && _imageLoaded)
+                                Positioned(
+                                  bottom: 8,
+                                  left: 8,
+                                  child: _CircularProgressIndicator(
+                                    progress: _progressPercent,
+                                    size: 36,
+                                    strokeWidth: 3,
+                                  ),
+                                ),
+
+                              // Completed Badge
+                              if (_isCompleted && _imageLoaded)
+                                Positioned(
+                                  top: 8,
+                                  left: 8,
+                                  child: Container(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 8,
+                                      vertical: 4,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      color: Colors.successPrimaryColor,
+                                      borderRadius: BorderRadius.circular(12),
+                                    ),
+                                    child: const Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        Icon(
+                                          FluentIcons.check_mark,
+                                          size: 12,
+                                          color: Colors.white,
+                                        ),
+                                        SizedBox(width: 4),
+                                        Text(
+                                          'Completed',
+                                          style: TextStyle(
+                                            color: Colors.white,
+                                            fontSize: 11,
+                                            fontWeight: FontWeight.w600,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ),
+
+                              // Continue Listening Badge
+                              if (_hasProgress && _imageLoaded)
+                                Positioned(
+                                  top: _isCompleted ? 36 : 8,
+                                  left: 8,
+                                  child: Container(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 8,
+                                      vertical: 4,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      color: Colors.orange,
+                                      borderRadius: BorderRadius.circular(12),
+                                      boxShadow: [
+                                        BoxShadow(
+                                          color: Colors.black.withAlpha(51),
+                                          blurRadius: 4,
+                                          offset: const Offset(0, 2),
+                                        ),
+                                      ],
+                                    ),
+                                    child: const Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        Icon(
+                                          FluentIcons.play_resume,
+                                          size: 12,
+                                          color: Colors.white,
+                                        ),
+                                        SizedBox(width: 4),
+                                        Text(
+                                          'Continue',
+                                          style: TextStyle(
+                                            color: Colors.white,
+                                            fontSize: 11,
+                                            fontWeight: FontWeight.w600,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ),
+
+                              // Series Indicator
+                              if (widget.book.series != null &&
+                                  widget.book.seriesIndex != null &&
+                                  _imageLoaded)
+                                Positioned(
+                                  bottom: 8,
+                                  right: 8,
+                                  child: Container(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 8,
+                                      vertical: 4,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      color: Colors.black.withAlpha(179),
+                                      borderRadius: BorderRadius.circular(12),
+                                    ),
+                                    child: Text(
+                                      'Book ${widget.book.seriesIndex}${widget.seriesTotal != null ? ' of ${widget.seriesTotal}' : ''}',
+                                      style: const TextStyle(
+                                        color: Colors.white,
+                                        fontSize: 11,
+                                        fontWeight: FontWeight.w600,
                                       ),
-                                )
-                              : const Icon(FluentIcons.music_note, size: 48),
+                                    ),
+                                  ),
+                                ),
+                            ],
+                          ),
                         ),
                       ),
                     ),
@@ -510,7 +771,7 @@ class BookCard extends ConsumerWidget {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            book.title,
+                            widget.book.title,
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
                             style: FluentTheme.of(
@@ -519,11 +780,27 @@ class BookCard extends ConsumerWidget {
                           ),
                           const SizedBox(height: 4),
                           Text(
-                            book.author ?? 'Unknown Author',
+                            widget.book.author ?? 'Unknown Author',
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
                             style: FluentTheme.of(context).typography.caption,
                           ),
+                          if (widget.book.series != null)
+                            Padding(
+                              padding: const EdgeInsets.only(top: 4),
+                              child: Text(
+                                widget.book.series!,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: FluentTheme.of(context)
+                                    .typography
+                                    .caption
+                                    ?.copyWith(
+                                      color: Colors.grey,
+                                      fontStyle: FontStyle.italic,
+                                    ),
+                              ),
+                            ),
                         ],
                       ),
                     ),
@@ -539,7 +816,8 @@ class BookCard extends ConsumerWidget {
                         Navigator.push(
                           context,
                           FluentPageRoute(
-                            builder: (context) => MetadataEditor(book: book),
+                            builder: (context) =>
+                                MetadataEditor(book: widget.book),
                           ),
                         );
                       },
@@ -552,4 +830,129 @@ class BookCard extends ConsumerWidget {
       ),
     );
   }
+
+  Widget _buildCoverImage() {
+    if (widget.book.coverPath == null) {
+      return const Center(child: Icon(FluentIcons.music_note, size: 48));
+    }
+
+    return Image.file(
+      File(widget.book.coverPath!),
+      fit: BoxFit.cover,
+      frameBuilder: (context, child, frame, wasSynchronouslyLoaded) {
+        if (wasSynchronouslyLoaded || frame != null) {
+          if (!_imageLoaded) {
+            WidgetsBinding.instance.addPostFrameCallback((_) {
+              if (mounted) {
+                setState(() => _imageLoaded = true);
+              }
+            });
+          }
+          return child;
+        }
+        return const SizedBox.shrink();
+      },
+      errorBuilder: (context, error, stackTrace) {
+        if (!_imageError) {
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (mounted) {
+              setState(() => _imageError = true);
+            }
+          });
+        }
+        return const Center(child: Icon(FluentIcons.music_note, size: 48));
+      },
+    );
+  }
+}
+
+class _CircularProgressIndicator extends StatelessWidget {
+  final double progress;
+  final double size;
+  final double strokeWidth;
+
+  const _CircularProgressIndicator({
+    required this.progress,
+    required this.size,
+    required this.strokeWidth,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: size,
+      height: size,
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        color: Colors.black.withAlpha(179),
+      ),
+      child: Padding(
+        padding: EdgeInsets.all(strokeWidth / 2),
+        child: CustomPaint(
+          painter: _CircularProgressPainter(
+            progress: progress,
+            strokeWidth: strokeWidth,
+            color: Colors.white,
+          ),
+          child: Center(
+            child: Text(
+              '${(progress * 100).toInt()}%',
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: size * 0.25,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _CircularProgressPainter extends CustomPainter {
+  final double progress;
+  final double strokeWidth;
+  final Color color;
+
+  _CircularProgressPainter({
+    required this.progress,
+    required this.strokeWidth,
+    required this.color,
+  });
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final center = Offset(size.width / 2, size.height / 2);
+    final radius = (size.width - strokeWidth) / 2;
+
+    // Background circle
+    final bgPaint = Paint()
+      ..color = Colors.grey.withAlpha(77)
+      ..strokeWidth = strokeWidth
+      ..style = PaintingStyle.stroke;
+
+    canvas.drawCircle(center, radius, bgPaint);
+
+    // Progress arc
+    final progressPaint = Paint()
+      ..color = color
+      ..strokeWidth = strokeWidth
+      ..style = PaintingStyle.stroke
+      ..strokeCap = StrokeCap.round;
+
+    final startAngle = -math.pi / 2;
+    final sweepAngle = 2 * math.pi * progress;
+
+    canvas.drawArc(
+      Rect.fromCircle(center: center, radius: radius),
+      startAngle,
+      sweepAngle,
+      false,
+      progressPaint,
+    );
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => true;
 }

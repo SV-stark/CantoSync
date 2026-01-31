@@ -1,10 +1,22 @@
 import 'package:file_picker/file_picker.dart';
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:package_info_plus/package_info_plus.dart';
 import 'package:canto_sync/core/services/app_settings_service.dart';
 import 'package:canto_sync/core/services/update_service.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:canto_sync/features/library/data/library_service.dart';
+import 'package:canto_sync/features/settings/ui/keyboard_shortcuts_screen.dart';
+
+final appVersionProvider = FutureProvider<String>((ref) async {
+  try {
+    final packageInfo = await PackageInfo.fromPlatform();
+    return 'v${packageInfo.version}';
+  } catch (e) {
+    debugPrint('Error getting app version: $e');
+    return 'v1.0.0';
+  }
+});
 
 class SettingsScreen extends ConsumerWidget {
   const SettingsScreen({super.key});
@@ -42,6 +54,7 @@ class SettingsScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final settings = ref.watch(appSettingsProvider);
+    final appVersionAsync = ref.watch(appVersionProvider);
 
     return ScaffoldPage.withPadding(
       header: const PageHeader(title: Text('Settings')),
@@ -189,9 +202,19 @@ class SettingsScreen extends ConsumerWidget {
                 const SizedBox(height: 8),
                 Row(
                   children: [
-                    const Text(
-                      'v1.0.0',
-                      style: TextStyle(fontWeight: FontWeight.bold),
+                    appVersionAsync.when(
+                      data: (version) => Text(
+                        version,
+                        style: const TextStyle(fontWeight: FontWeight.bold),
+                      ),
+                      loading: () => const SizedBox(
+                        width: 50,
+                        child: ProgressRing(strokeWidth: 2),
+                      ),
+                      error: (error, _) => const Text(
+                        'v1.0.0',
+                        style: TextStyle(fontWeight: FontWeight.bold),
+                      ),
                     ),
                     const SizedBox(width: 20),
                     Button(
@@ -256,6 +279,33 @@ class SettingsScreen extends ConsumerWidget {
               ],
             ),
           ),
+          const SizedBox(height: 20),
+
+          // Keyboard Shortcuts Section
+          Expander(
+            header: const Text('Keyboard Shortcuts'),
+            leading: const Icon(FluentIcons.keyboard_classic),
+            initiallyExpanded: false,
+            content: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                ListTile(
+                  leading: const Icon(FluentIcons.keyboard_classic),
+                  title: const Text('Configure Keyboard Shortcuts'),
+                  subtitle: const Text('Customize hotkeys for playback and navigation'),
+                  trailing: const Icon(FluentIcons.chevron_right),
+                  onPressed: () {
+                    Navigator.push(
+                      context,
+                      FluentPageRoute(
+                        builder: (context) => const KeyboardShortcutsScreen(),
+                      ),
+                    );
+                  },
+                ),
+              ],
+            ),
+          ),
           const SizedBox(height: 40),
           const Divider(),
           const SizedBox(height: 20),
@@ -263,9 +313,19 @@ class SettingsScreen extends ConsumerWidget {
           // About Section
           InfoLabel(
             label: 'About CantoSync',
-            child: Text(
-              'Version 1.0.0\nA production-grade audiobook player built with Flutter & Fluent UI.',
-              style: TextStyle(color: Colors.grey),
+            child: appVersionAsync.when(
+              data: (version) => Text(
+                '$version\nA production-grade audiobook player built with Flutter & Fluent UI.',
+                style: TextStyle(color: Colors.grey),
+              ),
+              loading: () => const Text(
+                'Loading version...\nA production-grade audiobook player built with Flutter & Fluent UI.',
+                style: TextStyle(color: Colors.grey),
+              ),
+              error: (error, _) => Text(
+                'v1.0.0\nA production-grade audiobook player built with Flutter & Fluent UI.',
+                style: TextStyle(color: Colors.grey),
+              ),
             ),
           ),
         ],

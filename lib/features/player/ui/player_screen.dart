@@ -1,13 +1,17 @@
-import 'dart:io';
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:media_kit/media_kit.dart';
+import 'package:canto_sync/core/services/app_settings_service.dart';
 import 'package:canto_sync/core/services/media_service.dart';
 import 'package:canto_sync/features/library/data/library_service.dart';
 import 'package:canto_sync/core/services/playback_sync_service.dart';
 import 'package:canto_sync/features/library/data/book.dart';
 import 'package:canto_sync/features/player/ui/widgets/ambient_background.dart';
 import 'package:canto_sync/features/player/ui/widgets/glass_player_card.dart';
+import 'package:canto_sync/features/player/ui/widgets/cover_art_with_reflection.dart';
+import 'package:canto_sync/features/player/ui/widgets/pulsing_play_button.dart';
+import 'package:canto_sync/features/player/ui/widgets/waveform_visualizer.dart';
+import 'package:canto_sync/features/player/ui/widgets/sleep_timer_overlay.dart';
 import 'package:canto_sync/core/services/sleep_timer_service.dart';
 import 'package:canto_sync/features/library/ui/metadata_editor.dart';
 
@@ -205,9 +209,10 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
                         // Left: Cover Art
-                        Hero(
-                          tag: 'player_cover',
-                          child: _buildCoverArt(currentBook, size: 450),
+                        _buildCoverArt(
+                          currentBook, 
+                          size: 450, 
+                          showReflection: ref.read(appSettingsProvider).showCoverReflection,
                         ),
                         const SizedBox(width: 60),
 
@@ -249,7 +254,11 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
                   child: Column(
                     children: [
                       const SizedBox(height: 20),
-                      _buildCoverArt(currentBook, size: 300),
+                      _buildCoverArt(
+                        currentBook, 
+                        size: 300, 
+                        showReflection: ref.read(appSettingsProvider).showCoverReflection,
+                      ),
                       const SizedBox(height: 30),
                       GlassPlayerCard(
                         child: Padding(
@@ -279,35 +288,24 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
             },
           ),
         ),
+        
+        // 3. Sleep Timer Overlay (if active)
+        if (remainingTimer.remainingTime != null)
+          Positioned.fill(
+            child: SleepTimerOverlay(
+              remainingTime: remainingTimer.remainingTime,
+              opacity: 0.25,
+            ),
+          ),
       ],
     );
   }
 
-  Widget _buildCoverArt(Book? book, {required double size}) {
-    return Container(
-      width: size,
-      height: size,
-      decoration: BoxDecoration(
-        color: Colors.black,
-        borderRadius: BorderRadius.circular(20),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.4),
-            blurRadius: 40,
-            offset: const Offset(0, 20),
-          ),
-        ],
-      ),
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(20),
-        child: book?.coverPath != null
-            ? Image.file(File(book!.coverPath!), fit: BoxFit.cover)
-            : const Icon(
-                FluentIcons.music_in_collection,
-                size: 80,
-                color: Colors.grey,
-              ),
-      ),
+  Widget _buildCoverArt(Book? book, {required double size, required bool showReflection}) {
+    return CoverArtWithReflection(
+      book: book,
+      size: size,
+      showReflection: showReflection,
     );
   }
 
@@ -350,6 +348,8 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
                       ref,
                       currentBook,
                       Duration(milliseconds: sliderValue.toInt()),
+                      currentChapter,
+                      isMultiPlaylist,
                     ),
             ),
             const SizedBox(width: 8),
@@ -551,28 +551,11 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
 
             const SizedBox(width: 24),
 
-            // Play/Pause (Big)
-            Container(
-              height: 64,
-              width: 64,
-              decoration: BoxDecoration(
-                color: Colors.white,
-                shape: BoxShape.circle,
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.white.withValues(alpha: 0.2),
-                    blurRadius: 20,
-                  ),
-                ],
-              ),
-              child: IconButton(
-                icon: Icon(
-                  isPlaying ? FluentIcons.pause : FluentIcons.play,
-                  color: Colors.black, // High contrast
-                  size: 28,
-                ),
-                onPressed: () => mediaService.playOrPause(),
-              ),
+            // Play/Pause (Big with pulse animation)
+            PulsingPlayButton(
+              isPlaying: isPlaying,
+              onPressed: () => mediaService.playOrPause(),
+              size: 72,
             ),
 
             const SizedBox(width: 24),
@@ -593,15 +576,25 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
                   mediaService.position + const Duration(seconds: 30),
                 );
               },
-              child: Stack(
+              child: const Stack(
                 alignment: Alignment.center,
-                children: const [
+                children: [
                   Icon(FluentIcons.fast_forward, color: Colors.white, size: 20),
                 ],
               ),
             ),
           ],
         ),
+
+        // Waveform Visualization
+        if (ref.watch(appSettingsProvider).showWaveform) ...[
+          const SizedBox(height: 20),
+          WaveformVisualizer(
+            isPlaying: isPlaying,
+            color: Colors.white,
+            height: 40,
+          ),
+        ],
 
         const SizedBox(height: 30),
 
@@ -719,6 +712,8 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
     WidgetRef ref,
     Book book,
     Duration position,
+    Chapter? currentChapter,
+    bool isMultiFile,
   ) {
     final textController = TextEditingController();
     showDialog(
@@ -751,7 +746,12 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
               book.bookmarks?.add(
                 Bookmark(
                   label: label,
-                  timestampSeconds: globalPositionSecondsWrapper(ref, position),
+                  timestampSeconds: globalPositionSecondsWrapper(
+                    ref,
+                    position,
+                    currentChapter,
+                    isMultiFile,
+                  ),
                 ),
               );
               await book.save();
@@ -763,8 +763,18 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
     );
   }
 
-  double globalPositionSecondsWrapper(WidgetRef ref, Duration pos) {
-    return pos.inMilliseconds / 1000.0;
+  double globalPositionSecondsWrapper(
+    WidgetRef ref,
+    Duration pos,
+    Chapter? currentChapter,
+    bool isMultiFile,
+  ) {
+    double seconds = pos.inMilliseconds / 1000.0;
+    // For multi-file books, add the chapter start time to get global position
+    if (isMultiFile && currentChapter != null) {
+      seconds += currentChapter.startTime;
+    }
+    return seconds;
   }
 
   void _showChaptersList(

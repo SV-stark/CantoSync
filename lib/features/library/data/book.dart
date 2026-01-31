@@ -31,6 +31,9 @@ class Book extends HiveObject {
   @HiveField(8)
   String? series;
 
+  @HiveField(17)
+  int? seriesIndex;
+
   @HiveField(9)
   List<Bookmark>? bookmarks;
 
@@ -66,6 +69,7 @@ class Book extends HiveObject {
     this.coverPath,
     this.album,
     this.series,
+    this.seriesIndex,
     this.bookmarks,
     this.audioFiles,
     this.isDirectory = false,

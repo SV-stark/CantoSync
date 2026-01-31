@@ -13,7 +13,13 @@ import 'package:canto_sync/core/services/app_settings_service.dart';
 import 'book.dart';
 
 final libraryServiceProvider = Provider<LibraryService>((ref) {
-  return LibraryService(Hive.box<Book>(AppConstants.libraryBox), ref: ref);
+  try {
+    final box = Hive.box<Book>(AppConstants.libraryBox);
+    return LibraryService(box, ref: ref);
+  } catch (e) {
+    debugPrint('Error accessing library box: $e');
+    rethrow;
+  }
 });
 
 class LibrarySearchQuery extends Notifier<String> {
@@ -86,6 +92,28 @@ final libraryGroupedBooksProvider =
           final key = book.series ?? 'Standalone';
           groups.putIfAbsent(key, () => []).add(book);
         }
+
+        // Sort books within each series and assign indices if needed
+        for (final entry in groups.entries) {
+          final seriesBooks = entry.value;
+          if (entry.key != 'Standalone') {
+            // Sort by title for consistent ordering
+            seriesBooks.sort((a, b) => a.title.compareTo(b.title));
+
+            // Assign series indices if not already set
+            for (var i = 0; i < seriesBooks.length; i++) {
+              final book = seriesBooks[i];
+              if (book.seriesIndex == null) {
+                book.seriesIndex = i + 1;
+                // Save asynchronously without awaiting to avoid blocking UI
+                book.save().catchError((e) {
+                  debugPrint('Error saving series index for ${book.title}: $e');
+                });
+              }
+            }
+          }
+        }
+
         return groups;
       });
     });
@@ -97,6 +125,20 @@ class LibraryService {
   LibraryService(this._box, {this.ref});
 
   List<Book> get books => _box.values.toList();
+
+  List<Book> getBooksByCollection(String collectionName) {
+    return _box.values
+        .where((b) => b.collections?.contains(collectionName) ?? false)
+        .toList();
+  }
+
+  Future<void> removeCollection(String collectionName) async {
+    final booksInCollection = getBooksByCollection(collectionName);
+    for (final book in booksInCollection) {
+      book.collections?.remove(collectionName);
+      await book.save();
+    }
+  }
 
   Stream<List<Book>> listenToBooks() {
     return _box
@@ -180,6 +222,10 @@ class LibraryService {
 
       // Copy file to book directory
       final sourceFile = File(newCoverFile);
+      if (!await sourceFile.exists()) {
+        debugPrint('Source cover file does not exist: $newCoverFile');
+        return;
+      }
       await sourceFile.copy(targetPath);
 
       // Update book metadata
@@ -225,29 +271,15 @@ class LibraryService {
 
       files.sort((a, b) => a.path.compareTo(b.path));
 
-      if (files.length == 1 &&
-          files.first.parent.path == dir.path &&
-          files.length == 1) {
-        final filePaths = files.map((f) => f.path).toList();
-        await _addBookIfNotExists(
-          parentPath,
-          isDirectory: true,
-          audioFiles: filePaths,
-          probePlayer: probePlayer,
-          forceUpdate: forceUpdate,
-        );
-        foundBookPaths.add(parentPath);
-      } else {
-        final filePaths = files.map((f) => f.path).toList();
-        await _addBookIfNotExists(
-          parentPath,
-          isDirectory: true,
-          audioFiles: filePaths,
-          probePlayer: probePlayer,
-          forceUpdate: forceUpdate,
-        );
-        foundBookPaths.add(parentPath);
-      }
+      final filePaths = files.map((f) => f.path).toList();
+      await _addBookIfNotExists(
+        parentPath,
+        isDirectory: true,
+        audioFiles: filePaths,
+        probePlayer: probePlayer,
+        forceUpdate: forceUpdate,
+      );
+      foundBookPaths.add(parentPath);
     }
     return foundBookPaths;
   }

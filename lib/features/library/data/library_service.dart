@@ -38,13 +38,34 @@ final libraryGroupingModeProvider = NotifierProvider<LibraryGroupingMode, bool>(
   LibraryGroupingMode.new,
 );
 
+class LibraryCollectionFilter extends Notifier<String?> {
+  @override
+  String? build() => null;
+
+  void setFilter(String? collection) => state = collection;
+}
+
+final libraryCollectionFilterProvider =
+    NotifierProvider<LibraryCollectionFilter, String?>(
+      LibraryCollectionFilter.new,
+    );
+
 final libraryBooksProvider = StreamProvider<List<Book>>((ref) {
   final service = ref.watch(libraryServiceProvider);
   final searchQuery = ref.watch(librarySearchQueryProvider).toLowerCase();
+  final collectionFilter = ref.watch(libraryCollectionFilterProvider);
 
   return service.listenToBooks().map((books) {
-    if (searchQuery.isEmpty) return books;
-    return books.where((book) {
+    var filteredBooks = books;
+
+    if (collectionFilter != null) {
+      filteredBooks = filteredBooks
+          .where((b) => b.collections?.contains(collectionFilter) ?? false)
+          .toList();
+    }
+
+    if (searchQuery.isEmpty) return filteredBooks;
+    return filteredBooks.where((book) {
       final title = book.title.toLowerCase();
       final author = book.author?.toLowerCase() ?? '';
       final album = book.album?.toLowerCase() ?? '';

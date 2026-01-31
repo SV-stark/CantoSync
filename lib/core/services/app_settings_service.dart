@@ -21,22 +21,31 @@ class AppSettings {
   final ThemeMode themeMode;
   final AudioPreset audioPreset;
   final List<String> libraryPaths;
+  final bool skipSilence;
+  final bool loudnessNormalization;
 
   AppSettings({
     this.themeMode = ThemeMode.system,
     this.audioPreset = AudioPreset.flat,
     this.libraryPaths = const [],
+    this.skipSilence = false,
+    this.loudnessNormalization = false,
   });
 
   AppSettings copyWith({
     ThemeMode? themeMode,
     AudioPreset? audioPreset,
     List<String>? libraryPaths,
+    bool? skipSilence,
+    bool? loudnessNormalization,
   }) {
     return AppSettings(
       themeMode: themeMode ?? this.themeMode,
       audioPreset: audioPreset ?? this.audioPreset,
       libraryPaths: libraryPaths ?? this.libraryPaths,
+      skipSilence: skipSilence ?? this.skipSilence,
+      loudnessNormalization:
+          loudnessNormalization ?? this.loudnessNormalization,
     );
   }
 }
@@ -66,10 +75,18 @@ class AppSettingsNotifier extends Notifier<AppSettings> {
         _box.delete('libraryPaths');
       }
 
+      final skipSilence = _box.get('skipSilence', defaultValue: false);
+      final loudnessNormalization = _box.get(
+        'loudnessNormalization',
+        defaultValue: false,
+      );
+
       return AppSettings(
         themeMode: ThemeMode.values[themeIndex],
         audioPreset: AudioPreset.values[presetIndex],
         libraryPaths: paths,
+        skipSilence: skipSilence,
+        loudnessNormalization: loudnessNormalization,
       );
     } catch (e) {
       debugPrint('Error loading AppSettings: $e');
@@ -89,6 +106,18 @@ class AppSettingsNotifier extends Notifier<AppSettings> {
 
     // Apply filter immediately
     ref.read(mediaServiceProvider).setAudioFilter(preset.filter);
+  }
+
+  void setSkipSilence(bool enabled) {
+    state = state.copyWith(skipSilence: enabled);
+    _box.put('skipSilence', enabled);
+    ref.read(mediaServiceProvider).setSkipSilence(enabled);
+  }
+
+  void setLoudnessNormalization(bool enabled) {
+    state = state.copyWith(loudnessNormalization: enabled);
+    _box.put('loudnessNormalization', enabled);
+    ref.read(mediaServiceProvider).setLoudnessNormalization(enabled);
   }
 
   void addLibraryPath(String path) {

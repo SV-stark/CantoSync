@@ -3,16 +3,18 @@ import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:media_kit/media_kit.dart';
+import 'package:canto_sync/core/services/app_settings_service.dart';
 
 // Provider
 final mediaServiceProvider = Provider<MediaService>((ref) {
-  final service = MediaService();
+  final service = MediaService(ref);
   ref.onDispose(() => service.dispose());
   return service;
 });
 
 class MediaService {
   late final Player _player;
+  final Ref _ref;
 
   // State Streams
   Stream<bool> get playingStream => _player.stream.playing;
@@ -21,10 +23,15 @@ class MediaService {
   Stream<double> get volumeStream => _player.stream.volume;
   Stream<Playlist> get playlistStream => _player.stream.playlist;
 
-  MediaService() {
-    // Determine configuration based on platform (Handled globally in main, but good to be safe)
-    // Create a new player
+  MediaService(this._ref) {
     _player = Player();
+
+    // Initialize filters from settings
+    final settings = _ref.read(appSettingsProvider);
+    _skipSilence = settings.skipSilence;
+    _loudnessNormalization = settings.loudnessNormalization;
+    _activePresetFilter = settings.audioPreset.filter;
+    _applyFilters();
   }
 
   List<Chapter>? _customChapters;
@@ -71,6 +78,9 @@ class MediaService {
       );
       await _player.open(playlist, play: autoPlay);
     }
+
+    // Ensure filters are applied to the new media
+    await _applyFilters();
   }
 
   Future<void> play() async {
@@ -96,24 +106,47 @@ class MediaService {
   }
 
   Future<void> setSkipSilence(bool enabled) async {
+    _skipSilence = enabled;
+    await _applyFilters();
+  }
+
+  Future<void> setLoudnessNormalization(bool enabled) async {
+    _loudnessNormalization = enabled;
+    await _applyFilters();
+  }
+
+  bool _skipSilence = false;
+  bool _loudnessNormalization = false;
+  String _activePresetFilter = '';
+
+  Future<void> setAudioFilter(String filter) async {
+    _activePresetFilter = filter;
+    await _applyFilters();
+  }
+
+  Future<void> _applyFilters() async {
     if (_player.platform is NativePlayer) {
       final native = _player.platform as NativePlayer;
-      if (enabled) {
-        // silenceremove=stop_periods=-1:stop_duration=1:stop_threshold=-50dB
-        // Remove silence from the beginning (1) and middle (-1?).
-        // We want to skip silence > 0.5s or 1s?
-        // Standard ffmpeg filter: silenceremove=1:0:-50dB
-        // start_periods=1:start_duration=0:start_threshold=-50dB:stop_periods=-1...
-        // stop_periods=-1 means remove all silence in middle.
-        // Let's try a safe default: remove silence > 0.8s, threshold -45dB
-        // This command string might need tweaking based on MPV docs.
-        // 'af' property can be set.
-        await native.setProperty(
-          'af',
+      final List<String> filters = [];
+
+      if (_activePresetFilter.isNotEmpty) {
+        filters.add(_activePresetFilter);
+      }
+
+      if (_skipSilence) {
+        filters.add(
           'lavfi=[silenceremove=stop_periods=-1:stop_duration=0.5:stop_threshold=-45dB]',
         );
-      } else {
+      }
+
+      if (_loudnessNormalization) {
+        filters.add('lavfi=[loudnorm]');
+      }
+
+      if (filters.isEmpty) {
         await native.setProperty('af', '');
+      } else {
+        await native.setProperty('af', filters.join(','));
       }
     }
   }
@@ -271,13 +304,6 @@ class MediaService {
   int get currentIndex => _player.state.playlist.index;
   Tracks get tracks => _player.state.tracks;
   Track get track => _player.state.track;
-
-  Future<void> setAudioFilter(String filter) async {
-    if (_player.platform is NativePlayer) {
-      final native = _player.platform as NativePlayer;
-      await native.setProperty('af', filter);
-    }
-  }
 
   void dispose() {
     _player.dispose();

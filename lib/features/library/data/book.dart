@@ -49,10 +49,17 @@ class Book extends HiveObject {
   @HiveField(14)
   List<FileMetadata>? filesMetadata;
 
+  @HiveField(15)
+  String? narrator;
+
+  @HiveField(16)
+  List<String>? collections;
+
   Book({
     required this.path,
     required this.title,
     this.author,
+    this.narrator,
     this.durationSeconds,
     this.positionSeconds,
     DateTime? lastPlayed,
@@ -65,10 +72,12 @@ class Book extends HiveObject {
     this.lastTrackIndex,
     this.description,
     this.filesMetadata,
+    this.collections,
   }) {
     this.lastPlayed = lastPlayed ?? DateTime.now();
     bookmarks ??= [];
     audioFiles ??= [];
+    collections ??= [];
   }
 }
 

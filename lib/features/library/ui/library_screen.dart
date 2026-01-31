@@ -103,6 +103,30 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen> {
               },
             ),
             const MenuFlyoutSeparator(),
+            MenuFlyoutSubItem(
+              leading: const Icon(FluentIcons.library),
+              text: const Text('Collections'),
+              items: (context) => [
+                MenuFlyoutItem(
+                  leading: const Icon(FluentIcons.add),
+                  text: const Text('Add to New Collection'),
+                  onPressed: () => _addToNewCollection(context, book),
+                ),
+                if (book.collections != null && book.collections!.isNotEmpty)
+                  ...book.collections!.map(
+                    (c) => MenuFlyoutItem(
+                      text: Text(c),
+                      trailing: const Icon(FluentIcons.remove),
+                      onPressed: () async {
+                        book.collections!.remove(c);
+                        await book.save();
+                        setState(() {});
+                      },
+                    ),
+                  ),
+              ],
+            ),
+            const MenuFlyoutSeparator(),
             MenuFlyoutItem(
               leading: const Icon(FluentIcons.sync),
               text: const Text('Rescan'),
@@ -151,63 +175,145 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen> {
     );
   }
 
+  Future<void> _addToNewCollection(BuildContext context, Book book) async {
+    final controller = TextEditingController();
+    await showDialog(
+      context: context,
+      builder: (context) => ContentDialog(
+        title: const Text('Add to Collection'),
+        content: TextBox(
+          controller: controller,
+          placeholder: 'Collection Name',
+          autofocus: true,
+        ),
+        actions: [
+          Button(
+            child: const Text('Cancel'),
+            onPressed: () => Navigator.pop(context),
+          ),
+          FilledButton(
+            child: const Text('Add'),
+            onPressed: () async {
+              final name = controller.text.trim();
+              if (name.isNotEmpty) {
+                book.collections ??= [];
+                if (!book.collections!.contains(name)) {
+                  book.collections!.add(name);
+                  await book.save();
+                }
+              }
+              if (context.mounted) Navigator.pop(context);
+            },
+          ),
+        ],
+      ),
+    );
+    setState(() {});
+  }
+
   @override
   Widget build(BuildContext context) {
     final booksAsync = ref.watch(libraryBooksProvider);
     final viewMode = ref.watch(libraryViewModeProvider);
     final isGroupingEnabled = ref.watch(libraryGroupingModeProvider);
+    final selectedCollection = ref.watch(libraryCollectionFilterProvider);
 
-    return ScaffoldPage(
-      header: PageHeader(
-        title: const Text('Library'),
-        commandBar: CommandBar(
-          mainAxisAlignment: MainAxisAlignment.end,
-          primaryItems: [
-            CommandBarButton(
-              icon: const Icon(FluentIcons.refresh),
-              label: const Text('Rescan All'),
-              onPressed: () => _rescanLibrary(context),
-            ),
-            CommandBarButton(
-              icon: Icon(viewMode ? FluentIcons.list : FluentIcons.view_all),
-              label: Text(viewMode ? 'List View' : 'Grid View'),
-              onPressed: () {
-                ref.read(libraryViewModeProvider.notifier).toggle();
-              },
-            ),
-            CommandBarButton(
-              icon: Icon(
-                isGroupingEnabled ? FluentIcons.group_list : FluentIcons.group,
-              ),
-              label: const Text('Group by Series'),
-              onPressed: () {
-                ref.read(libraryGroupingModeProvider.notifier).toggle();
-              },
-            ),
-            CommandBarButton(
-              icon: const Icon(FluentIcons.add),
-              label: const Text('Add Folder'),
-              onPressed: () => _pickFolder(),
-            ),
-          ],
+    // Get all unique collections
+    final allBooks = ref
+        .watch(libraryBooksProvider)
+        .maybeWhen(data: (books) => books, orElse: () => <Book>[]);
+    final collections = <String>{};
+    for (final book in allBooks) {
+      if (book.collections != null) {
+        collections.addAll(book.collections!);
+      }
+    }
+
+    return NavigationView(
+      pane: NavigationPane(
+        selected: selectedCollection == null ? 0 : -1,
+        header: const Padding(
+          padding: EdgeInsets.only(left: 12.0),
+          child: Text('Collections'),
         ),
+        displayMode: PaneDisplayMode.compact,
+        items: [
+          PaneItem(
+            icon: const Icon(FluentIcons.all_apps),
+            title: const Text('All Books'),
+            body: const SizedBox.shrink(),
+            onTap: () {
+              ref
+                  .read(libraryCollectionFilterProvider.notifier)
+                  .setFilter(null);
+            },
+          ),
+          ...collections.map((c) {
+            return PaneItem(
+              icon: const Icon(FluentIcons.library),
+              title: Text(c),
+              body: const SizedBox.shrink(),
+              onTap: () {
+                ref.read(libraryCollectionFilterProvider.notifier).setFilter(c);
+              },
+            );
+          }),
+        ],
       ),
-      content: DropTarget(
-        onDragDone: (detail) {
-          for (final file in detail.files) {
-            ref.read(libraryServiceProvider).scanDirectory(file.path);
-          }
-        },
-        child: isGroupingEnabled
-            ? _buildGroupedView(context)
-            : booksAsync.when(
-                data: (books) {
-                  if (books.isEmpty) return _buildEmptyState();
-                  return _buildBookList(context, books, viewMode);
-                },
-                loading: () => const Center(child: ProgressRing()),
-                error: (err, stack) => Center(child: Text('Error: $err')),
+      content: ScaffoldPage(
+        header: PageHeader(
+          title: Text(selectedCollection ?? 'Library'),
+          commandBar: CommandBar(
+            mainAxisAlignment: MainAxisAlignment.end,
+            primaryItems: [
+              CommandBarButton(
+                icon: const Icon(FluentIcons.refresh),
+                label: const Text('Rescan All'),
+                onPressed: () => _rescanLibrary(context),
               ),
+              CommandBarButton(
+                icon: Icon(viewMode ? FluentIcons.list : FluentIcons.view_all),
+                label: Text(viewMode ? 'List View' : 'Grid View'),
+                onPressed: () {
+                  ref.read(libraryViewModeProvider.notifier).toggle();
+                },
+              ),
+              CommandBarButton(
+                icon: Icon(
+                  isGroupingEnabled
+                      ? FluentIcons.group_list
+                      : FluentIcons.group,
+                ),
+                label: const Text('Group by Series'),
+                onPressed: () {
+                  ref.read(libraryGroupingModeProvider.notifier).toggle();
+                },
+              ),
+              CommandBarButton(
+                icon: const Icon(FluentIcons.add),
+                label: const Text('Add Folder'),
+                onPressed: () => _pickFolder(),
+              ),
+            ],
+          ),
+        ),
+        content: DropTarget(
+          onDragDone: (detail) {
+            for (final file in detail.files) {
+              ref.read(libraryServiceProvider).scanDirectory(file.path);
+            }
+          },
+          child: isGroupingEnabled
+              ? _buildGroupedView(context)
+              : booksAsync.when(
+                  data: (books) {
+                    if (books.isEmpty) return _buildEmptyState();
+                    return _buildBookList(context, books, viewMode);
+                  },
+                  loading: () => const Center(child: ProgressRing()),
+                  error: (err, stack) => Center(child: Text('Error: $err')),
+                ),
+        ),
       ),
     );
   }
@@ -219,9 +325,9 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen> {
         children: [
           const Icon(FluentIcons.library, size: 64, color: Colors.grey),
           const SizedBox(height: 16),
-          const Text('Your library is empty'),
+          const Text('No books found in this view'),
           const SizedBox(height: 16),
-          const Text('Drag and drop a folder here to import books'),
+          const Text('Drag and drop a folder here or change filter'),
           const SizedBox(height: 16),
           FilledButton(
             onPressed: () => _pickFolder(),
@@ -245,6 +351,7 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen> {
           crossAxisSpacing: 16,
           mainAxisSpacing: 16,
         ),
+        padding: const EdgeInsets.all(16),
         itemCount: books.length,
         itemBuilder: (context, index) {
           final book = books[index];
@@ -259,26 +366,29 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen> {
         itemCount: books.length,
         itemBuilder: (context, index) {
           final book = books[index];
-          return GestureDetector(
-            onSecondaryTapDown: (detail) {
-              _showBookContextMenu(context, book, detail.globalPosition);
-            },
-            child: ListTile(
-              leading: SizedBox(
-                width: 40,
-                height: 40,
-                child: ClipRRect(
-                  borderRadius: BorderRadius.circular(4),
-                  child: book.coverPath != null
-                      ? Image.file(File(book.coverPath!), fit: BoxFit.cover)
-                      : const Icon(FluentIcons.music_note),
-                ),
-              ),
-              title: Text(book.title),
-              subtitle: Text(book.author ?? 'Unknown Author'),
-              onPressed: () {
-                ref.read(playbackSyncProvider).resumeBook(book.path);
+          return FlyoutTarget(
+            controller: _flyoutController,
+            child: GestureDetector(
+              onSecondaryTapDown: (detail) {
+                _showBookContextMenu(context, book, detail.globalPosition);
               },
+              child: ListTile(
+                leading: SizedBox(
+                  width: 40,
+                  height: 40,
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(4),
+                    child: book.coverPath != null
+                        ? Image.file(File(book.coverPath!), fit: BoxFit.cover)
+                        : const Icon(FluentIcons.music_note),
+                  ),
+                ),
+                title: Text(book.title),
+                subtitle: Text(book.author ?? 'Unknown Author'),
+                onPressed: () {
+                  ref.read(playbackSyncProvider).resumeBook(book.path);
+                },
+              ),
             ),
           );
         },

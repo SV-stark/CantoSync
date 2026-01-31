@@ -107,6 +107,24 @@ class SettingsScreen extends ConsumerWidget {
                     },
                   ),
                 ),
+                const SizedBox(height: 20),
+                ToggleSwitch(
+                  checked: settings.skipSilence,
+                  onChanged: (v) {
+                    ref.read(appSettingsProvider.notifier).setSkipSilence(v);
+                  },
+                  content: const Text('Silence Skipping'),
+                ),
+                const SizedBox(height: 10),
+                ToggleSwitch(
+                  checked: settings.loudnessNormalization,
+                  onChanged: (v) {
+                    ref
+                        .read(appSettingsProvider.notifier)
+                        .setLoudnessNormalization(v);
+                  },
+                  content: const Text('Loudness Normalization'),
+                ),
               ],
             ),
           ),

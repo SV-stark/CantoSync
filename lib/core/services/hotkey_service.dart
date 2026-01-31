@@ -52,5 +52,24 @@ class HotkeyService {
         media.seek(media.position - const Duration(seconds: 15));
       },
     );
+
+    // Standard Media Keys
+    await hotKeyManager.register(
+      HotKey(key: LogicalKeyboardKey.mediaPlayPause, scope: HotKeyScope.system),
+      keyDownHandler: (_) => _ref.read(mediaServiceProvider).playOrPause(),
+    );
+
+    await hotKeyManager.register(
+      HotKey(key: LogicalKeyboardKey.mediaTrackNext, scope: HotKeyScope.system),
+      keyDownHandler: (_) => _ref.read(mediaServiceProvider).nextChapter(),
+    );
+
+    await hotKeyManager.register(
+      HotKey(
+        key: LogicalKeyboardKey.mediaTrackPrevious,
+        scope: HotKeyScope.system,
+      ),
+      keyDownHandler: (_) => _ref.read(mediaServiceProvider).previousChapter(),
+    );
   }
 }

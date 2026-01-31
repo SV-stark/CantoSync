@@ -229,7 +229,7 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
                                   globalPositionSeconds: globalPositionSeconds,
                                   totalDuration: totalDuration,
                                   mediaService: mediaService,
-                                  remainingTimer: remainingTimer,
+                                  remainingTimer: remainingTimer.remainingTime,
                                   isMultiPlaylist: isMultiFile,
                                 ),
                               ),
@@ -265,7 +265,7 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
                             globalPositionSeconds: globalPositionSeconds,
                             totalDuration: totalDuration,
                             mediaService: mediaService,
-                            remainingTimer: remainingTimer,
+                            remainingTimer: remainingTimer.remainingTime,
                             isMultiPlaylist: isMultiFile,
                           ),
                         ),
@@ -836,7 +836,7 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
               ),
               _TimerOption(
                 label: 'End of Chapter',
-                onTap: () => timerService.startTimer(remainingChapter),
+                onTap: () => timerService.setEndOfChapter(),
               ),
               SizedBox(
                 width: double.infinity,

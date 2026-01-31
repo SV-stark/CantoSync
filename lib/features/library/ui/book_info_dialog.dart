@@ -109,6 +109,10 @@ class _BookInfoDialogState extends ConsumerState<BookInfoDialog> {
                         label: 'Author',
                         value: book.author ?? 'Unknown',
                       ),
+                      _InfoRow(
+                        label: 'Narrator',
+                        value: book.narrator ?? 'Unknown',
+                      ),
                       _InfoRow(label: 'Album', value: book.album ?? 'N/A'),
                       _InfoRow(label: 'Series', value: book.series ?? 'N/A'),
                       _InfoRow(

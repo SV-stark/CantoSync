@@ -55,25 +55,6 @@ class HotkeyService {
         media.seek(media.position - const Duration(seconds: 15));
       },
     );
-
-    // Standard Media Keys
-    await _registerHotKey(
-      HotKey(key: LogicalKeyboardKey.mediaPlayPause, scope: HotKeyScope.system),
-      () => _ref.read(mediaServiceProvider).playOrPause(),
-    );
-
-    await _registerHotKey(
-      HotKey(key: LogicalKeyboardKey.mediaTrackNext, scope: HotKeyScope.system),
-      () => _ref.read(mediaServiceProvider).nextChapter(),
-    );
-
-    await _registerHotKey(
-      HotKey(
-        key: LogicalKeyboardKey.mediaTrackPrevious,
-        scope: HotKeyScope.system,
-      ),
-      () => _ref.read(mediaServiceProvider).previousChapter(),
-    );
   }
 
   Future<void> _registerHotKey(HotKey hotKey, VoidCallback onDown) async {

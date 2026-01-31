@@ -228,92 +228,105 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen> {
         collections.addAll(book.collections!);
       }
     }
+    final sortedCollections = collections.toList()..sort();
 
-    return NavigationView(
-      pane: NavigationPane(
-        selected: selectedCollection == null ? 0 : -1,
-        header: const Padding(
-          padding: EdgeInsets.only(left: 12.0),
-          child: Text('Collections'),
-        ),
-        displayMode: PaneDisplayMode.compact,
-        items: [
-          PaneItem(
-            icon: const Icon(FluentIcons.all_apps),
-            title: const Text('All Books'),
-            body: const SizedBox.shrink(),
-            onTap: () {
-              ref
-                  .read(libraryCollectionFilterProvider.notifier)
-                  .setFilter(null);
-            },
-          ),
-          ...collections.map((c) {
-            return PaneItem(
-              icon: const Icon(FluentIcons.library),
-              title: Text(c),
-              body: const SizedBox.shrink(),
-              onTap: () {
-                ref.read(libraryCollectionFilterProvider.notifier).setFilter(c);
+    return ScaffoldPage(
+      header: PageHeader(
+        title: Text(selectedCollection ?? 'Library'),
+        commandBar: CommandBar(
+          mainAxisAlignment: MainAxisAlignment.end,
+          primaryItems: [
+            CommandBarButton(
+              icon: const Icon(FluentIcons.refresh),
+              label: const Text('Rescan All'),
+              onPressed: () => _rescanLibrary(context),
+            ),
+            CommandBarButton(
+              icon: Icon(viewMode ? FluentIcons.list : FluentIcons.view_all),
+              label: Text(viewMode ? 'List View' : 'Grid View'),
+              onPressed: () {
+                ref.read(libraryViewModeProvider.notifier).toggle();
               },
-            );
-          }),
-        ],
+            ),
+            CommandBarButton(
+              icon: Icon(
+                isGroupingEnabled ? FluentIcons.group_list : FluentIcons.group,
+              ),
+              label: const Text('Group by Series'),
+              onPressed: () {
+                ref.read(libraryGroupingModeProvider.notifier).toggle();
+              },
+            ),
+            CommandBarButton(
+              icon: const Icon(FluentIcons.add),
+              label: const Text('Add Folder'),
+              onPressed: () => _pickFolder(),
+            ),
+          ],
+        ),
       ),
-      content: ScaffoldPage(
-        header: PageHeader(
-          title: Text(selectedCollection ?? 'Library'),
-          commandBar: CommandBar(
-            mainAxisAlignment: MainAxisAlignment.end,
-            primaryItems: [
-              CommandBarButton(
-                icon: const Icon(FluentIcons.refresh),
-                label: const Text('Rescan All'),
-                onPressed: () => _rescanLibrary(context),
-              ),
-              CommandBarButton(
-                icon: Icon(viewMode ? FluentIcons.list : FluentIcons.view_all),
-                label: Text(viewMode ? 'List View' : 'Grid View'),
-                onPressed: () {
-                  ref.read(libraryViewModeProvider.notifier).toggle();
-                },
-              ),
-              CommandBarButton(
-                icon: Icon(
-                  isGroupingEnabled
-                      ? FluentIcons.group_list
-                      : FluentIcons.group,
+      content: Row(
+        children: [
+          // Sidebar
+          SizedBox(
+            width: 200,
+            child: ListView(
+              padding: const EdgeInsets.symmetric(vertical: 8),
+              children: [
+                const Padding(
+                  padding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  child: Text(
+                    'Collections',
+                    style: TextStyle(fontWeight: FontWeight.bold),
+                  ),
                 ),
-                label: const Text('Group by Series'),
-                onPressed: () {
-                  ref.read(libraryGroupingModeProvider.notifier).toggle();
-                },
-              ),
-              CommandBarButton(
-                icon: const Icon(FluentIcons.add),
-                label: const Text('Add Folder'),
-                onPressed: () => _pickFolder(),
-              ),
-            ],
-          ),
-        ),
-        content: DropTarget(
-          onDragDone: (detail) {
-            for (final file in detail.files) {
-              ref.read(libraryServiceProvider).scanDirectory(file.path);
-            }
-          },
-          child: isGroupingEnabled
-              ? _buildGroupedView(context)
-              : booksAsync.when(
-                  data: (books) {
-                    if (books.isEmpty) return _buildEmptyState();
-                    return _buildBookList(context, books, viewMode);
+                ListTile.selectable(
+                  selected: selectedCollection == null,
+                  leading: const Icon(FluentIcons.all_apps),
+                  title: const Text('All Books'),
+                  onPressed: () {
+                    ref
+                        .read(libraryCollectionFilterProvider.notifier)
+                        .setFilter(null);
                   },
-                  loading: () => const Center(child: ProgressRing()),
-                  error: (err, stack) => Center(child: Text('Error: $err')),
                 ),
-        ),
+                ...sortedCollections.map((c) {
+                  return ListTile.selectable(
+                    selected: selectedCollection == c,
+                    leading: const Icon(FluentIcons.library),
+                    title: Text(c),
+                    onPressed: () {
+                      ref
+                          .read(libraryCollectionFilterProvider.notifier)
+                          .setFilter(c);
+                    },
+                  );
+                }),
+              ],
+            ),
+          ),
+          const Divider(direction: Axis.vertical),
+          // Main Content
+          Expanded(
+            child: DropTarget(
+              onDragDone: (detail) {
+                for (final file in detail.files) {
+                  ref.read(libraryServiceProvider).scanDirectory(file.path);
+                }
+              },
+              child: isGroupingEnabled
+                  ? _buildGroupedView(context)
+                  : booksAsync.when(
+                      data: (books) {
+                        if (books.isEmpty) return _buildEmptyState();
+                        return _buildBookList(context, books, viewMode);
+                      },
+                      loading: () => const Center(child: ProgressRing()),
+                      error: (err, stack) => Center(child: Text('Error: $err')),
+                    ),
+            ),
+          ),
+        ],
       ),
     );
   }

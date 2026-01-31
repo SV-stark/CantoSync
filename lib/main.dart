@@ -25,36 +25,24 @@ void main() async {
     () async {
       WidgetsFlutterBinding.ensureInitialized();
 
-      // Catch Flutter errors
       FlutterError.onError = (FlutterErrorDetails details) {
         FlutterError.presentError(details);
         debugPrint('FLUTTER ERROR: ${details.exception}');
         debugPrint('${details.stack}');
       };
 
-      // Catch platform errors
       PlatformDispatcher.instance.onError = (error, stack) {
         debugPrint('PLATFORM ERROR: $error');
         debugPrint('$stack');
         return true;
       };
 
-      debugPrint('DEBUG: App starting...');
-      debugPrint('DEBUG: WidgetsFlutterBinding initialized');
-
       await windowManager.ensureInitialized();
-      debugPrint('DEBUG: WindowManager initialized');
 
-      // Best-effort initialization to ensure process doesn't exit silently
       try {
         MediaKit.ensureInitialized();
-        debugPrint('DEBUG: MediaKit initialized');
-
         MetadataGod.initialize();
-        debugPrint('DEBUG: MetadataGod initialized');
-
         await Hive.initFlutter();
-        debugPrint('DEBUG: Hive initialized');
 
         Hive.registerAdapter(BookAdapter());
         Hive.registerAdapter(BookmarkAdapter());
@@ -86,11 +74,8 @@ void main() async {
           await Hive.deleteBoxFromDisk(AppConstants.settingsBox);
           await Hive.openBox(AppConstants.settingsBox);
         }
-
-        debugPrint('DEBUG: Hive boxes opened');
       } catch (e) {
         debugPrint('Critical Initialization Error: $e');
-        // Continue anyway so the user sees a window/UI, even if broken
       }
 
       WindowOptions windowOptions = const WindowOptions(
@@ -102,13 +87,7 @@ void main() async {
         titleBarStyle: TitleBarStyle.hidden,
       );
 
-      // Configure window but don't wait for it to show
-      windowManager.waitUntilReadyToShow(windowOptions, () async {
-        // We handle showing in initState to ensure Flutter is painting first
-        debugPrint('DEBUG: waitUntilReadyToShow callback');
-      });
-
-      debugPrint('DEBUG: Running App');
+      windowManager.waitUntilReadyToShow(windowOptions);
       runApp(const ProviderScope(child: CantoSyncApp()));
     },
     (error, stack) {
@@ -136,7 +115,6 @@ class _CantoSyncAppState extends ConsumerState<CantoSyncApp>
 
     // Force show window once the frame is definitely ready
     WidgetsBinding.instance.addPostFrameCallback((_) async {
-      debugPrint('DEBUG: PostFrameCallback showing window');
       await windowManager.show();
       await windowManager.focus();
     });
@@ -152,21 +130,12 @@ class _CantoSyncAppState extends ConsumerState<CantoSyncApp>
 
   Future<void> _initServices() async {
     try {
-      debugPrint('DEBUG: InitServices start');
-      // Prevent default close, we'll handle it for tray minimization
       await windowManager.setPreventClose(true);
-
-      // Initialize production-grade services
       await ref.read(hotkeyServiceProvider).init();
-      debugPrint('DEBUG: Hotkey initialized');
-
       await ref.read(trayServiceProvider).init();
-      debugPrint('DEBUG: Tray initialized');
-
-      // Check for updates
       _checkUpdates();
     } catch (e) {
-      debugPrint('DEBUG: Error in _initServices: $e');
+      debugPrint('Error in _initServices: $e');
     }
   }
 
@@ -174,7 +143,7 @@ class _CantoSyncAppState extends ConsumerState<CantoSyncApp>
     try {
       await ref.read(updateServiceProvider).checkForUpdates();
     } catch (e) {
-      debugPrint('DEBUG: Update check failed: $e');
+      debugPrint('Update check failed: $e');
     }
   }
 
@@ -189,7 +158,6 @@ class _CantoSyncAppState extends ConsumerState<CantoSyncApp>
 
   @override
   Widget build(BuildContext context) {
-    debugPrint('DEBUG: Building UI');
     try {
       final settings = ref.watch(appSettingsProvider);
 

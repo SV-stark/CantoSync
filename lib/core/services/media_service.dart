@@ -15,6 +15,7 @@ final mediaServiceProvider = Provider<MediaService>((ref) {
 class MediaService {
   late final Player _player;
   final Ref _ref;
+  bool _isFetchingChapters = false;
 
   // State Streams
   Stream<bool> get playingStream => _player.stream.playing;
@@ -137,8 +138,8 @@ class MediaService {
 
   Future<void> _applyFilters() async {
     try {
-      if (_player.platform is NativePlayer) {
-        final native = _player.platform as NativePlayer;
+      final platform = _player.platform;
+      if (platform is NativePlayer) {
         final List<String> filters = [];
 
         if (_activePresetFilter.isNotEmpty) {
@@ -156,9 +157,9 @@ class MediaService {
         }
 
         if (filters.isEmpty) {
-          await native.setProperty('af', '');
+          await platform.setProperty('af', '');
         } else {
-          await native.setProperty('af', filters.join(','));
+          await platform.setProperty('af', filters.join(','));
         }
       }
     } catch (e) {
@@ -182,72 +183,80 @@ class MediaService {
       return _customChapters!;
     }
 
-    if (_player.platform is NativePlayer) {
-      final native = _player.platform as NativePlayer;
-      try {
-        // Retry logic to handle race conditions where chapters/metadata aren't loaded yet.
-        // We increase to 10 attempts (approx 5 seconds max wait) to be very safe for large M4Bs.
-        for (int i = 0; i < 10; i++) {
-          // First, check if mpv even sees chapters.
-          // 'chapters' property returns the COUNT of chapters.
-          final countStr = await native.getProperty('chapters');
-          final count = int.tryParse(countStr) ?? 0;
+    if (_isFetchingChapters) return [];
+    _isFetchingChapters = true;
 
-          if (count > 0) {
-            final resultString = await native.getProperty('chapter-list');
+    try {
+      final platform = _player.platform;
+      if (platform is NativePlayer) {
+        final native = platform;
+        try {
+          // Retry logic to handle race conditions where chapters/metadata aren't loaded yet.
+          // We increase to 10 attempts (approx 5 seconds max wait) to be very safe for large M4Bs.
+          for (int i = 0; i < 10; i++) {
+            // First, check if mpv even sees chapters.
+            // 'chapters' property returns the COUNT of chapters.
+            final countStr = await native.getProperty('chapters');
+            final count = int.tryParse(countStr) ?? 0;
 
-            if (resultString.isNotEmpty) {
-              final result = jsonDecode(resultString);
-              if (result is List && result.isNotEmpty) {
-                final List<Chapter> chapters = [];
+            if (count > 0) {
+              final resultString = await native.getProperty('chapter-list');
 
-                for (int j = 0; j < result.length; j++) {
-                  final e = result[j];
-                  if (e is! Map) continue;
+              if (resultString.isNotEmpty) {
+                final result = jsonDecode(resultString);
+                if (result is List && result.isNotEmpty) {
+                  final List<Chapter> chapters = [];
 
-                  final startTime = (e['time'] as num?)?.toDouble() ?? 0.0;
-                  double? endTime;
+                  for (int j = 0; j < result.length; j++) {
+                    final e = result[j];
+                    if (e is! Map) continue;
 
-                  // Try to get end time from next chapter
-                  if (j < result.length - 1) {
-                    final next = result[j + 1];
-                    if (next is Map) {
-                      endTime = (next['time'] as num?)?.toDouble();
+                    final startTime = (e['time'] as num?)?.toDouble() ?? 0.0;
+                    double? endTime;
+
+                    // Try to get end time from next chapter
+                    if (j < result.length - 1) {
+                      final next = result[j + 1];
+                      if (next is Map) {
+                        endTime = (next['time'] as num?)?.toDouble();
+                      }
+                    } else {
+                      // For last chapter, use total duration
+                      final d = _player.state.duration.inMilliseconds / 1000.0;
+                      if (d > 0) endTime = d;
                     }
-                  } else {
-                    // For last chapter, use total duration
-                    final d = _player.state.duration.inMilliseconds / 1000.0;
-                    if (d > 0) endTime = d;
-                  }
 
-                  chapters.add(
-                    Chapter(
-                      title: e['title']?.toString() ?? 'Chapter ${j + 1}',
-                      startTime: startTime,
-                      endTime: endTime,
-                    ),
-                  );
+                    chapters.add(
+                      Chapter(
+                        title: e['title']?.toString() ?? 'Chapter ${j + 1}',
+                        startTime: startTime,
+                        endTime: endTime,
+                      ),
+                    );
+                  }
+                  return chapters;
                 }
-                return chapters;
               }
             }
-          }
 
-          // If 0 chapters found, check if duration is loaded.
-          // If duration is > 0 and no chapters after a few retries, maybe there ARE no chapters.
-          final currentDuration = _player.state.duration.inMilliseconds;
-          if (currentDuration > 0 && i > 4) {
-            // We waited ~2.5 seconds and duration is known, but still no chapters?
-            // Likely a book without chapters.
-            return [];
-          }
+            // If 0 chapters found, check if duration is loaded.
+            // If duration is > 0 and no chapters after a few retries, maybe there ARE no chapters.
+            final currentDuration = _player.state.duration.inMilliseconds;
+            if (currentDuration > 0 && i > 4) {
+              // We waited ~2.5 seconds and duration is known, but still no chapters?
+              // Likely a book without chapters.
+              return [];
+            }
 
-          // Wait and retry.
-          await Future.delayed(const Duration(milliseconds: 500));
+            // Wait and retry.
+            await Future.delayed(const Duration(milliseconds: 500));
+          }
+        } catch (e, stack) {
+          debugPrint('Error fetching/parsing chapters: $e\n$stack');
         }
-      } catch (e, stack) {
-        debugPrint('Error fetching/parsing chapters: $e\n$stack');
       }
+    } finally {
+      _isFetchingChapters = false;
     }
     return [];
   }

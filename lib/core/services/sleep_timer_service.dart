@@ -4,7 +4,8 @@ import 'package:canto_sync/core/services/media_service.dart';
 
 final sleepTimerServiceProvider =
     NotifierProvider<SleepTimerService, SleepTimerState>(() {
-      return SleepTimerService();
+      final service = SleepTimerService();
+      return service;
     });
 
 class SleepTimerState {
@@ -27,6 +28,9 @@ class SleepTimerService extends Notifier<SleepTimerState> {
 
   @override
   SleepTimerState build() {
+    ref.onDispose(() {
+      cancelTimer();
+    });
     return SleepTimerState();
   }
 

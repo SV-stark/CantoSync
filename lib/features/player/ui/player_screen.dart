@@ -92,10 +92,12 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
 
     // Fallback: If player reports 0 duration (common with heavy m4b or initial load),
     // use metadata from library scan.
-    if (totalDuration.inSeconds == 0 && currentBook?.durationSeconds != null) {
-      final metaSeconds = currentBook!.durationSeconds!;
-      if (metaSeconds > 0) {
-        totalDuration = Duration(milliseconds: (metaSeconds * 1000).toInt());
+    final bookDurationSeconds = currentBook?.durationSeconds;
+    if (totalDuration.inSeconds == 0 && bookDurationSeconds != null) {
+      if (bookDurationSeconds > 0) {
+        totalDuration = Duration(
+          milliseconds: (bookDurationSeconds * 1000).toInt(),
+        );
       }
     }
 

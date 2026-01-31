@@ -115,8 +115,12 @@ class _CantoSyncAppState extends ConsumerState<CantoSyncApp>
 
     // Force show window once the frame is definitely ready
     WidgetsBinding.instance.addPostFrameCallback((_) async {
-      await windowManager.show();
-      await windowManager.focus();
+      try {
+        await windowManager.show();
+        await windowManager.focus();
+      } catch (e) {
+        debugPrint('Error showing window: $e');
+      }
     });
 
     _initServices();

@@ -306,7 +306,9 @@ class LibraryService {
             if (fileMeta.durationMs != null) {
               duration += fileMeta.durationMs! / 1000.0;
             }
-          } catch (_) {}
+          } catch (e) {
+            debugPrint('Error reading duration for $filePath: $e');
+          }
         }
       } else {
         if (metadata.durationMs != null) {
@@ -388,6 +390,7 @@ class LibraryService {
       await book.save();
     } catch (e) {
       // Book not found in library, ignore
+      debugPrint('Update progress failed: Book at $path not found');
     }
   }
 

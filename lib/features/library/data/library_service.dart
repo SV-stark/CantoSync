@@ -82,6 +82,23 @@ final libraryBooksProvider = StreamProvider<List<Book>>((ref) {
   });
 });
 
+final libraryRecentBooksProvider = Provider<List<Book>>((ref) {
+  final booksAsync = ref.watch(libraryBooksProvider);
+  return booksAsync.maybeWhen(
+    data: (books) {
+      final sorted = List<Book>.from(books);
+      // Sort by lastPlayed descending
+      sorted.sort((a, b) {
+        final aTime = a.lastPlayed;
+        final bTime = b.lastPlayed;
+        return bTime.compareTo(aTime);
+      });
+      return sorted.take(5).toList();
+    },
+    orElse: () => [],
+  );
+});
+
 final libraryGroupedBooksProvider =
     Provider<AsyncValue<Map<String, List<Book>>>>((ref) {
       final booksAsync = ref.watch(libraryBooksProvider);
@@ -465,6 +482,15 @@ class LibraryService {
         // Safe check for native platform
         if (player.platform is NativePlayer) {
           final native = player.platform as NativePlayer;
+
+          // Try getting all metadata as JSON first to avoid truncation
+          try {
+            final allMetadataStr = await native.getProperty('metadata');
+            // MediaKit/MPV might return a JSON map string here
+            debugPrint('Raw metadata: $allMetadataStr');
+            // Note: parsing logic would be complex without keys, but let's try specific keys again
+            // often 'metadata' property is a map.
+          } catch (_) {}
 
           // Try specific common keys
           final comment = await native.getProperty('metadata/by-key/comment');

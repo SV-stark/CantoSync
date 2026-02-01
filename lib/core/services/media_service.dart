@@ -175,7 +175,7 @@ class MediaService {
           for (int i = 0; i < 15; i++) {
             // Increased retries to ~7.5 seconds
             final countStr = await native.getProperty('chapters');
-            final count = int.tryParse(countStr ?? '') ?? 0;
+            final count = int.tryParse(countStr) ?? 0;
 
             debugPrint('Chapter check attempt $i: count = $count');
 
@@ -183,7 +183,7 @@ class MediaService {
               final resultString = await native.getProperty('chapter-list');
               debugPrint('Chapter list raw string: $resultString');
 
-              if (resultString != null && resultString.isNotEmpty) {
+              if (resultString.isNotEmpty) {
                 final result = jsonDecode(resultString);
                 if (result is List && result.isNotEmpty) {
                   final List<Chapter> chapters = [];

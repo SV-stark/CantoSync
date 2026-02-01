@@ -393,16 +393,25 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen> {
                   ref.read(libraryServiceProvider).scanDirectory(file.path);
                 }
               },
-              child: isGroupingEnabled
-                  ? _buildGroupedView(context)
-                  : booksAsync.when(
-                      data: (books) {
-                        if (books.isEmpty) return _buildEmptyState();
-                        return _buildBookList(context, books, viewMode);
-                      },
-                      loading: () => const Center(child: ProgressRing()),
-                      error: (err, stack) => Center(child: Text('Error: $err')),
-                    ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  _buildRecentsRow(context),
+                  Expanded(
+                    child: isGroupingEnabled
+                        ? _buildGroupedView(context)
+                        : booksAsync.when(
+                            data: (books) {
+                              if (books.isEmpty) return _buildEmptyState();
+                              return _buildBookList(context, books, viewMode);
+                            },
+                            loading: () => const Center(child: ProgressRing()),
+                            error: (err, stack) =>
+                                Center(child: Text('Error: $err')),
+                          ),
+                  ),
+                ],
+              ),
             ),
           ),
         ],
@@ -547,6 +556,51 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen> {
       },
       loading: () => const Center(child: ProgressRing()),
       error: (err, stack) => Center(child: Text('Error: $err')),
+    );
+  }
+
+  // Helper for Recents Row
+  Widget _buildRecentsRow(BuildContext context) {
+    final recentBooks = ref.watch(libraryRecentBooksProvider);
+
+    if (recentBooks.isEmpty) return const SizedBox.shrink();
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Padding(
+          padding: const EdgeInsets.fromLTRB(24, 16, 24, 8),
+          child: Text(
+            'Continue Listening',
+            style: FluentTheme.of(context).typography.subtitle,
+          ),
+        ),
+        SizedBox(
+          height: 180,
+          child: ListView.builder(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            scrollDirection: Axis.horizontal,
+            itemCount: recentBooks.length,
+            itemBuilder: (context, index) {
+              final book = recentBooks[index];
+              return Container(
+                width: 120,
+                margin: const EdgeInsets.symmetric(horizontal: 8),
+                child: FlyoutTarget(
+                  controller: _flyoutController,
+                  child: BookCard(
+                    book: book,
+                    onSecondaryTapDown: (pos) =>
+                        _showBookContextMenu(context, book, pos),
+                    // Small card style
+                  ),
+                ),
+              );
+            },
+          ),
+        ),
+        const Divider(),
+      ],
     );
   }
 }

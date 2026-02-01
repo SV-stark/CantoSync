@@ -1,8 +1,11 @@
 import 'dart:async';
+import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:hive_flutter/hive_flutter.dart';
+import 'package:path/path.dart' as p;
+import 'package:path_provider/path_provider.dart';
 import 'package:media_kit/media_kit.dart';
 import 'package:metadata_god/metadata_god.dart';
 import 'package:system_theme/system_theme.dart';
@@ -45,18 +48,23 @@ void main() async {
       try {
         MediaKit.ensureInitialized();
         MetadataGod.initialize();
-        await Hive.initFlutter();
+        final appDir = await getApplicationDocumentsDirectory();
+        final cantoSyncDir = Directory(p.join(appDir.path, 'CantoSync'));
+        if (!await cantoSyncDir.exists()) {
+          await cantoSyncDir.create(recursive: true);
+        }
+        await Hive.initFlutter(cantoSyncDir.path);
 
         Hive.registerAdapter(BookAdapter());
         Hive.registerAdapter(BookmarkAdapter());
         Hive.registerAdapter(FileMetadataAdapter());
-        
+
         // Register stats adapters
         Hive.registerAdapter(DailyListeningStatsAdapter());
         Hive.registerAdapter(AuthorStatsAdapter());
         Hive.registerAdapter(BookCompletionStatsAdapter());
         Hive.registerAdapter(ListeningSpeedPreferenceAdapter());
-        
+
         // Register keyboard shortcuts adapter
         Hive.registerAdapter(KeyboardShortcutAdapter());
 
@@ -86,7 +94,7 @@ void main() async {
           await Hive.deleteBoxFromDisk(AppConstants.settingsBox);
           await Hive.openBox(AppConstants.settingsBox);
         }
-        
+
         // Open stats boxes with corruption recovery
         try {
           await Hive.openBox<DailyListeningStats>(AppConstants.dailyStatsBox);
@@ -95,7 +103,7 @@ void main() async {
           await Hive.deleteBoxFromDisk(AppConstants.dailyStatsBox);
           await Hive.openBox<DailyListeningStats>(AppConstants.dailyStatsBox);
         }
-        
+
         try {
           await Hive.openBox<AuthorStats>(AppConstants.authorStatsBox);
         } catch (e) {
@@ -103,7 +111,7 @@ void main() async {
           await Hive.deleteBoxFromDisk(AppConstants.authorStatsBox);
           await Hive.openBox<AuthorStats>(AppConstants.authorStatsBox);
         }
-        
+
         try {
           await Hive.openBox<BookCompletionStats>(AppConstants.bookStatsBox);
         } catch (e) {
@@ -111,22 +119,30 @@ void main() async {
           await Hive.deleteBoxFromDisk(AppConstants.bookStatsBox);
           await Hive.openBox<BookCompletionStats>(AppConstants.bookStatsBox);
         }
-        
+
         try {
-          await Hive.openBox<ListeningSpeedPreference>(AppConstants.speedStatsBox);
+          await Hive.openBox<ListeningSpeedPreference>(
+            AppConstants.speedStatsBox,
+          );
         } catch (e) {
           debugPrint('Error opening speedStatsBox: $e. Reseting...');
           await Hive.deleteBoxFromDisk(AppConstants.speedStatsBox);
-          await Hive.openBox<ListeningSpeedPreference>(AppConstants.speedStatsBox);
+          await Hive.openBox<ListeningSpeedPreference>(
+            AppConstants.speedStatsBox,
+          );
         }
-        
+
         // Open keyboard shortcuts box with corruption recovery
         try {
-          await Hive.openBox<KeyboardShortcut>(AppConstants.keyboardShortcutsBox);
+          await Hive.openBox<KeyboardShortcut>(
+            AppConstants.keyboardShortcutsBox,
+          );
         } catch (e) {
           debugPrint('Error opening keyboardShortcutsBox: $e. Reseting...');
           await Hive.deleteBoxFromDisk(AppConstants.keyboardShortcutsBox);
-          await Hive.openBox<KeyboardShortcut>(AppConstants.keyboardShortcutsBox);
+          await Hive.openBox<KeyboardShortcut>(
+            AppConstants.keyboardShortcutsBox,
+          );
         }
       } catch (e) {
         debugPrint('Critical Initialization Error: $e');

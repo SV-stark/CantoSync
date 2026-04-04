@@ -27,16 +27,16 @@ import 'package:canto_sync/core/ui/window_buttons.dart';
 import 'package:canto_sync/core/constants/app_constants.dart';
 import 'package:canto_sync/core/services/data_migration_service.dart';
 
-Future<T> _openHiveBoxWithRecovery<T>(
+Future<Box<T>> _openHiveBoxWithRecovery<T>(
   String boxName, {
   TypeAdapter<T>? adapter,
 }) async {
   try {
-    return await Hive.openBox<T>(boxName);
+    return Hive.openBox<T>(boxName);
   } catch (e) {
     debugPrint('Error opening $boxName: $e. Resetting...');
     await Hive.deleteBoxFromDisk(boxName);
-    return await Hive.openBox<T>(boxName);
+    return Hive.openBox<T>(boxName);
   }
 }
 

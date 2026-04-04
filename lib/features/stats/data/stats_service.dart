@@ -85,11 +85,11 @@ class ListeningStatsService {
       authorStream,
       bookStream,
       speedStream,
-      (_, __, ___, ____) => _calculateStats(),
+      (_, __, ___, ____) => _calculateStatsSync(),
     );
   }
 
-  Future<ListeningStatsSummary> _calculateStats() async {
+  ListeningStatsSummary _calculateStatsSync() {
     final dailyStats = _dailyBox.values.toList();
     final authorStats = _authorBox.values.toList();
     final bookStats = _bookBox.values.toList();

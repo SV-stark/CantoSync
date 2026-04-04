@@ -54,14 +54,17 @@ class SleepTimerService extends Notifier<SleepTimerState> {
     cancelTimer();
     state = state.copyWith(isEndOfChapter: true);
 
-    // Listen to position changes to detect end of chapter
-    _posSub = ref.read(mediaServiceProvider).positionStream.listen((pos) {
-      // In CantoSync, media_service handles chapter navigation.
-      // For now, we'll use a simple approach: if position is near end of current media
-      // AND we are in end-of-chapter mode, we might want to pause.
-      // However, "End of Chapter" usually means the NEXT chapter boundary.
-      // A better way is to check the remaining time in the current chapter from the UI.
-      // But let's implement it here if possible.
+    _posSub = ref.read(mediaServiceProvider).durationStream.listen((duration) {
+      if (state.isEndOfChapter && state.remainingTime == null) {
+        final mediaService = ref.read(mediaServiceProvider);
+        final position = mediaService.position;
+        final remaining = duration - position;
+        if (remaining <= const Duration(seconds: 2) &&
+            remaining > Duration.zero) {
+          mediaService.pause();
+          cancelTimer();
+        }
+      }
     });
   }
 

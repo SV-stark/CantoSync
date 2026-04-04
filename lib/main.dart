@@ -25,6 +25,20 @@ import 'package:canto_sync/core/services/app_settings_service.dart';
 import 'package:canto_sync/core/services/playback_sync_service.dart';
 import 'package:canto_sync/core/ui/window_buttons.dart';
 import 'package:canto_sync/core/constants/app_constants.dart';
+import 'package:canto_sync/core/services/data_migration_service.dart';
+
+Future<T> _openHiveBoxWithRecovery<T>(
+  String boxName, {
+  TypeAdapter<T>? adapter,
+}) async {
+  try {
+    return await Hive.openBox<T>(boxName);
+  } catch (e) {
+    debugPrint('Error opening $boxName: $e. Resetting...');
+    await Hive.deleteBoxFromDisk(boxName);
+    return await Hive.openBox<T>(boxName);
+  }
+}
 
 void main() async {
   runZonedGuarded(
@@ -59,91 +73,35 @@ void main() async {
         Hive.registerAdapter(BookmarkAdapter());
         Hive.registerAdapter(FileMetadataAdapter());
 
-        // Register stats adapters
         Hive.registerAdapter(DailyListeningStatsAdapter());
         Hive.registerAdapter(AuthorStatsAdapter());
         Hive.registerAdapter(BookCompletionStatsAdapter());
         Hive.registerAdapter(ListeningSpeedPreferenceAdapter());
 
-        // Register keyboard shortcuts adapter
         Hive.registerAdapter(KeyboardShortcutAdapter());
 
-        // Open boxes with corruption recovery
-        try {
-          await Hive.openBox<Book>(AppConstants.libraryBox);
-        } catch (e) {
-          debugPrint('Error opening libraryBox: $e. Reseting...');
-          await Hive.deleteBoxFromDisk(AppConstants.libraryBox);
-          await Hive.openBox<Book>(AppConstants.libraryBox);
-        }
+        await _openHiveBoxWithRecovery<Book>(AppConstants.libraryBox);
+        await _openHiveBoxWithRecovery<Book>(AppConstants.booksBox);
+        await _openHiveBoxWithRecovery(AppConstants.settingsBox);
+        await _openHiveBoxWithRecovery<DailyListeningStats>(
+          AppConstants.dailyStatsBox,
+        );
+        await _openHiveBoxWithRecovery<AuthorStats>(
+          AppConstants.authorStatsBox,
+        );
+        await _openHiveBoxWithRecovery<BookCompletionStats>(
+          AppConstants.bookStatsBox,
+        );
+        await _openHiveBoxWithRecovery<ListeningSpeedPreference>(
+          AppConstants.speedStatsBox,
+        );
+        await _openHiveBoxWithRecovery<KeyboardShortcut>(
+          AppConstants.keyboardShortcutsBox,
+        );
+
+        await DataMigrationService.runMigrations();
 
         await SystemTheme.accentColor.load();
-
-        try {
-          await Hive.openBox<Book>(AppConstants.booksBox);
-        } catch (e) {
-          debugPrint('Error opening booksBox: $e. Reseting...');
-          await Hive.deleteBoxFromDisk(AppConstants.booksBox);
-          await Hive.openBox<Book>(AppConstants.booksBox);
-        }
-
-        try {
-          await Hive.openBox(AppConstants.settingsBox);
-        } catch (e) {
-          debugPrint('Error opening settingsBox: $e. Reseting...');
-          await Hive.deleteBoxFromDisk(AppConstants.settingsBox);
-          await Hive.openBox(AppConstants.settingsBox);
-        }
-
-        // Open stats boxes with corruption recovery
-        try {
-          await Hive.openBox<DailyListeningStats>(AppConstants.dailyStatsBox);
-        } catch (e) {
-          debugPrint('Error opening dailyStatsBox: $e. Reseting...');
-          await Hive.deleteBoxFromDisk(AppConstants.dailyStatsBox);
-          await Hive.openBox<DailyListeningStats>(AppConstants.dailyStatsBox);
-        }
-
-        try {
-          await Hive.openBox<AuthorStats>(AppConstants.authorStatsBox);
-        } catch (e) {
-          debugPrint('Error opening authorStatsBox: $e. Reseting...');
-          await Hive.deleteBoxFromDisk(AppConstants.authorStatsBox);
-          await Hive.openBox<AuthorStats>(AppConstants.authorStatsBox);
-        }
-
-        try {
-          await Hive.openBox<BookCompletionStats>(AppConstants.bookStatsBox);
-        } catch (e) {
-          debugPrint('Error opening bookStatsBox: $e. Reseting...');
-          await Hive.deleteBoxFromDisk(AppConstants.bookStatsBox);
-          await Hive.openBox<BookCompletionStats>(AppConstants.bookStatsBox);
-        }
-
-        try {
-          await Hive.openBox<ListeningSpeedPreference>(
-            AppConstants.speedStatsBox,
-          );
-        } catch (e) {
-          debugPrint('Error opening speedStatsBox: $e. Reseting...');
-          await Hive.deleteBoxFromDisk(AppConstants.speedStatsBox);
-          await Hive.openBox<ListeningSpeedPreference>(
-            AppConstants.speedStatsBox,
-          );
-        }
-
-        // Open keyboard shortcuts box with corruption recovery
-        try {
-          await Hive.openBox<KeyboardShortcut>(
-            AppConstants.keyboardShortcutsBox,
-          );
-        } catch (e) {
-          debugPrint('Error opening keyboardShortcutsBox: $e. Reseting...');
-          await Hive.deleteBoxFromDisk(AppConstants.keyboardShortcutsBox);
-          await Hive.openBox<KeyboardShortcut>(
-            AppConstants.keyboardShortcutsBox,
-          );
-        }
       } catch (e) {
         debugPrint('Critical Initialization Error: $e');
       }

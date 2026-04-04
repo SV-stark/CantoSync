@@ -1,15 +1,12 @@
 import 'package:flutter/material.dart' as material;
 import 'package:fluent_ui/fluent_ui.dart';
+import 'package:canto_sync/core/utils/format_duration.dart';
 
 class SleepTimerOverlay extends StatelessWidget {
   final Duration? remainingTime;
   final double opacity;
 
-  const SleepTimerOverlay({
-    super.key,
-    this.remainingTime,
-    this.opacity = 0.25,
-  });
+  const SleepTimerOverlay({super.key, this.remainingTime, this.opacity = 0.25});
 
   @override
   Widget build(BuildContext context) {
@@ -60,10 +57,5 @@ class SleepTimerOverlay extends StatelessWidget {
     );
   }
 
-  String _formatDuration(Duration d) {
-    if (d.inHours > 0) {
-      return '${d.inHours}:${d.inMinutes.remainder(60).toString().padLeft(2, '0')}:${d.inSeconds.remainder(60).toString().padLeft(2, '0')}';
-    }
-    return '${d.inMinutes}:${d.inSeconds.remainder(60).toString().padLeft(2, '0')}';
-  }
+  String _formatDuration(Duration d) => formatDuration(d);
 }

@@ -4,10 +4,17 @@ import 'package:hive/hive.dart';
 import 'package:canto_sync/core/data/keyboard_shortcuts.dart';
 import 'package:canto_sync/core/services/media_service.dart';
 import 'package:canto_sync/core/services/sleep_timer_service.dart';
+import 'package:canto_sync/core/services/app_settings_service.dart';
+import 'package:window_manager/window_manager.dart';
 
-final keyboardShortcutsProvider = NotifierProvider<KeyboardShortcutsNotifier, List<KeyboardShortcut>>(
-  KeyboardShortcutsNotifier.new,
-);
+final keyboardShortcutsProvider =
+    NotifierProvider<KeyboardShortcutsNotifier, List<KeyboardShortcut>>(
+      KeyboardShortcutsNotifier.new,
+    );
+
+typedef ShortcutActionCallback = void Function();
+final shortcutActionCallbacksProvider =
+    Provider<Map<String, List<ShortcutActionCallback>>>((ref) => {});
 
 class KeyboardShortcutsNotifier extends Notifier<List<KeyboardShortcut>> {
   static const String boxName = 'keyboardShortcuts';
@@ -102,8 +109,9 @@ class KeyboardShortcutsNotifier extends Notifier<List<KeyboardShortcut>> {
   }
 
   bool hasConflicts(KeyboardShortcut shortcut) {
-    return state.any((s) =>
-        s.action != shortcut.action && _isSameShortcut(s, shortcut));
+    return state.any(
+      (s) => s.action != shortcut.action && _isSameShortcut(s, shortcut),
+    );
   }
 
   Future<void> executeAction(String action) async {
@@ -135,14 +143,10 @@ class KeyboardShortcutsNotifier extends Notifier<List<KeyboardShortcut>> {
         );
         break;
       case ShortcutAction.volumeUp:
-        await mediaService.setVolume(
-          (mediaService.volume + 10).clamp(0, 200),
-        );
+        await mediaService.setVolume((mediaService.volume + 10).clamp(0, 200));
         break;
       case ShortcutAction.volumeDown:
-        await mediaService.setVolume(
-          (mediaService.volume - 10).clamp(0, 200),
-        );
+        await mediaService.setVolume((mediaService.volume - 10).clamp(0, 200));
         break;
       case ShortcutAction.volumeMute:
         await mediaService.setVolume(0);
@@ -165,13 +169,39 @@ class KeyboardShortcutsNotifier extends Notifier<List<KeyboardShortcut>> {
         }
         break;
       case ShortcutAction.toggleFullscreen:
-      case ShortcutAction.addBookmark:
-      case ShortcutAction.openLibrary:
-      case ShortcutAction.openPlayer:
-      case ShortcutAction.openSettings:
-      case ShortcutAction.focusSearch:
-      case ShortcutAction.toggleViewMode:
+        await windowManager.setFullScreen(
+          !(await windowManager.isFullScreen()),
+        );
         break;
+      case ShortcutAction.addBookmark:
+        _executeCallbacks(ShortcutAction.addBookmark);
+        break;
+      case ShortcutAction.openLibrary:
+        _executeCallbacks(ShortcutAction.openLibrary);
+        break;
+      case ShortcutAction.openPlayer:
+        _executeCallbacks(ShortcutAction.openPlayer);
+        break;
+      case ShortcutAction.openSettings:
+        _executeCallbacks(ShortcutAction.openSettings);
+        break;
+      case ShortcutAction.focusSearch:
+        _executeCallbacks(ShortcutAction.focusSearch);
+        break;
+      case ShortcutAction.toggleViewMode:
+        _executeCallbacks(ShortcutAction.toggleViewMode);
+        break;
+    }
+  }
+
+  void _executeCallbacks(String action) {
+    try {
+      final callbacks = ref.read(shortcutActionCallbacksProvider);
+      for (final callback in (callbacks[action] ?? [])) {
+        callback();
+      }
+    } catch (e) {
+      debugPrint('Error executing shortcut callback for $action: $e');
     }
   }
 

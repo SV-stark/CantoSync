@@ -11,6 +11,7 @@ import 'package:canto_sync/core/services/playback_sync_service.dart';
 import 'package:canto_sync/core/services/app_settings_service.dart';
 import 'package:canto_sync/features/library/ui/metadata_editor.dart';
 import 'package:canto_sync/features/library/ui/book_info_dialog.dart';
+import 'package:canto_sync/core/constants/app_constants.dart';
 
 class LibraryViewModeNotifier extends Notifier<bool> {
   @override
@@ -638,13 +639,13 @@ class _BookCardState extends ConsumerState<BookCard> {
   bool get _hasProgress {
     final pos = widget.book.positionSeconds ?? 0;
     final dur = widget.book.durationSeconds ?? 0;
-    return pos > 0 && pos < dur * 0.95; // Not completed (within 95%)
+    return pos > 0 && pos < dur * AppConstants.bookCompletionThreshold;
   }
 
   bool get _isCompleted {
     final pos = widget.book.positionSeconds ?? 0;
     final dur = widget.book.durationSeconds ?? 0;
-    return dur > 0 && pos >= dur * 0.95;
+    return dur > 0 && pos >= dur * AppConstants.bookCompletionThreshold;
   }
 
   @override

@@ -1,5 +1,4 @@
 import 'dart:math' as math;
-import 'package:flutter/material.dart' as material;
 import 'package:fluent_ui/fluent_ui.dart';
 
 class CelebrationAnimation extends StatefulWidget {
@@ -78,117 +77,106 @@ class _CelebrationAnimationState extends State<CelebrationAnimation>
 
   @override
   Widget build(BuildContext context) {
-    return material.Material(
-      type: material.MaterialType.transparency,
-      child: Stack(
-        children: [
-          // Semi-transparent background
-          Container(color: Colors.black.withValues(alpha: 0.6)),
-          // Particles
-          ..._particles.map(
-            (particle) => AnimatedBuilder(
-              animation: _controller,
-              builder: (context, child) {
-                final animationValue =
-                    ((_controller.value - particle.delay) /
-                            (1 - particle.delay))
-                        .clamp(0.0, 1.0);
+    return Stack(
+      children: [
+        // Semi-transparent background
+        Container(color: Colors.black.withValues(alpha: 0.6)),
+        // Particles
+        ..._particles.map(
+          (particle) => AnimatedBuilder(
+            animation: _controller,
+            builder: (context, child) {
+              final animationValue =
+                  ((_controller.value - particle.delay) / (1 - particle.delay))
+                      .clamp(0.0, 1.0);
 
-                if (animationValue <= 0) return const SizedBox.shrink();
+              if (animationValue <= 0) return const SizedBox.shrink();
 
-                final x =
-                    particle.startX +
-                    (particle.endX - particle.startX) *
-                        Curves.easeOut.transform(animationValue);
-                final y =
-                    particle.startY +
-                    (particle.endY - particle.startY) *
-                        Curves.easeOut.transform(animationValue);
-                final opacity = 1.0 - animationValue;
+              final x =
+                  particle.startX +
+                  (particle.endX - particle.startX) *
+                      Curves.easeOut.transform(animationValue);
+              final y =
+                  particle.startY +
+                  (particle.endY - particle.startY) *
+                      Curves.easeOut.transform(animationValue);
+              final opacity = 1.0 - animationValue;
 
-                return Positioned(
-                  left:
-                      x * MediaQuery.of(context).size.width - particle.size / 2,
-                  top:
-                      y * MediaQuery.of(context).size.height -
-                      particle.size / 2,
-                  child: Opacity(
-                    opacity: opacity,
-                    child: Container(
-                      width: particle.size,
-                      height: particle.size,
-                      decoration: BoxDecoration(
-                        color: particle.color,
-                        shape: BoxShape.circle,
-                      ),
-                    ),
-                  ),
-                );
-              },
-            ),
-          ),
-          // Center content
-          Center(
-            child: AnimatedBuilder(
-              animation: _scaleAnimation,
-              builder: (context, child) {
-                return Transform.scale(
-                  scale: _scaleAnimation.value,
+              return Positioned(
+                left: x * MediaQuery.of(context).size.width - particle.size / 2,
+                top: y * MediaQuery.of(context).size.height - particle.size / 2,
+                child: Opacity(
+                  opacity: opacity,
                   child: Container(
-                    padding: const EdgeInsets.all(40),
+                    width: particle.size,
+                    height: particle.size,
                     decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(20),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withValues(alpha: 0.3),
-                          blurRadius: 20,
-                          offset: const Offset(0, 10),
-                        ),
-                      ],
-                    ),
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(
-                          FluentIcons.trophy,
-                          size: 80,
-                          color: Colors.yellow,
-                        ),
-                        const SizedBox(height: 20),
-                        const Text(
-                          'Book Completed!',
-                          style: TextStyle(
-                            fontSize: 28,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.black,
-                          ),
-                        ),
-                        const SizedBox(height: 10),
-                        const Text(
-                          'Congratulations on finishing this book',
-                          style: TextStyle(fontSize: 16, color: Colors.grey),
-                        ),
-                        const SizedBox(height: 30),
-                        FilledButton(
-                          onPressed: () {
-                            _controller.stop();
-                            if (widget.onComplete != null) {
-                              widget.onComplete!();
-                            }
-                            Navigator.of(context).pop();
-                          },
-                          child: const Text('Awesome!'),
-                        ),
-                      ],
+                      color: particle.color,
+                      shape: BoxShape.circle,
                     ),
                   ),
-                );
-              },
-            ),
+                ),
+              );
+            },
           ),
-        ],
-      ),
+        ),
+        // Center content
+        Center(
+          child: AnimatedBuilder(
+            animation: _scaleAnimation,
+            builder: (context, child) {
+              return Transform.scale(
+                scale: _scaleAnimation.value,
+                child: Container(
+                  padding: const EdgeInsets.all(40),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(20),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withValues(alpha: 0.3),
+                        blurRadius: 20,
+                        offset: const Offset(0, 10),
+                      ),
+                    ],
+                  ),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(FluentIcons.trophy, size: 80, color: Colors.yellow),
+                      const SizedBox(height: 20),
+                      const Text(
+                        'Book Completed!',
+                        style: TextStyle(
+                          fontSize: 28,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.black,
+                        ),
+                      ),
+                      const SizedBox(height: 10),
+                      const Text(
+                        'Congratulations on finishing this book',
+                        style: TextStyle(fontSize: 16, color: Colors.grey),
+                      ),
+                      const SizedBox(height: 30),
+                      FilledButton(
+                        onPressed: () {
+                          _controller.stop();
+                          if (widget.onComplete != null) {
+                            widget.onComplete!();
+                          }
+                          Navigator.of(context).pop();
+                        },
+                        child: const Text('Awesome!'),
+                      ),
+                    ],
+                  ),
+                ),
+              );
+            },
+          ),
+        ),
+      ],
     );
   }
 }

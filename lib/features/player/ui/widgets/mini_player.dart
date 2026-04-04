@@ -7,6 +7,7 @@ import 'package:canto_sync/core/services/media_service.dart';
 import 'package:canto_sync/core/services/playback_sync_service.dart';
 import 'package:canto_sync/features/library/data/library_service.dart';
 import 'package:canto_sync/features/player/ui/player_screen.dart';
+import 'package:canto_sync/core/utils/format_duration.dart';
 
 class MiniPlayer extends ConsumerStatefulWidget {
   final VoidCallback? onTap;
@@ -54,7 +55,9 @@ class _MiniPlayerState extends ConsumerState<MiniPlayer> {
           color: FluentTheme.of(context).cardColor,
           border: Border(
             top: BorderSide(
-              color: FluentTheme.of(context).resources.dividerStrokeColorDefault,
+              color: FluentTheme.of(
+                context,
+              ).resources.dividerStrokeColorDefault,
             ),
           ),
           boxShadow: [
@@ -95,7 +98,9 @@ class _MiniPlayerState extends ConsumerState<MiniPlayer> {
                     setState(() => _dragValue = val);
                   },
                   onChangeEnd: (val) async {
-                    await mediaService.seek(Duration(milliseconds: val.toInt()));
+                    await mediaService.seek(
+                      Duration(milliseconds: val.toInt()),
+                    );
                     await Future.delayed(const Duration(milliseconds: 200));
                     if (mounted) {
                       setState(() => _isDragging = false);
@@ -105,15 +110,28 @@ class _MiniPlayerState extends ConsumerState<MiniPlayer> {
               ),
             Expanded(
               child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 8,
+                ),
                 child: Row(
                   children: [
                     ClipRRect(
                       borderRadius: BorderRadius.circular(4),
                       child: AspectRatio(
                         aspectRatio: 1,
-                        child: currentBook.coverPath != null && currentBook.coverPath!.isNotEmpty
-                            ? Image.file(File(currentBook.coverPath!), fit: BoxFit.cover, errorBuilder: (context, error, stackTrace) => const Icon(FluentIcons.music_note, size: 24))
+                        child:
+                            currentBook.coverPath != null &&
+                                currentBook.coverPath!.isNotEmpty
+                            ? Image.file(
+                                File(currentBook.coverPath!),
+                                fit: BoxFit.cover,
+                                errorBuilder: (context, error, stackTrace) =>
+                                    const Icon(
+                                      FluentIcons.music_note,
+                                      size: 24,
+                                    ),
+                              )
                             : const Icon(FluentIcons.music_note, size: 24),
                       ),
                     ),
@@ -148,14 +166,18 @@ class _MiniPlayerState extends ConsumerState<MiniPlayer> {
                               overflow: TextOverflow.ellipsis,
                               style: TextStyle(
                                 fontSize: 12,
-                                color: FluentTheme.of(context).typography.caption?.color,
+                                color: FluentTheme.of(
+                                  context,
+                                ).typography.caption?.color,
                               ),
                             ),
                           Text(
                             '${_formatDuration(position)} / ${_formatDuration(duration)}',
                             style: TextStyle(
                               fontSize: 11,
-                              color: FluentTheme.of(context).typography.caption?.color,
+                              color: FluentTheme.of(
+                                context,
+                              ).typography.caption?.color,
                             ),
                           ),
                         ],
@@ -166,7 +188,9 @@ class _MiniPlayerState extends ConsumerState<MiniPlayer> {
                       icon: const Icon(FluentIcons.rewind, size: 18),
                       onPressed: () {
                         final newPos = position - const Duration(seconds: 15);
-                        mediaService.seek(newPos.isNegative ? Duration.zero : newPos);
+                        mediaService.seek(
+                          newPos.isNegative ? Duration.zero : newPos,
+                        );
                       },
                     ),
                     StreamBuilder<bool>(
@@ -187,7 +211,9 @@ class _MiniPlayerState extends ConsumerState<MiniPlayer> {
                       icon: const Icon(FluentIcons.fast_forward, size: 18),
                       onPressed: () {
                         final newPos = position + const Duration(seconds: 15);
-                        mediaService.seek(newPos > duration ? duration : newPos);
+                        mediaService.seek(
+                          newPos > duration ? duration : newPos,
+                        );
                       },
                     ),
                   ],
@@ -200,12 +226,7 @@ class _MiniPlayerState extends ConsumerState<MiniPlayer> {
     );
   }
 
-  String _formatDuration(Duration d) {
-    if (d.inHours > 0) {
-      return '${d.inHours}:${d.inMinutes.remainder(60).toString().padLeft(2, '0')}:${d.inSeconds.remainder(60).toString().padLeft(2, '0')}';
-    }
-    return '${d.inMinutes}:${d.inSeconds.remainder(60).toString().padLeft(2, '0')}';
-  }
+  String _formatDuration(Duration d) => formatDuration(d);
 }
 
 class _MarqueeText extends StatefulWidget {
@@ -235,12 +256,7 @@ class _MarqueeTextState extends State<_MarqueeText>
     _animation = Tween<Offset>(
       begin: Offset.zero,
       end: const Offset(-0.5, 0),
-    ).animate(
-      CurvedAnimation(
-        parent: _controller,
-        curve: Curves.linear,
-      ),
-    );
+    ).animate(CurvedAnimation(parent: _controller, curve: Curves.linear));
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _checkIfNeedsScroll();
@@ -249,18 +265,21 @@ class _MarqueeTextState extends State<_MarqueeText>
 
   void _checkIfNeedsScroll() {
     if (!mounted) return;
-    
+
     final renderBox = context.findRenderObject() as material.RenderBox?;
     if (renderBox != null) {
       final width = renderBox.size.width;
-      
-      final textSpan = material.TextSpan(text: widget.text, style: widget.style);
+
+      final textSpan = material.TextSpan(
+        text: widget.text,
+        style: widget.style,
+      );
       final textPainter = material.TextPainter(
         text: textSpan,
         textDirection: TextDirection.ltr,
       );
       textPainter.layout();
-      
+
       if (textPainter.width > width) {
         setState(() {
           _needsScroll = true;

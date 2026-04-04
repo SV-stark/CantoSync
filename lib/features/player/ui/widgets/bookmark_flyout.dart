@@ -1,6 +1,7 @@
 import 'dart:ui';
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:canto_sync/features/library/data/book.dart';
+import 'package:canto_sync/core/utils/format_duration.dart';
 
 class BookmarkFlyout extends StatelessWidget {
   final Book book;
@@ -20,13 +21,7 @@ class BookmarkFlyout extends StatelessWidget {
     this.onClose,
   });
 
-  String _formatDuration(double seconds) {
-    final duration = Duration(seconds: seconds.toInt());
-    if (duration.inHours > 0) {
-      return '${duration.inHours}:${duration.inMinutes.remainder(60).toString().padLeft(2, '0')}:${duration.inSeconds.remainder(60).toString().padLeft(2, '0')}';
-    }
-    return '${duration.inMinutes}:${duration.inSeconds.remainder(60).toString().padLeft(2, '0')}';
-  }
+  String _formatDuration(double seconds) => formatDurationSeconds(seconds);
 
   String _formatDate(DateTime date) {
     final now = DateTime.now();
@@ -78,7 +73,10 @@ class BookmarkFlyout extends StatelessWidget {
             children: [
               // Header
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 12,
+                ),
                 decoration: BoxDecoration(
                   border: Border(
                     bottom: BorderSide(
@@ -88,11 +86,7 @@ class BookmarkFlyout extends StatelessWidget {
                 ),
                 child: Row(
                   children: [
-                    Icon(
-                      FluentIcons.bookmarks,
-                      color: accentColor,
-                      size: 18,
-                    ),
+                    Icon(FluentIcons.bookmarks, color: accentColor, size: 18),
                     const SizedBox(width: 8),
                     Expanded(
                       child: Text(
@@ -136,7 +130,8 @@ class BookmarkFlyout extends StatelessWidget {
                         itemCount: sortedBookmarks.length,
                         itemBuilder: (context, index) {
                           final bookmark = sortedBookmarks[index];
-                          final isActive = (currentPosition.inSeconds -
+                          final isActive =
+                              (currentPosition.inSeconds -
                                       bookmark.timestampSeconds)
                                   .abs() <
                               2;
@@ -144,11 +139,14 @@ class BookmarkFlyout extends StatelessWidget {
                           return _BookmarkListItem(
                             bookmark: bookmark,
                             isActive: isActive,
-                            formattedTime: _formatDuration(bookmark.timestampSeconds),
+                            formattedTime: _formatDuration(
+                              bookmark.timestampSeconds,
+                            ),
                             formattedDate: _formatDate(bookmark.createdAt),
                             accentColor: accentColor,
                             onJump: () => onJumpToBookmark(bookmark),
-                            onDelete: () => _showDeleteConfirmation(context, bookmark),
+                            onDelete: () =>
+                                _showDeleteConfirmation(context, bookmark),
                           );
                         },
                       ),
@@ -157,7 +155,10 @@ class BookmarkFlyout extends StatelessWidget {
               // Current Position Indicator
               if (sortedBookmarks.isNotEmpty)
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 10,
+                  ),
                   decoration: BoxDecoration(
                     border: Border(
                       top: BorderSide(
@@ -297,8 +298,8 @@ class _BookmarkListItemState extends State<_BookmarkListItem> {
             color: widget.isActive
                 ? widget.accentColor.withValues(alpha: 0.2)
                 : _isHovered
-                    ? Colors.white.withValues(alpha: 0.05)
-                    : null,
+                ? Colors.white.withValues(alpha: 0.05)
+                : null,
             borderRadius: BorderRadius.circular(8),
             border: widget.isActive
                 ? Border.all(
@@ -343,7 +344,9 @@ class _BookmarkListItemState extends State<_BookmarkListItem> {
                       style: TextStyle(
                         color: Colors.white.withValues(alpha: 0.9),
                         fontSize: 13,
-                        fontWeight: widget.isActive ? FontWeight.w600 : FontWeight.normal,
+                        fontWeight: widget.isActive
+                            ? FontWeight.w600
+                            : FontWeight.normal,
                       ),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
@@ -381,7 +384,7 @@ class _BookmarkListItemState extends State<_BookmarkListItem> {
 }
 
 // Convenience widget to show bookmark flyout as an overlay
-class BookmarkFlyoutButton extends StatelessWidget {
+class BookmarkFlyoutButton extends StatefulWidget {
   final Book book;
   final List<Bookmark> bookmarks;
   final Duration currentPosition;
@@ -397,21 +400,38 @@ class BookmarkFlyoutButton extends StatelessWidget {
     required this.onDeleteBookmark,
   });
 
-  void _showBookmarkFlyout(BuildContext context) {
-    final flyoutController = FlyoutController();
-    
-    flyoutController.showFlyout(
+  @override
+  State<BookmarkFlyoutButton> createState() => _BookmarkFlyoutButtonState();
+}
+
+class _BookmarkFlyoutButtonState extends State<BookmarkFlyoutButton> {
+  late final FlyoutController _flyoutController;
+
+  @override
+  void initState() {
+    super.initState();
+    _flyoutController = FlyoutController();
+  }
+
+  @override
+  void dispose() {
+    _flyoutController.dispose();
+    super.dispose();
+  }
+
+  void _showBookmarkFlyout() {
+    _flyoutController.showFlyout(
       builder: (context) {
         return BookmarkFlyout(
-          book: book,
-          bookmarks: bookmarks,
-          currentPosition: currentPosition,
+          book: widget.book,
+          bookmarks: widget.bookmarks,
+          currentPosition: widget.currentPosition,
           onJumpToBookmark: (bookmark) {
-            flyoutController.close();
-            onJumpToBookmark(bookmark);
+            _flyoutController.close();
+            widget.onJumpToBookmark(bookmark);
           },
-          onDeleteBookmark: onDeleteBookmark,
-          onClose: () => flyoutController.close(),
+          onDeleteBookmark: widget.onDeleteBookmark,
+          onClose: () => _flyoutController.close(),
         );
       },
     );
@@ -419,13 +439,11 @@ class BookmarkFlyoutButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final flyoutController = FlyoutController();
-    
     return FlyoutTarget(
-      controller: flyoutController,
+      controller: _flyoutController,
       child: IconButton(
         icon: const Icon(FluentIcons.bookmarks),
-        onPressed: () => _showBookmarkFlyout(context),
+        onPressed: _showBookmarkFlyout,
       ),
     );
   }

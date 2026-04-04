@@ -11,7 +11,9 @@ import 'package:canto_sync/features/stats/data/stats_service.dart';
 final playbackSyncProvider = Provider<PlaybackSyncService>((ref) {
   final mediaService = ref.watch(mediaServiceProvider);
   final libraryService = ref.watch(libraryServiceProvider);
-  return PlaybackSyncService(mediaService, libraryService, ref);
+  final service = PlaybackSyncService(mediaService, libraryService, ref);
+  ref.onDispose(() => service.dispose());
+  return service;
 });
 
 final currentBookPathProvider =
@@ -90,8 +92,7 @@ class PlaybackSyncService {
 
     try {
       final statsService = _ref.read(listeningStatsServiceProvider);
-      // Get current playback speed from media service
-      final speed = 1.0; // Default speed since we don't track speed changes yet
+      final speed = _mediaService.playRate;
       await statsService.recordListeningTime(
         _currentBook!,
         seconds,

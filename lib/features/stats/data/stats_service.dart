@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:hive_flutter/hive_flutter.dart';
+import 'package:rxdart/rxdart.dart';
 import 'package:canto_sync/core/constants/app_constants.dart';
 import 'package:canto_sync/features/library/data/book.dart';
 import 'package:canto_sync/features/stats/data/listening_stats.dart';
@@ -11,7 +12,9 @@ final listeningStatsServiceProvider = Provider<ListeningStatsService>((ref) {
     final dailyBox = Hive.box<DailyListeningStats>(AppConstants.dailyStatsBox);
     final authorBox = Hive.box<AuthorStats>(AppConstants.authorStatsBox);
     final bookBox = Hive.box<BookCompletionStats>(AppConstants.bookStatsBox);
-    final speedBox = Hive.box<ListeningSpeedPreference>(AppConstants.speedStatsBox);
+    final speedBox = Hive.box<ListeningSpeedPreference>(
+      AppConstants.speedStatsBox,
+    );
     return ListeningStatsService(dailyBox, authorBox, bookBox, speedBox);
   } catch (e) {
     debugPrint('Error accessing stats boxes: $e');
@@ -64,7 +67,26 @@ class ListeningStatsService {
   );
 
   Stream<ListeningStatsSummary> watchStats() {
-    return Stream.periodic(const Duration(seconds: 5)).asyncMap((_) => _calculateStats());
+    final dailyStream = _dailyBox.watch().debounceTime(
+      const Duration(seconds: 1),
+    );
+    final authorStream = _authorBox.watch().debounceTime(
+      const Duration(seconds: 1),
+    );
+    final bookStream = _bookBox.watch().debounceTime(
+      const Duration(seconds: 1),
+    );
+    final speedStream = _speedBox.watch().debounceTime(
+      const Duration(seconds: 1),
+    );
+
+    return Rx.combineLatest4(
+      dailyStream,
+      authorStream,
+      bookStream,
+      speedStream,
+      (_, __, ___, ____) => _calculateStats(),
+    );
   }
 
   Future<ListeningStatsSummary> _calculateStats() async {
@@ -123,10 +145,13 @@ class ListeningStatsService {
     int currentCount = 0;
 
     final today = _formatDate(DateTime.now());
-    final yesterday = _formatDate(DateTime.now().subtract(const Duration(days: 1)));
+    final yesterday = _formatDate(
+      DateTime.now().subtract(const Duration(days: 1)),
+    );
 
     // Check if listening happened today or yesterday for current streak
-    if (datesWithActivity.contains(today) || datesWithActivity.contains(yesterday)) {
+    if (datesWithActivity.contains(today) ||
+        datesWithActivity.contains(yesterday)) {
       // Calculate current streak
       DateTime checkDate = datesWithActivity.contains(today)
           ? DateTime.now()
@@ -151,7 +176,9 @@ class ListeningStatsService {
         if (_formatDate(expectedDate) == sortedDates[i]) {
           currentCount++;
         } else {
-          longestStreak = currentCount > longestStreak ? currentCount : longestStreak;
+          longestStreak = currentCount > longestStreak
+              ? currentCount
+              : longestStreak;
           streakStart = currentDate;
           currentCount = 1;
         }
@@ -278,12 +305,14 @@ class ListeningStatsService {
 
   Future<void> markBookAsCompleted(Book book) async {
     final bookPath = book.path;
-    var bookStats = _bookBox.get(bookPath) ?? BookCompletionStats(
-      bookPath: bookPath,
-      bookTitle: book.title,
-      author: book.author ?? 'Unknown Author',
-      startedDate: DateTime.now(),
-    );
+    var bookStats =
+        _bookBox.get(bookPath) ??
+        BookCompletionStats(
+          bookPath: bookPath,
+          bookTitle: book.title,
+          author: book.author ?? 'Unknown Author',
+          startedDate: DateTime.now(),
+        );
 
     bookStats.isCompleted = true;
     bookStats.completedDate = DateTime.now();

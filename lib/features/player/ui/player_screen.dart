@@ -14,6 +14,8 @@ import 'package:canto_sync/features/player/ui/widgets/waveform_visualizer.dart';
 import 'package:canto_sync/features/player/ui/widgets/sleep_timer_overlay.dart';
 import 'package:canto_sync/core/services/sleep_timer_service.dart';
 import 'package:canto_sync/features/library/ui/metadata_editor.dart';
+import 'package:canto_sync/core/utils/format_duration.dart';
+import 'package:canto_sync/core/constants/app_constants.dart';
 
 // Stream Providers
 final playerPositionProvider = StreamProvider.autoDispose<Duration>((ref) {
@@ -69,12 +71,7 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
   bool _isDragging = false;
   double _dragValue = 0.0;
 
-  String _formatDuration(Duration d) {
-    if (d.inHours > 0) {
-      return '${d.inHours}:${d.inMinutes.remainder(60).toString().padLeft(2, '0')}:${d.inSeconds.remainder(60).toString().padLeft(2, '0')}';
-    }
-    return '${d.inMinutes}:${d.inSeconds.remainder(60).toString().padLeft(2, '0')}';
-  }
+  String _formatDuration(Duration d) => formatDuration(d);
 
   @override
   Widget build(BuildContext context) {
@@ -124,7 +121,9 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
       } else {
         final posSeconds = position.inMilliseconds / 1000.0;
         currentChapter = chapters.lastWhere(
-          (c) => c.startTime <= posSeconds + 0.5,
+          (c) =>
+              c.startTime <=
+              posSeconds + AppConstants.chapterMatchingToleranceSeconds,
           orElse: () => chapters.first,
         );
       }
@@ -199,7 +198,8 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
         Positioned.fill(
           child: LayoutBuilder(
             builder: (context, constraints) {
-              final isWide = constraints.maxWidth > 900;
+              final isWide =
+                  constraints.maxWidth > AppConstants.wideLayoutWidthThreshold;
 
               if (isWide) {
                 return Center(
@@ -210,9 +210,11 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
                       children: [
                         // Left: Cover Art
                         _buildCoverArt(
-                          currentBook, 
-                          size: 450, 
-                          showReflection: ref.read(appSettingsProvider).showCoverReflection,
+                          currentBook,
+                          size: 450,
+                          showReflection: ref
+                              .read(appSettingsProvider)
+                              .showCoverReflection,
                         ),
                         const SizedBox(width: 60),
 
@@ -255,9 +257,11 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
                     children: [
                       const SizedBox(height: 20),
                       _buildCoverArt(
-                        currentBook, 
-                        size: 300, 
-                        showReflection: ref.read(appSettingsProvider).showCoverReflection,
+                        currentBook,
+                        size: 300,
+                        showReflection: ref
+                            .read(appSettingsProvider)
+                            .showCoverReflection,
                       ),
                       const SizedBox(height: 30),
                       GlassPlayerCard(
@@ -288,7 +292,7 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
             },
           ),
         ),
-        
+
         // 3. Sleep Timer Overlay (if active)
         if (remainingTimer.remainingTime != null)
           Positioned.fill(
@@ -301,7 +305,11 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
     );
   }
 
-  Widget _buildCoverArt(Book? book, {required double size, required bool showReflection}) {
+  Widget _buildCoverArt(
+    Book? book, {
+    required double size,
+    required bool showReflection,
+  }) {
     return CoverArtWithReflection(
       book: book,
       size: size,

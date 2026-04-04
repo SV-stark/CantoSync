@@ -1,7 +1,7 @@
 [Setup]
-AppId={{CantoSync-UUID}}
+AppId={{A7F3E9D2-4B1C-4E8A-9F6D-2C8B5A3E7D1F}}
 AppName=CantoSync
-AppVersion=1.0.0
+AppVersion={#AppVersion}
 AppPublisher=SV-Stark
 AppPublisherURL=https://github.com/SV-stark/CantoSync
 DefaultDirName={autopf}\CantoSync

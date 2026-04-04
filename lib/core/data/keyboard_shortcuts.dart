@@ -3,13 +3,15 @@ import 'package:hive/hive.dart';
 
 part 'keyboard_shortcuts.g.dart';
 
-  @HiveType(typeId: 7)
+@HiveType(typeId: 7)
 class KeyboardShortcut extends HiveObject {
   @HiveField(0)
   String action;
 
   @HiveField(1)
   String keyValue;
+
+  String get key => keyValue;
 
   @HiveField(2)
   bool ctrl;

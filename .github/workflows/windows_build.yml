@@ -41,12 +41,19 @@ jobs:
       - name: Generate Icons
         run: flutter pub run flutter_launcher_icons
 
+      - name: Run Analyzer
+        run: flutter analyze --fatal-infos
+
+      - name: Run Tests
+        run: flutter test
+
       - name: Build Windows
         run: flutter build windows --release
           
       - name: Compile Installer
         run: |
-          & "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" installers/inno_script.iss
+          $version = (Select-String -Path "pubspec.yaml" -Pattern "version: (.*)" | ForEach-Object { $_.Matches.Groups[1].Value -split '\+' | Select-Object -First 1 })
+          & "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" /dAppVersion=$version installers/inno_script.iss
           
       - name: Update Nightly Release
         uses: softprops/action-gh-release@v2

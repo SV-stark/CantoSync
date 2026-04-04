@@ -4,6 +4,7 @@ import 'package:fluent_ui/fluent_ui.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:canto_sync/features/library/data/book.dart';
 import 'package:canto_sync/features/library/data/library_service.dart';
+import 'package:canto_sync/core/utils/format_duration.dart';
 
 class BookInfoDialog extends ConsumerStatefulWidget {
   final Book book;
@@ -15,19 +16,7 @@ class BookInfoDialog extends ConsumerStatefulWidget {
 }
 
 class _BookInfoDialogState extends ConsumerState<BookInfoDialog> {
-  String _formatDuration(double? seconds) {
-    if (seconds == null) return 'Unknown';
-    final duration = Duration(seconds: seconds.toInt());
-    final hours = duration.inHours;
-    final minutes = duration.inMinutes.remainder(60);
-    final secs = duration.inSeconds.remainder(60);
-
-    if (hours > 0) {
-      return '${hours}h ${minutes}m ${secs}s';
-    } else {
-      return '${minutes}m ${secs}s';
-    }
-  }
+  String _formatDuration(double? seconds) => formatDurationVerbose(seconds);
 
   Future<void> _pickNewCover() async {
     FilePickerResult? result = await FilePicker.platform.pickFiles(

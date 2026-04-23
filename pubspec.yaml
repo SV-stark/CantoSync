@@ -65,7 +65,7 @@ dev_dependencies:
     sdk: flutter
 
   flutter_lints: ^6.0.0
-  build_runner: any
+  build_runner: 2.14.0
   # hive_generator removed: v2.0.1 is incompatible with flutter_test + riverpod_annotation >=4.0.1
   # The .g.dart files are already committed. To regenerate, temporarily pin to an older Flutter SDK
   # or use hive_ce_generator with a migration to hive_ce.

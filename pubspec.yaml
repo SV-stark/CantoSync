@@ -42,7 +42,7 @@ dependencies:
   hive_flutter: ^1.1.0
   window_manager: ^0.5.1
   path_provider: ^2.1.5
-  file_picker: ^10.3.10
+  file_picker: ^11.0.2
   media_kit: ^1.2.6
   media_kit_video: ^2.0.1
   media_kit_libs_windows_video: ^1.0.11

@@ -2,8 +2,9 @@ import 'dart:async';
 import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:fluent_ui/fluent_ui.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:hive_flutter/hive_flutter.dart';
+import 'package:isar/isar.dart';
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
 import 'package:media_kit/media_kit.dart';
@@ -23,9 +24,11 @@ import 'package:canto_sync/core/services/tray_service.dart';
 import 'package:canto_sync/core/services/update_service.dart';
 import 'package:canto_sync/core/services/app_settings_service.dart';
 import 'package:canto_sync/core/services/playback_sync_service.dart';
+import 'package:canto_sync/features/library/data/library_service.dart';
 import 'package:canto_sync/core/ui/window_buttons.dart';
 import 'package:canto_sync/core/constants/app_constants.dart';
 import 'package:canto_sync/core/services/data_migration_service.dart';
+import 'package:canto_sync/core/utils/logger.dart';
 
 Future<Box<T>> _openHiveBoxWithRecovery<T>(
   String boxName, {
@@ -34,7 +37,7 @@ Future<Box<T>> _openHiveBoxWithRecovery<T>(
   try {
     return Hive.openBox<T>(boxName);
   } catch (e) {
-    debugPrint('Error opening $boxName: $e. Resetting...');
+    logger.e('Error opening $boxName: $e. Resetting...');
     await Hive.deleteBoxFromDisk(boxName);
     return Hive.openBox<T>(boxName);
   }
@@ -47,17 +50,17 @@ void main() async {
 
       FlutterError.onError = (FlutterErrorDetails details) {
         FlutterError.presentError(details);
-        debugPrint('FLUTTER ERROR: ${details.exception}');
-        debugPrint('${details.stack}');
+        logger.e('FLUTTER ERROR: ${details.exception}', error: details.exception, stackTrace: details.stack);
       };
 
       PlatformDispatcher.instance.onError = (error, stack) {
-        debugPrint('PLATFORM ERROR: $error');
-        debugPrint('$stack');
+        logger.e('PLATFORM ERROR: $error', error: error, stackTrace: stack);
         return true;
       };
 
       await windowManager.ensureInitialized();
+
+      late final Isar isar;
 
       try {
         MediaKit.ensureInitialized();
@@ -69,19 +72,19 @@ void main() async {
         }
         await Hive.initFlutter(cantoSyncDir.path);
 
-        Hive.registerAdapter(BookAdapter());
-        Hive.registerAdapter(BookmarkAdapter());
-        Hive.registerAdapter(FileMetadataAdapter());
+        // Initialize Isar
+        isar = await Isar.open(
+          [BookSchema],
+          directory: cantoSyncDir.path,
+        );
 
+        // Keep other Hive adapters for now
         Hive.registerAdapter(DailyListeningStatsAdapter());
         Hive.registerAdapter(AuthorStatsAdapter());
         Hive.registerAdapter(BookCompletionStatsAdapter());
         Hive.registerAdapter(ListeningSpeedPreferenceAdapter());
-
         Hive.registerAdapter(KeyboardShortcutAdapter());
 
-        await _openHiveBoxWithRecovery<Book>(AppConstants.libraryBox);
-        await _openHiveBoxWithRecovery<Book>(AppConstants.booksBox);
         await _openHiveBoxWithRecovery(AppConstants.settingsBox);
         await _openHiveBoxWithRecovery<DailyListeningStats>(
           AppConstants.dailyStatsBox,
@@ -100,10 +103,9 @@ void main() async {
         );
 
         await DataMigrationService.runMigrations();
-
         await SystemTheme.accentColor.load();
-      } catch (e) {
-        debugPrint('Critical Initialization Error: $e');
+      } catch (e, stack) {
+        logger.f('Critical Initialization Error', error: e, stackTrace: stack);
       }
 
       WindowOptions windowOptions = const WindowOptions(
@@ -116,11 +118,18 @@ void main() async {
       );
 
       await windowManager.waitUntilReadyToShow(windowOptions);
-      runApp(const ProviderScope(child: CantoSyncApp()));
+      
+      runApp(
+        ProviderScope(
+          overrides: [
+            isarProvider.overrideWithValue(isar),
+          ],
+          child: const CantoSyncApp(),
+        ),
+      );
     },
     (error, stack) {
-      debugPrint('CRITICAL GLOBAL ERROR: $error');
-      debugPrint('$stack');
+      logger.f('CRITICAL GLOBAL ERROR', error: error, stackTrace: stack);
     },
   );
 }
@@ -141,13 +150,12 @@ class _CantoSyncAppState extends ConsumerState<CantoSyncApp>
     super.initState();
     windowManager.addListener(this);
 
-    // Force show window once the frame is definitely ready
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       try {
         await windowManager.show();
         await windowManager.focus();
       } catch (e) {
-        debugPrint('Error showing window: $e');
+        logger.e('Error showing window', error: e);
       }
     });
 
@@ -167,7 +175,7 @@ class _CantoSyncAppState extends ConsumerState<CantoSyncApp>
       await ref.read(trayServiceProvider).init();
       _checkUpdates();
     } catch (e) {
-      debugPrint('Error in _initServices: $e');
+      logger.e('Error in _initServices', error: e);
     }
   }
 
@@ -175,7 +183,7 @@ class _CantoSyncAppState extends ConsumerState<CantoSyncApp>
     try {
       await ref.read(updateServiceProvider).checkForUpdates();
     } catch (e) {
-      debugPrint('Update check failed: $e');
+      logger.e('Update check failed', error: e);
     }
   }
 
@@ -191,7 +199,7 @@ class _CantoSyncAppState extends ConsumerState<CantoSyncApp>
   @override
   Widget build(BuildContext context) {
     try {
-      final settings = ref.watch(appSettingsProvider);
+      final settings = ref.watch(appSettingsNotifierProvider);
 
       return FluentApp(
         title: 'CantoSync',
@@ -266,8 +274,7 @@ class _CantoSyncAppState extends ConsumerState<CantoSyncApp>
         ),
       );
     } catch (e, stack) {
-      debugPrint('UI BUILD ERROR: $e');
-      debugPrint('$stack');
+      logger.e('UI BUILD ERROR', error: e, stackTrace: stack);
       return Center(child: Text('Fatal UI Error: $e'));
     }
   }

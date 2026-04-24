@@ -1,8 +1,13 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'package:hive_flutter/hive_flutter.dart';
+import 'package:freezed_annotation/freezed_annotation.dart';
 import 'package:canto_sync/core/services/media_service.dart';
 import 'package:canto_sync/core/constants/app_constants.dart';
+import 'package:canto_sync/core/utils/logger.dart';
+
+part 'app_settings_service.freezed.dart';
+part 'app_settings_service.g.dart';
 
 enum AudioPreset {
   flat('Flat', ''),
@@ -26,52 +31,22 @@ enum PlayerThemeMode {
   const PlayerThemeMode(this.label);
 }
 
-class AppSettings {
-  final ThemeMode themeMode;
-  final AudioPreset audioPreset;
-  final List<String> libraryPaths;
-  final bool skipSilence;
-  final bool loudnessNormalization;
-  final PlayerThemeMode playerThemeMode;
-  final bool showWaveform;
-  final bool showCoverReflection;
-
-  AppSettings({
-    this.themeMode = ThemeMode.system,
-    this.audioPreset = AudioPreset.flat,
-    this.libraryPaths = const [],
-    this.skipSilence = false,
-    this.loudnessNormalization = false,
-    this.playerThemeMode = PlayerThemeMode.standard,
-    this.showWaveform = true,
-    this.showCoverReflection = true,
-  });
-
-  AppSettings copyWith({
-    ThemeMode? themeMode,
-    AudioPreset? audioPreset,
-    List<String>? libraryPaths,
-    bool? skipSilence,
-    bool? loudnessNormalization,
-    PlayerThemeMode? playerThemeMode,
-    bool? showWaveform,
-    bool? showCoverReflection,
-  }) {
-    return AppSettings(
-      themeMode: themeMode ?? this.themeMode,
-      audioPreset: audioPreset ?? this.audioPreset,
-      libraryPaths: libraryPaths ?? this.libraryPaths,
-      skipSilence: skipSilence ?? this.skipSilence,
-      loudnessNormalization:
-          loudnessNormalization ?? this.loudnessNormalization,
-      playerThemeMode: playerThemeMode ?? this.playerThemeMode,
-      showWaveform: showWaveform ?? this.showWaveform,
-      showCoverReflection: showCoverReflection ?? this.showCoverReflection,
-    );
-  }
+@freezed
+class AppSettings with _$AppSettings {
+  const factory AppSettings({
+    @Default(ThemeMode.system) ThemeMode themeMode,
+    @Default(AudioPreset.flat) AudioPreset audioPreset,
+    @Default([]) List<String> libraryPaths,
+    @Default(false) bool skipSilence,
+    @Default(false) bool loudnessNormalization,
+    @Default(PlayerThemeMode.standard) PlayerThemeMode playerThemeMode,
+    @Default(true) bool showWaveform,
+    @Default(true) bool showCoverReflection,
+  }) = _AppSettings;
 }
 
-class AppSettingsNotifier extends Notifier<AppSettings> {
+@riverpod
+class AppSettingsNotifier extends _$AppSettingsNotifier {
   late Box _box;
 
   @override
@@ -110,19 +85,19 @@ class AppSettingsNotifier extends Notifier<AppSettings> {
       final showCoverReflection = _box.get('showCoverReflection', defaultValue: true);
 
       return AppSettings(
-        themeMode: ThemeMode.values[themeIndex],
-        audioPreset: AudioPreset.values[presetIndex],
+        themeMode: ThemeMode.values[themeIndex % ThemeMode.values.length],
+        audioPreset: AudioPreset.values[presetIndex % AudioPreset.values.length],
         libraryPaths: paths,
         skipSilence: skipSilence,
         loudnessNormalization: loudnessNormalization,
-        playerThemeMode: PlayerThemeMode.values[playerThemeModeIndex],
+        playerThemeMode: PlayerThemeMode.values[playerThemeModeIndex % PlayerThemeMode.values.length],
         showWaveform: showWaveform,
         showCoverReflection: showCoverReflection,
       );
-    } catch (e) {
-      debugPrint('Error loading AppSettings: $e');
+    } catch (e, stack) {
+      logger.e('Error loading AppSettings', error: e, stackTrace: stack);
       // Fallback to default
-      return AppSettings();
+      return const AppSettings();
     }
   }
 
@@ -180,7 +155,3 @@ class AppSettingsNotifier extends Notifier<AppSettings> {
     _box.put('showCoverReflection', enabled);
   }
 }
-
-final appSettingsProvider = NotifierProvider<AppSettingsNotifier, AppSettings>(
-  AppSettingsNotifier.new,
-);

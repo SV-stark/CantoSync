@@ -1,62 +1,55 @@
 import 'dart:async';
 import 'dart:io';
+import 'package:isar/isar.dart';
 import 'package:media_kit/media_kit.dart';
-import 'package:flutter/foundation.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:hive_flutter/hive_flutter.dart';
+import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'package:metadata_god/metadata_god.dart';
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
 import 'package:crypto/crypto.dart';
-import 'package:canto_sync/core/constants/app_constants.dart';
 import 'package:canto_sync/core/services/app_settings_service.dart';
+import 'package:canto_sync/core/utils/logger.dart';
 import 'book.dart';
 
-final libraryServiceProvider = Provider<LibraryService>((ref) {
-  try {
-    final box = Hive.box<Book>(AppConstants.libraryBox);
-    return LibraryService(box, ref: ref);
-  } catch (e) {
-    debugPrint('Error accessing library box: $e');
-    rethrow;
-  }
-});
+part 'library_service.g.dart';
 
-class LibrarySearchQuery extends Notifier<String> {
+@Riverpod(keepAlive: true)
+Isar isar(IsarRef ref) {
+  throw UnimplementedError('Isar must be initialized in main.dart and overridden in ProviderScope');
+}
+
+@Riverpod(keepAlive: true)
+LibraryService libraryService(LibraryServiceRef ref) {
+  final isarInstance = ref.watch(isarProvider);
+  return LibraryService(isarInstance, ref);
+}
+
+@riverpod
+class LibrarySearchQuery extends _$LibrarySearchQuery {
   @override
   String build() => '';
 
   void updateQuery(String query) => state = query;
 }
 
-final librarySearchQueryProvider = NotifierProvider<LibrarySearchQuery, String>(
-  LibrarySearchQuery.new,
-);
-
-class LibraryGroupingMode extends Notifier<bool> {
+@riverpod
+class LibraryGroupingMode extends _$LibraryGroupingMode {
   @override
   bool build() => false;
 
   void toggle() => state = !state;
 }
 
-final libraryGroupingModeProvider = NotifierProvider<LibraryGroupingMode, bool>(
-  LibraryGroupingMode.new,
-);
-
-class LibraryCollectionFilter extends Notifier<String?> {
+@riverpod
+class LibraryCollectionFilter extends _$LibraryCollectionFilter {
   @override
   String? build() => null;
 
   void setFilter(String? collection) => state = collection;
 }
 
-final libraryCollectionFilterProvider =
-    NotifierProvider<LibraryCollectionFilter, String?>(
-      LibraryCollectionFilter.new,
-    );
-
-final libraryBooksProvider = StreamProvider<List<Book>>((ref) {
+@riverpod
+Stream<List<Book>> libraryBooks(LibraryBooksRef ref) {
   final service = ref.watch(libraryServiceProvider);
   final searchQuery = ref.watch(librarySearchQueryProvider).toLowerCase();
   final collectionFilter = ref.watch(libraryCollectionFilterProvider);
@@ -80,97 +73,84 @@ final libraryBooksProvider = StreamProvider<List<Book>>((ref) {
           album.contains(searchQuery);
     }).toList();
   });
-});
+}
 
-final libraryRecentBooksProvider = Provider<List<Book>>((ref) {
+@riverpod
+List<Book> libraryRecentBooks(LibraryRecentBooksRef ref) {
   final booksAsync = ref.watch(libraryBooksProvider);
   return booksAsync.maybeWhen(
     data: (books) {
       final sorted = List<Book>.from(books);
-      // Sort by lastPlayed descending
-      sorted.sort((a, b) {
-        final aTime = a.lastPlayed;
-        final bTime = b.lastPlayed;
-        return bTime.compareTo(aTime);
-      });
+      sorted.sort((a, b) => b.lastPlayed.compareTo(a.lastPlayed));
       return sorted.take(5).toList();
     },
     orElse: () => [],
   );
-});
+}
 
-final libraryGroupedBooksProvider =
-    Provider<AsyncValue<Map<String, List<Book>>>>((ref) {
-      final booksAsync = ref.watch(libraryBooksProvider);
+@riverpod
+Future<Map<String, List<Book>>> libraryGroupedBooks(LibraryGroupedBooksRef ref) async {
+  final books = await ref.watch(libraryBooksProvider.future);
 
-      return booksAsync.whenData((books) {
-        final Map<String, List<Book>> groups = {};
-        for (final book in books) {
-          final key = book.series ?? 'Standalone';
-          groups.putIfAbsent(key, () => []).add(book);
-        }
-
-        // Sort books within each series and assign indices if needed
-        for (final entry in groups.entries) {
-          final seriesBooks = entry.value;
-          if (entry.key != 'Standalone') {
-            // Sort by title for consistent ordering
-            seriesBooks.sort((a, b) => a.title.compareTo(b.title));
-
-            // Assign series indices if not already set
-            for (var i = 0; i < seriesBooks.length; i++) {
-              final book = seriesBooks[i];
-              if (book.seriesIndex == null) {
-                book.seriesIndex = i + 1;
-                // Save asynchronously without awaiting to avoid blocking UI
-                book.save().catchError((e) {
-                  debugPrint('Error saving series index for ${book.title}: $e');
-                });
-              }
-            }
-          }
-        }
-
-        return groups;
-      });
-    });
-
-class LibraryService {
-  final Box<Book> _box;
-  final Ref? ref;
-
-  LibraryService(this._box, {this.ref});
-
-  List<Book> get books => _box.values.toList();
-
-  List<Book> getBooksByCollection(String collectionName) {
-    return _box.values
-        .where((b) => b.collections?.contains(collectionName) ?? false)
-        .toList();
+  final Map<String, List<Book>> groups = {};
+  for (final book in books) {
+    final key = book.series ?? 'Standalone';
+    groups.putIfAbsent(key, () => []).add(book);
   }
 
-  Future<void> removeCollection(String collectionName) async {
-    final booksInCollection = getBooksByCollection(collectionName);
-    for (final book in booksInCollection) {
-      book.collections?.remove(collectionName);
-      await book.save();
+  // Sort books within each series and assign indices if needed
+  final service = ref.read(libraryServiceProvider);
+  for (final entry in groups.entries) {
+    final seriesBooks = entry.value;
+    if (entry.key != 'Standalone') {
+      seriesBooks.sort((a, b) => a.title.compareTo(b.title));
+
+      for (var i = 0; i < seriesBooks.length; i++) {
+        final book = seriesBooks[i];
+        if (book.seriesIndex == null) {
+          book.seriesIndex = i + 1;
+          // Save asynchronously
+          service.saveBook(book).catchError((e) {
+            logger.e('Error saving series index for ${book.title}', error: e);
+          });
+        }
+      }
     }
   }
 
+  return groups;
+}
+
+class LibraryService {
+  final Isar _isar;
+  final Ref _ref;
+
+  LibraryService(this._isar, this._ref);
+
+  Future<List<Book>> getAllBooks() async {
+    return _isar.books.where().findAll();
+  }
+
+  Future<void> saveBook(Book book) async {
+    await _isar.writeTxn(() async {
+      await _isar.books.put(book);
+    });
+  }
+
+  Future<void> deleteBook(String path) async {
+    await _isar.writeTxn(() async {
+      await _isar.books.where().pathEqualTo(path).deleteFirst();
+    });
+  }
+
   Stream<List<Book>> listenToBooks() {
-    return _box
-        .watch()
-        .map((event) => _box.values.toList())
-        .startWith(_box.values.toList());
+    return _isar.books.where().watch(fireImmediately: true);
   }
 
   Future<void> rescanLibraries() async {
-    if (ref == null) return;
-
-    final settings = ref!.read(appSettingsProvider);
+    final settings = _ref.read(appSettingsNotifierProvider);
     final libraryPaths = settings.libraryPaths;
 
-    // Create shared player for metadata extraction
     final probePlayer = Player(
       configuration: const PlayerConfiguration(vo: 'null'),
     );
@@ -183,11 +163,10 @@ class LibraryService {
         allFoundBookPaths.addAll(found);
       }
 
-      // Prune books that are no longer in the libraries
-      final booksToRemove = <dynamic>[];
+      final existingBooks = await getAllBooks();
+      final idsToRemove = <int>[];
 
-      for (final book in _box.values) {
-        // Check if book is within any of the managed library paths
+      for (final book in existingBooks) {
         bool isManaged = false;
         for (final libPath in libraryPaths) {
           if (p.isWithin(libPath, book.path) || p.equals(libPath, book.path)) {
@@ -196,15 +175,16 @@ class LibraryService {
           }
         }
 
-        if (isManaged) {
-          if (!allFoundBookPaths.contains(book.path)) {
-            // Book is in a managed folder but was not found in scan -> deleted
-            booksToRemove.add(book.key);
-          }
+        if (isManaged && !allFoundBookPaths.contains(book.path)) {
+          idsToRemove.add(book.id);
         }
       }
 
-      await _box.deleteAll(booksToRemove);
+      if (idsToRemove.isNotEmpty) {
+        await _isar.writeTxn(() async {
+          await _isar.books.deleteAll(idsToRemove);
+        });
+      }
     } finally {
       await probePlayer.dispose();
     }
@@ -221,35 +201,23 @@ class LibraryService {
     }
   }
 
-  Future<void> deleteBook(String path) async {
-    final book = _box.values.cast<Book?>().firstWhere(
-      (b) => b?.path == path,
-      orElse: () => null,
-    );
-    if (book != null) {
-      await book.delete();
-    }
-  }
-
   Future<void> updateBookCover(Book book, String newCoverFile) async {
     try {
       final bookDir = book.isDirectory ? book.path : p.dirname(book.path);
       final ext = p.extension(newCoverFile);
       final targetPath = p.join(bookDir, 'CoverSC$ext');
 
-      // Copy file to book directory
       final sourceFile = File(newCoverFile);
       if (!await sourceFile.exists()) {
-        debugPrint('Source cover file does not exist: $newCoverFile');
+        logger.w('Source cover file does not exist: $newCoverFile');
         return;
       }
       await sourceFile.copy(targetPath);
 
-      // Update book metadata
       book.coverPath = targetPath;
-      await book.save();
-    } catch (e) {
-      debugPrint('Error updating book cover: $e');
+      await saveBook(book);
+    } catch (e, stack) {
+      logger.e('Error updating book cover', error: e, stackTrace: stack);
     }
   }
 
@@ -266,8 +234,6 @@ class LibraryService {
         .toList();
 
     final audioExtensions = {'.mp3', '.m4b', '.m4a', '.flac', '.ogg', '.wav'};
-
-    // Group files by parent directory
     final Map<String, List<File>> dirBasedGroups = {};
 
     for (final entity in entities) {
@@ -287,8 +253,8 @@ class LibraryService {
       final files = entry.value;
 
       files.sort((a, b) => a.path.compareTo(b.path));
-
       final filePaths = files.map((f) => f.path).toList();
+      
       await _addBookIfNotExists(
         parentPath,
         isDirectory: true,
@@ -308,11 +274,7 @@ class LibraryService {
     required Player probePlayer,
     bool forceUpdate = false,
   }) async {
-    // Check if already in DB
-    final existingBook = _box.values.cast<Book?>().firstWhere(
-      (b) => b?.path == path,
-      orElse: () => null,
-    );
+    final existingBook = await _isar.books.where().pathEqualTo(path).findFirst();
     if (existingBook != null && !forceUpdate) return;
 
     String? title;
@@ -322,7 +284,6 @@ class LibraryService {
     String? description;
     double duration = 0;
 
-    // Fallback title to folder name
     final folderName = p.basename(path);
 
     try {
@@ -343,11 +304,8 @@ class LibraryService {
         );
       }
 
-      // Extract description using the shared media_kit player
-      // We pass the already created player to avoid overhead
       description = await _extractDescription(metadataSourcePath, probePlayer);
 
-      // Calculate total duration
       if (audioFiles != null) {
         for (final filePath in audioFiles) {
           try {
@@ -356,7 +314,7 @@ class LibraryService {
               duration += fileMeta.durationMs! / 1000.0;
             }
           } catch (e) {
-            debugPrint('Error reading duration for $filePath: $e');
+            logger.w('Error reading duration for $filePath: $e');
           }
         }
       } else {
@@ -365,7 +323,7 @@ class LibraryService {
         }
       }
     } catch (e) {
-      debugPrint('Error reading metadata for $path: $e');
+      logger.e('Error reading metadata for $path', error: e);
     }
 
     if (existingBook != null) {
@@ -377,7 +335,7 @@ class LibraryService {
       existingBook.audioFiles = audioFiles;
       existingBook.isDirectory = isDirectory;
       existingBook.description = description;
-      await existingBook.save();
+      await saveBook(existingBook);
     } else {
       final book = Book(
         path: path,
@@ -391,7 +349,7 @@ class LibraryService {
         isDirectory: isDirectory,
         description: description,
       );
-      await _box.add(book);
+      await saveBook(book);
     }
   }
 
@@ -406,9 +364,6 @@ class LibraryService {
         await coversDir.create(recursive: true);
       }
 
-      // Generate a unique hash for the cover based on audio path and mime type
-      // Using audio path ensures we map 1:1, but might duplicate if same image is in multiple files.
-      // Better: Hash the image bytes? Yes.
       final imageHash = md5.convert(picture.data).toString();
       final ext = picture.mimeType == 'image/png' ? '.png' : '.jpg';
       final coverFile = File(p.join(coversDir.path, '$imageHash$ext'));
@@ -419,7 +374,7 @@ class LibraryService {
 
       return coverFile.path;
     } catch (e) {
-      debugPrint('Error saving cover art: $e');
+      logger.e('Error saving cover art', error: e);
       return null;
     }
   }
@@ -430,39 +385,42 @@ class LibraryService {
     int? trackIndex,
   }) async {
     try {
-      final book = _box.values.firstWhere((b) => b.path == path);
-      book.positionSeconds = positionSeconds;
-      book.lastPlayed = DateTime.now();
-      if (trackIndex != null) {
-        book.lastTrackIndex = trackIndex;
+      final book = await _isar.books.where().pathEqualTo(path).findFirst();
+      if (book != null) {
+        book.positionSeconds = positionSeconds;
+        book.lastPlayed = DateTime.now();
+        if (trackIndex != null) {
+          book.lastTrackIndex = trackIndex;
+        }
+        await saveBook(book);
       }
-      await book.save();
     } catch (e) {
-      // Book not found in library, ignore
-      debugPrint('Update progress failed: Book at $path not found');
+      logger.e('Update progress failed', error: e);
     }
   }
 
   Future<void> addBookmark(String path, Bookmark bookmark) async {
     try {
-      final book = _box.values.firstWhere((b) => b.path == path);
-      book.bookmarks ??= [];
-      book.bookmarks!.add(bookmark);
-      await book.save();
+      final book = await _isar.books.where().pathEqualTo(path).findFirst();
+      if (book != null) {
+        book.bookmarks ??= [];
+        book.bookmarks!.add(bookmark);
+        await saveBook(book);
+      }
     } catch (e) {
-      debugPrint('Error adding bookmark: $e');
+      logger.e('Error adding bookmark', error: e);
     }
   }
 
   Future<void> removeBookmark(String path, int index) async {
     try {
-      final book = _box.values.firstWhere((b) => b.path == path);
-      if (book.bookmarks != null && index < book.bookmarks!.length) {
+      final book = await _isar.books.where().pathEqualTo(path).findFirst();
+      if (book != null && book.bookmarks != null && index < book.bookmarks!.length) {
         book.bookmarks!.removeAt(index);
-        await book.save();
+        await saveBook(book);
       }
     } catch (e) {
-      debugPrint('Error removing bookmark: $e');
+      logger.e('Error removing bookmark', error: e);
     }
   }
 
@@ -470,33 +428,13 @@ class LibraryService {
     try {
       await player.open(Media(path), play: false);
 
-      // Wait for metadata to be populated.
-      // MediaKit doesn't have a direct "awaitUntilMetadataLoaded" but probing is usually fast.
-      // We can check if metadata is already present or wait a tiny bit?
-      // Actually, opening a file triggers metadata loading.
-      // Let's retry a few times to get 'comment' or 'description'.
-
-      // We don't want to block for too long.
-      // We wait up to 5 seconds (100 * 50ms) to be safe for slow drives/heavy files.
       for (int i = 0; i < 100; i++) {
-        // Safe check for native platform
         if (player.platform is NativePlayer) {
           final native = player.platform as NativePlayer;
 
-          // Try getting all metadata as JSON first to avoid truncation
-          try {
-            final allMetadataStr = await native.getProperty('metadata');
-            // MediaKit/MPV might return a JSON map string here
-            debugPrint('Raw metadata: $allMetadataStr');
-            // Note: parsing logic would be complex without keys, but let's try specific keys again
-            // often 'metadata' property is a map.
-          } catch (_) {}
-
-          // Try specific common keys
           final comment = await native.getProperty('metadata/by-key/comment');
           if (comment.isNotEmpty) return comment;
 
-          // User requested explicit check for uppercase 'COMMENT' which some taggers use
           final commentUpper = await native.getProperty('metadata/COMMENT');
           if (commentUpper.isNotEmpty) return commentUpper;
 
@@ -509,15 +447,8 @@ class LibraryService {
         await Future.delayed(const Duration(milliseconds: 50));
       }
     } catch (e) {
-      debugPrint('Error extracting description with media_kit: $e');
+      logger.e('Error extracting description with media_kit', error: e);
     }
     return null;
-  }
-}
-
-extension StreamStartWith<T> on Stream<T> {
-  Stream<T> startWith(T value) async* {
-    yield value;
-    yield* this;
   }
 }

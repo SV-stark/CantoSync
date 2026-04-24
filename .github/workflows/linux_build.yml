@@ -97,7 +97,7 @@ jobs:
           mv CantoSync-*.AppImage CantoSync-Linux.AppImage
 
       - name: Update Nightly Release
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@v3
         if: github.event_name == 'push'
         with:
           name: "Nightly Build"

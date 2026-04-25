@@ -33,6 +33,8 @@ class _MiniPlayerState extends ConsumerState<MiniPlayer> {
     final mediaService = ref.watch(mediaServiceProvider);
     final position = ref.watch(playerPositionProvider).value ?? Duration.zero;
     final duration = ref.watch(playerDurationProvider).value ?? Duration.zero;
+    final totalDuration =
+        ref.watch(playerTotalDurationProvider).value ?? duration;
 
     final sliderMax = duration.inMilliseconds.toDouble();
     final sliderValue = _isDragging
@@ -41,10 +43,27 @@ class _MiniPlayerState extends ConsumerState<MiniPlayer> {
 
     final chapters = ref.watch(playerChaptersProvider).value ?? [];
     final currentIndex = mediaService.currentIndex;
-    String? chapterTitle;
 
-    if (chapters.isNotEmpty && currentIndex < chapters.length) {
-      chapterTitle = chapters[currentIndex].title;
+    // Detect multi-file vs. single-file (same logic as PlayerScreen)
+    final isMultiFile =
+        totalDuration.inSeconds > (duration.inSeconds + 10) || currentIndex > 0;
+
+    String? chapterTitle;
+    if (chapters.isNotEmpty) {
+      if (isMultiFile) {
+        // Multi-file: each chapter corresponds to a playlist file
+        if (currentIndex < chapters.length) {
+          chapterTitle = chapters[currentIndex].title;
+        }
+      } else {
+        // Single-file (e.g. M4B): use position-based lookup
+        final posSeconds = position.inMilliseconds / 1000.0;
+        final current = chapters.lastWhere(
+          (c) => c.startTime <= posSeconds + 1.0,
+          orElse: () => chapters.first,
+        );
+        chapterTitle = current.title;
+      }
     }
 
     return GestureDetector(

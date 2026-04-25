@@ -367,7 +367,12 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
               onPressed: () {
                 if (currentBook != null) {
                   ref.watch(playerChaptersProvider).whenData((chapters) {
-                    _showChaptersList(context, chapters, currentChapter);
+                    _showChaptersList(
+                      context,
+                      chapters,
+                      currentChapter,
+                      isMultiPlaylist,
+                    );
                   });
                 }
               },
@@ -378,12 +383,10 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
               onPressed: currentBook == null
                   ? null
                   : () {
-                      Navigator.push(
-                        context,
-                        FluentPageRoute(
-                          builder: (context) =>
-                              MetadataEditor(book: currentBook),
-                        ),
+                      showDialog(
+                        context: context,
+                        builder: (context) =>
+                            MetadataEditor(book: currentBook),
                       );
                     },
             ),
@@ -790,20 +793,47 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
     BuildContext context,
     List<Chapter> chapters,
     Chapter? currentChapter,
+    bool isMultiFile,
   ) {
+    final accentColor = FluentTheme.of(context).accentColor;
     showDialog(
       context: context,
       builder: (context) => ContentDialog(
         title: const Text('Chapters'),
         content: SizedBox(
-          height: 300,
-          width: 300,
+          height: 380,
+          width: 380,
           child: ListView.builder(
             itemCount: chapters.length,
             itemBuilder: (context, index) {
               final c = chapters[index];
+              final isCurrent = currentChapter != null &&
+                  c.title == currentChapter.title &&
+                  c.startTime == currentChapter.startTime;
               return ListTile(
-                title: Text(c.title),
+                leading: isCurrent
+                    ? Icon(FluentIcons.play, size: 14, color: accentColor)
+                    : const SizedBox(width: 14),
+                title: Text(
+                  c.title,
+                  style: TextStyle(
+                    color: isCurrent ? accentColor : null,
+                    fontWeight: isCurrent ? FontWeight.bold : null,
+                  ),
+                ),
+                subtitle: c.durationSeconds != null
+                    ? Text(
+                        _formatDuration(
+                          Duration(
+                            milliseconds: (c.durationSeconds! * 1000).toInt(),
+                          ),
+                        ),
+                        style: TextStyle(
+                          fontSize: 11,
+                          color: Colors.white.withValues(alpha: 0.5),
+                        ),
+                      )
+                    : null,
                 onPressed: () {
                   Navigator.pop(context);
                   ref.read(mediaServiceProvider).jumpToChapter(index);

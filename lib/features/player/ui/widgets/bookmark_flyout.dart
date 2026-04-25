@@ -4,12 +4,6 @@ import 'package:canto_sync/features/library/data/book.dart';
 import 'package:canto_sync/core/utils/format_duration.dart';
 
 class BookmarkFlyout extends StatelessWidget {
-  final Book book;
-  final List<Bookmark> bookmarks;
-  final Duration currentPosition;
-  final Function(Bookmark bookmark) onJumpToBookmark;
-  final Function(Bookmark bookmark) onDeleteBookmark;
-  final VoidCallback? onClose;
 
   const BookmarkFlyout({
     super.key,
@@ -20,6 +14,12 @@ class BookmarkFlyout extends StatelessWidget {
     required this.onDeleteBookmark,
     this.onClose,
   });
+  final Book book;
+  final List<Bookmark> bookmarks;
+  final Duration currentPosition;
+  final Function(Bookmark bookmark) onJumpToBookmark;
+  final Function(Bookmark bookmark) onDeleteBookmark;
+  final VoidCallback? onClose;
 
   String _formatDuration(double seconds) => formatDurationSeconds(seconds);
 
@@ -44,7 +44,7 @@ class BookmarkFlyout extends StatelessWidget {
   Widget build(BuildContext context) {
     final accentColor = FluentTheme.of(context).accentColor;
     final sortedBookmarks = List<Bookmark>.from(bookmarks)
-      ..sort((a, b) => a.timestampSeconds.compareTo(b.timestampSeconds));
+      ..sort((a, b) => (a.timestampSeconds ?? 0).compareTo(b.timestampSeconds ?? 0));
 
     return ClipRRect(
       borderRadius: BorderRadius.circular(12),
@@ -88,10 +88,10 @@ class BookmarkFlyout extends StatelessWidget {
                   children: [
                     Icon(FluentIcons.bookmarks, color: accentColor, size: 18),
                     const SizedBox(width: 8),
-                    Expanded(
+                    const Expanded(
                       child: Text(
                         'Bookmarks',
-                        style: const TextStyle(
+                        style: TextStyle(
                           color: Colors.white,
                           fontSize: 16,
                           fontWeight: FontWeight.w600,
@@ -132,7 +132,7 @@ class BookmarkFlyout extends StatelessWidget {
                           final bookmark = sortedBookmarks[index];
                           final isActive =
                               (currentPosition.inSeconds -
-                                      bookmark.timestampSeconds)
+                                      (bookmark.timestampSeconds ?? 0))
                                   .abs() <
                               2;
 
@@ -140,9 +140,9 @@ class BookmarkFlyout extends StatelessWidget {
                             bookmark: bookmark,
                             isActive: isActive,
                             formattedTime: _formatDuration(
-                              bookmark.timestampSeconds,
+                              (bookmark.timestampSeconds ?? 0).toDouble(),
                             ),
-                            formattedDate: _formatDate(bookmark.createdAt),
+                            formattedDate: _formatDate(bookmark.createdAt ?? DateTime.now()),
                             accentColor: accentColor,
                             onJump: () => onJumpToBookmark(bookmark),
                             onDelete: () =>
@@ -236,7 +236,7 @@ class BookmarkFlyout extends StatelessWidget {
       context: context,
       builder: (context) => ContentDialog(
         title: const Text('Delete Bookmark'),
-        content: Text('Are you sure you want to delete "${bookmark.label}"?'),
+        content: Text('Are you sure you want to delete "${bookmark.label ?? ""}"?'),
         actions: [
           Button(
             child: const Text('Cancel'),
@@ -259,13 +259,6 @@ class BookmarkFlyout extends StatelessWidget {
 }
 
 class _BookmarkListItem extends StatefulWidget {
-  final Bookmark bookmark;
-  final bool isActive;
-  final String formattedTime;
-  final String formattedDate;
-  final Color accentColor;
-  final VoidCallback onJump;
-  final VoidCallback onDelete;
 
   const _BookmarkListItem({
     required this.bookmark,
@@ -276,6 +269,13 @@ class _BookmarkListItem extends StatefulWidget {
     required this.onJump,
     required this.onDelete,
   });
+  final Bookmark bookmark;
+  final bool isActive;
+  final String formattedTime;
+  final String formattedDate;
+  final Color accentColor;
+  final VoidCallback onJump;
+  final VoidCallback onDelete;
 
   @override
   State<_BookmarkListItem> createState() => _BookmarkListItemState();
@@ -340,7 +340,7 @@ class _BookmarkListItemState extends State<_BookmarkListItem> {
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     Text(
-                      widget.bookmark.label,
+                      widget.bookmark.label ?? '',
                       style: TextStyle(
                         color: Colors.white.withValues(alpha: 0.9),
                         fontSize: 13,
@@ -385,11 +385,6 @@ class _BookmarkListItemState extends State<_BookmarkListItem> {
 
 // Convenience widget to show bookmark flyout as an overlay
 class BookmarkFlyoutButton extends StatefulWidget {
-  final Book book;
-  final List<Bookmark> bookmarks;
-  final Duration currentPosition;
-  final Function(Bookmark bookmark) onJumpToBookmark;
-  final Function(Bookmark bookmark) onDeleteBookmark;
 
   const BookmarkFlyoutButton({
     super.key,
@@ -399,6 +394,11 @@ class BookmarkFlyoutButton extends StatefulWidget {
     required this.onJumpToBookmark,
     required this.onDeleteBookmark,
   });
+  final Book book;
+  final List<Bookmark> bookmarks;
+  final Duration currentPosition;
+  final Function(Bookmark bookmark) onJumpToBookmark;
+  final Function(Bookmark bookmark) onDeleteBookmark;
 
   @override
   State<BookmarkFlyoutButton> createState() => _BookmarkFlyoutButtonState();

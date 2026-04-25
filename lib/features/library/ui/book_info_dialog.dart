@@ -1,15 +1,15 @@
 import 'dart:io';
 import 'package:file_picker/file_picker.dart';
 import 'package:fluent_ui/fluent_ui.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:canto_sync/features/library/data/book.dart';
 import 'package:canto_sync/features/library/data/library_service.dart';
 import 'package:canto_sync/core/utils/format_duration.dart';
 
 class BookInfoDialog extends ConsumerStatefulWidget {
-  final Book book;
 
   const BookInfoDialog({super.key, required this.book});
+  final Book book;
 
   @override
   ConsumerState<BookInfoDialog> createState() => _BookInfoDialogState();
@@ -19,7 +19,7 @@ class _BookInfoDialogState extends ConsumerState<BookInfoDialog> {
   String _formatDuration(double? seconds) => formatDurationVerbose(seconds);
 
   Future<void> _pickNewCover() async {
-    FilePickerResult? result = await FilePicker.platform.pickFiles(
+    FilePickerResult? result = await FilePicker.pickFiles(
       type: FileType.image,
     );
 
@@ -37,7 +37,7 @@ class _BookInfoDialogState extends ConsumerState<BookInfoDialog> {
     final theme = FluentTheme.of(context);
 
     return ContentDialog(
-      title: Text(book.title),
+      title: Text(book.title ?? 'Unknown'),
       constraints: const BoxConstraints(maxWidth: 600),
       content: SingleChildScrollView(
         child: Column(
@@ -110,7 +110,7 @@ class _BookInfoDialogState extends ConsumerState<BookInfoDialog> {
                       ),
                       _InfoRow(
                         label: 'Location',
-                        value: book.path,
+                        value: book.path ?? 'Unknown',
                         isPath: true,
                       ),
                     ],
@@ -148,15 +148,15 @@ class _BookInfoDialogState extends ConsumerState<BookInfoDialog> {
 }
 
 class _InfoRow extends StatelessWidget {
-  final String label;
-  final String value;
-  final bool isPath;
 
   const _InfoRow({
     required this.label,
     required this.value,
     this.isPath = false,
   });
+  final String label;
+  final String value;
+  final bool isPath;
 
   @override
   Widget build(BuildContext context) {

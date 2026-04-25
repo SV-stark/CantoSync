@@ -1,17 +1,19 @@
 import 'dart:io';
 import 'package:fluent_ui/fluent_ui.dart';
+import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:canto_sync/features/library/data/book.dart';
+import 'package:canto_sync/features/library/data/library_service.dart';
 
-class MetadataEditor extends StatefulWidget {
-  final Book book;
+class MetadataEditor extends ConsumerStatefulWidget {
 
   const MetadataEditor({super.key, required this.book});
+  final Book book;
 
   @override
-  State<MetadataEditor> createState() => _MetadataEditorState();
+  ConsumerState<MetadataEditor> createState() => _MetadataEditorState();
 }
 
-class _MetadataEditorState extends State<MetadataEditor> {
+class _MetadataEditorState extends ConsumerState<MetadataEditor> {
   late TextEditingController _titleController;
   late TextEditingController _authorController;
   late TextEditingController _albumController;
@@ -69,7 +71,7 @@ class _MetadataEditorState extends State<MetadataEditor> {
       widget.book.seriesIndex = null;
     }
     
-    await widget.book.save();
+    await ref.read(libraryServiceProvider).saveBook(widget.book);
     if (mounted) Navigator.pop(context);
   }
 

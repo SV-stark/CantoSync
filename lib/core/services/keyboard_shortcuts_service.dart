@@ -1,10 +1,10 @@
 import 'package:flutter/foundation.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:hive/hive.dart';
+import 'package:hooks_riverpod/hooks_riverpod.dart';
+import 'package:canto_sync/features/library/data/library_service.dart';
 import 'package:canto_sync/core/data/keyboard_shortcuts.dart';
 import 'package:canto_sync/core/services/media_service.dart';
 import 'package:canto_sync/core/services/sleep_timer_service.dart';
-import 'package:canto_sync/core/services/app_settings_service.dart';
+import 'package:isar/isar.dart';
 import 'package:window_manager/window_manager.dart';
 
 final keyboardShortcutsProvider =
@@ -17,32 +17,26 @@ final shortcutActionCallbacksProvider =
     Provider<Map<String, List<ShortcutActionCallback>>>((ref) => {});
 
 class KeyboardShortcutsNotifier extends Notifier<List<KeyboardShortcut>> {
-  static const String boxName = 'keyboardShortcuts';
-  late Box<KeyboardShortcut> _box;
+  late Isar _isar;
 
   @override
   List<KeyboardShortcut> build() {
+    _isar = ref.watch(isarProvider);
     _init();
     return getDefaultShortcuts();
   }
 
   Future<void> _init() async {
-    try {
-      _box = await Hive.openBox<KeyboardShortcut>(boxName);
-      await loadShortcuts();
-    } catch (e) {
-      debugPrint('Error initializing keyboard shortcuts box: $e');
-    }
+    await loadShortcuts();
   }
 
   Future<void> loadShortcuts() async {
     try {
-      if (_box.isEmpty) {
+      final shortcuts = await _isar.keyboardShortcuts.where().findAll();
+      if (shortcuts.isEmpty) {
         await resetToDefaults();
         return;
       }
-
-      final shortcuts = _box.values.toList();
       state = shortcuts;
     } catch (e) {
       debugPrint('Error loading shortcuts: $e');
@@ -57,7 +51,9 @@ class KeyboardShortcutsNotifier extends Notifier<List<KeyboardShortcut>> {
         final newState = [...state];
         newState[index] = shortcut;
         state = newState;
-        await _box.put(shortcut.action, shortcut);
+        await _isar.writeTxn(() async {
+          await _isar.keyboardShortcuts.put(shortcut);
+        });
       }
     } catch (e) {
       debugPrint('Error updating shortcut: $e');
@@ -66,11 +62,11 @@ class KeyboardShortcutsNotifier extends Notifier<List<KeyboardShortcut>> {
 
   Future<void> resetToDefaults() async {
     try {
-      await _box.clear();
       final defaults = getDefaultShortcuts();
-      for (final shortcut in defaults) {
-        await _box.put(shortcut.action, shortcut);
-      }
+      await _isar.writeTxn(() async {
+        await _isar.keyboardShortcuts.clear();
+        await _isar.keyboardShortcuts.putAll(defaults);
+      });
       state = defaults;
     } catch (e) {
       debugPrint('Error resetting to defaults: $e');
@@ -196,9 +192,12 @@ class KeyboardShortcutsNotifier extends Notifier<List<KeyboardShortcut>> {
 
   void _executeCallbacks(String action) {
     try {
-      final callbacks = ref.read(shortcutActionCallbacksProvider);
-      for (final callback in (callbacks[action] ?? [])) {
-        callback();
+      final Map<String, List<ShortcutActionCallback>> callbacks = ref.read(shortcutActionCallbacksProvider);
+      final List<ShortcutActionCallback>? actionCallbacks = callbacks[action];
+      if (actionCallbacks != null) {
+        for (final callback in actionCallbacks) {
+          callback();
+        }
       }
     } catch (e) {
       debugPrint('Error executing shortcut callback for $action: $e');

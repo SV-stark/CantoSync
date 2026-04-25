@@ -1,29 +1,10 @@
 import 'package:flutter/services.dart';
-import 'package:hive/hive.dart';
+import 'package:isar/isar.dart';
 
 part 'keyboard_shortcuts.g.dart';
 
-@HiveType(typeId: 7)
-class KeyboardShortcut extends HiveObject {
-  @HiveField(0)
-  String action;
-
-  @HiveField(1)
-  String keyValue;
-
-  String get key => keyValue;
-
-  @HiveField(2)
-  bool ctrl;
-
-  @HiveField(3)
-  bool alt;
-
-  @HiveField(4)
-  bool shift;
-
-  @HiveField(5)
-  String description;
+@collection
+class KeyboardShortcut {
 
   KeyboardShortcut({
     required this.action,
@@ -33,6 +14,23 @@ class KeyboardShortcut extends HiveObject {
     this.shift = false,
     required this.description,
   });
+  Id id = Isar.autoIncrement;
+
+  @Index(unique: true, replace: true)
+  String action;
+
+  String keyValue;
+
+  @Ignore()
+  String get key => keyValue;
+
+  bool ctrl;
+
+  bool alt;
+
+  bool shift;
+
+  String description;
 
   String get shortcutString {
     final parts = <String>[];
@@ -43,6 +41,7 @@ class KeyboardShortcut extends HiveObject {
     return parts.join('+');
   }
 
+  @Ignore()
   Set<LogicalKeyboardKey>? get logicalKeys {
     final keys = <LogicalKeyboardKey>[];
     if (ctrl) keys.add(LogicalKeyboardKey.control);

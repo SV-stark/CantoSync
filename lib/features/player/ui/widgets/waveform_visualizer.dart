@@ -2,10 +2,6 @@ import 'dart:math' as math;
 import 'package:fluent_ui/fluent_ui.dart';
 
 class WaveformVisualizer extends StatefulWidget {
-  final bool isPlaying;
-  final Color color;
-  final double height;
-  final int barCount;
 
   const WaveformVisualizer({
     super.key,
@@ -14,6 +10,10 @@ class WaveformVisualizer extends StatefulWidget {
     this.height = 60,
     this.barCount = 30,
   });
+  final bool isPlaying;
+  final Color color;
+  final double height;
+  final int barCount;
 
   @override
   State<WaveformVisualizer> createState() => _WaveformVisualizerState();

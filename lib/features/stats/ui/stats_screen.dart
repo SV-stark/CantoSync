@@ -1,7 +1,8 @@
 import 'package:fluent_ui/fluent_ui.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:intl/intl.dart';
 import 'package:canto_sync/features/stats/data/stats_service.dart';
+import 'package:canto_sync/features/stats/data/listening_stats.dart';
 
 class StatsScreen extends ConsumerWidget {
   const StatsScreen({super.key});
@@ -178,7 +179,7 @@ class StatsScreen extends ConsumerWidget {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: color.withAlpha(26),
+        color: color.withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(8),
       ),
       child: Row(
@@ -243,13 +244,13 @@ class StatsScreen extends ConsumerWidget {
                       ),
                 ),
                 const SizedBox(width: 8),
-                _buildLegendBox(Colors.grey.withAlpha(26)),
+                _buildLegendBox(Colors.grey.withValues(alpha: 0.1)),
                 const SizedBox(width: 4),
-                _buildLegendBox(Colors.blue.withAlpha(77)),
+                _buildLegendBox(Colors.blue.withValues(alpha: 0.3)),
                 const SizedBox(width: 4),
-                _buildLegendBox(Colors.blue.withAlpha(128)),
+                _buildLegendBox(Colors.blue.withValues(alpha: 0.5)),
                 const SizedBox(width: 4),
-                _buildLegendBox(Colors.blue.withAlpha(179)),
+                _buildLegendBox(Colors.blue.withValues(alpha: 0.7)),
                 const SizedBox(width: 4),
                 _buildLegendBox(Colors.blue),
                 const SizedBox(width: 8),
@@ -305,7 +306,7 @@ class StatsScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildAuthorRow(BuildContext context, int rank, author) {
+  Widget _buildAuthorRow(BuildContext context, int rank, AuthorStats author) {
     final progressColor = _getRankColor(rank);
 
     return Padding(
@@ -316,7 +317,7 @@ class StatsScreen extends ConsumerWidget {
             width: 28,
             height: 28,
             decoration: BoxDecoration(
-              color: progressColor.withAlpha(26),
+              color: progressColor.withValues(alpha: 0.1),
               borderRadius: BorderRadius.circular(14),
             ),
             child: Center(
@@ -400,7 +401,7 @@ class StatsScreen extends ConsumerWidget {
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
               decoration: BoxDecoration(
-                color: Colors.blue.withAlpha(26),
+                color: Colors.blue.withValues(alpha: 0.1),
                 borderRadius: BorderRadius.circular(16),
               ),
               child: Text(
@@ -420,9 +421,9 @@ class StatsScreen extends ConsumerWidget {
 }
 
 class _ContributionCalendar extends StatelessWidget {
-  final List<dynamic> dailyStats;
 
   const _ContributionCalendar({required this.dailyStats});
+  final List<dynamic> dailyStats;
 
   @override
   Widget build(BuildContext context) {
@@ -478,8 +479,8 @@ class _ContributionCalendar extends StatelessWidget {
     );
   }
 
-  Widget _buildDayCell(BuildContext context, dynamic day) {
-    final seconds = day.totalSecondsListened ?? 0;
+  Widget _buildDayCell(BuildContext context, DailyListeningStats day) {
+    final seconds = day.totalSecondsListened;
     final color = _getActivityColor(seconds);
     final date = DateTime.parse(day.date);
     final tooltip = '${DateFormat('MMM d').format(date)}: ${_formatDuration(seconds)}';
@@ -498,10 +499,10 @@ class _ContributionCalendar extends StatelessWidget {
   }
 
   Color _getActivityColor(int seconds) {
-    if (seconds == 0) return Colors.grey.withAlpha(26);
-    if (seconds < 1800) return Colors.blue.withAlpha(77); // < 30 min
-    if (seconds < 3600) return Colors.blue.withAlpha(128); // < 1 hour
-    if (seconds < 7200) return Colors.blue.withAlpha(179); // < 2 hours
+    if (seconds == 0) return Colors.grey.withValues(alpha: 0.1);
+    if (seconds < 1800) return Colors.blue.withValues(alpha: 0.3); // < 30 min
+    if (seconds < 3600) return Colors.blue.withValues(alpha: 0.5); // < 1 hour
+    if (seconds < 7200) return Colors.blue.withValues(alpha: 0.7); // < 2 hours
     return Colors.blue;
   }
 

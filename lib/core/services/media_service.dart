@@ -1,7 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
 import 'package:flutter/foundation.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:media_kit/media_kit.dart';
 import 'package:canto_sync/core/services/app_settings_service.dart';
 
@@ -13,6 +13,15 @@ final mediaServiceProvider = Provider<MediaService>((ref) {
 });
 
 class MediaService {
+
+  MediaService(this._ref) {
+    try {
+      _player = Player();
+      _initFilters();
+    } catch (e) {
+      debugPrint('Error creating Player in MediaService: $e');
+    }
+  }
   late final Player _player;
   final Ref _ref;
   bool _isFetchingChapters = false;
@@ -24,19 +33,10 @@ class MediaService {
   Stream<double> get volumeStream => _player.stream.volume;
   Stream<Playlist> get playlistStream => _player.stream.playlist;
 
-  MediaService(this._ref) {
-    try {
-      _player = Player();
-      _initFilters();
-    } catch (e) {
-      debugPrint('Error creating Player in MediaService: $e');
-    }
-  }
-
   void _initFilters() {
     try {
       // Initialize filters from settings
-      final settings = _ref.read(appSettingsProvider);
+      final settings = _ref.read(appSettingsNotifierProvider);
       _skipSilence = settings.skipSilence;
       _loudnessNormalization = settings.loudnessNormalization;
       _activePresetFilter = settings.audioPreset.filter;
@@ -317,11 +317,11 @@ class MediaService {
 }
 
 class Chapter {
+
+  Chapter({required this.title, required this.startTime, this.endTime});
   final String title;
   final double startTime;
   final double? endTime;
-
-  Chapter({required this.title, required this.startTime, this.endTime});
 
   double? get durationSeconds =>
       endTime != null ? (endTime! - startTime) : null;

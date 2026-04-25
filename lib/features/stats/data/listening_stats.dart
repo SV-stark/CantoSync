@@ -1,81 +1,58 @@
-import 'package:hive/hive.dart';
+import 'package:isar/isar.dart';
 
 part 'listening_stats.g.dart';
 
-@HiveType(typeId: 3)
-class DailyListeningStats extends HiveObject {
-  @HiveField(0)
-  final String date; // YYYY-MM-DD format
-
-  @HiveField(1)
-  int totalSecondsListened;
-
-  @HiveField(2)
-  List<String> booksListened;
-
-  @HiveField(3)
-  int listeningSessions;
+@collection
+class DailyListeningStats {
 
   DailyListeningStats({
     required this.date,
     this.totalSecondsListened = 0,
-    List<String>? booksListened,
+    this.booksListened = const [],
     this.listeningSessions = 0,
-  }) : booksListened = booksListened ?? [];
+  });
+  Id id = Isar.autoIncrement;
+
+  @Index(unique: true, replace: true)
+  final String date; // YYYY-MM-DD format
+
+  int totalSecondsListened;
+
+  List<String> booksListened;
+
+  int listeningSessions;
 
   double get totalHours => totalSecondsListened / 3600;
 }
 
-@HiveType(typeId: 4)
-class AuthorStats extends HiveObject {
-  @HiveField(0)
-  final String authorName;
-
-  @HiveField(1)
-  int totalSecondsListened;
-
-  @HiveField(2)
-  int booksCompleted;
-
-  @HiveField(3)
-  int booksStarted;
-
-  @HiveField(4)
-  List<String> bookTitles;
+@collection
+class AuthorStats {
 
   AuthorStats({
     required this.authorName,
     this.totalSecondsListened = 0,
     this.booksCompleted = 0,
     this.booksStarted = 0,
-    List<String>? bookTitles,
-  }) : bookTitles = bookTitles ?? [];
+    this.bookTitles = const [],
+  });
+  Id id = Isar.autoIncrement;
+
+  @Index(unique: true, replace: true)
+  final String authorName;
+
+  int totalSecondsListened;
+
+  int booksCompleted;
+
+  int booksStarted;
+
+  List<String> bookTitles;
 
   double get totalHours => totalSecondsListened / 3600;
 }
 
-@HiveType(typeId: 5)
-class BookCompletionStats extends HiveObject {
-  @HiveField(0)
-  final String bookPath;
-
-  @HiveField(1)
-  final String bookTitle;
-
-  @HiveField(2)
-  String? author;
-
-  @HiveField(3)
-  DateTime? completedDate;
-
-  @HiveField(4)
-  int totalSecondsListened;
-
-  @HiveField(5)
-  DateTime? startedDate;
-
-  @HiveField(6)
-  bool isCompleted;
+@collection
+class BookCompletionStats {
 
   BookCompletionStats({
     required this.bookPath,
@@ -86,24 +63,42 @@ class BookCompletionStats extends HiveObject {
     this.startedDate,
     this.isCompleted = false,
   });
+  Id id = Isar.autoIncrement;
+
+  @Index(unique: true, replace: true)
+  final String bookPath;
+
+  final String bookTitle;
+
+  String? author;
+
+  DateTime? completedDate;
+
+  int totalSecondsListened;
+
+  DateTime? startedDate;
+
+  bool isCompleted;
 
   double get totalHours => totalSecondsListened / 3600;
 }
 
-@HiveType(typeId: 6)
-class ListeningSpeedPreference extends HiveObject {
-  @HiveField(0)
-  double averageSpeed;
-
-  @HiveField(1)
-  int totalSessionsAtSpeed;
-
-  @HiveField(2)
-  Map<double, int> speedUsageCount;
+@collection
+class ListeningSpeedPreference {
 
   ListeningSpeedPreference({
     this.averageSpeed = 1.0,
     this.totalSessionsAtSpeed = 0,
-    Map<double, int>? speedUsageCount,
-  }) : speedUsageCount = speedUsageCount ?? {};
+    this.speedUsageCountJson,
+  });
+  Id id = Isar.autoIncrement;
+
+  double averageSpeed;
+
+  int totalSessionsAtSpeed;
+
+  // Isar doesn't support Map directly, so we store it as a JSON string or two lists
+  // For simplicity here, let's use two lists or just skip the map if not critical,
+  // or use a helper class. Let's use a JSON string for the map.
+  String? speedUsageCountJson;
 }

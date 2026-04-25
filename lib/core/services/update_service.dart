@@ -2,7 +2,7 @@ import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import 'package:package_info_plus/package_info_plus.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:hooks_riverpod/hooks_riverpod.dart';
 
 final updateServiceProvider = Provider<UpdateService>((ref) {
   return UpdateService();
@@ -23,14 +23,14 @@ class UpdateService {
       final response = await http.get(url);
 
       if (response.statusCode == 200) {
-        final data = json.decode(response.body);
+        final data = json.decode(response.body) as Map<String, dynamic>;
         final latestVersion = (data['tag_name'] as String).replaceAll('v', '');
 
         if (_isNewerVersion(currentVersion, latestVersion)) {
           return UpdateInfo(
             latestVersion: latestVersion,
-            downloadUrl: data['html_url'],
-            releaseNotes: data['body'],
+            downloadUrl: data['html_url'] as String,
+            releaseNotes: data['body'] as String?,
           );
         }
       }
@@ -56,13 +56,13 @@ class UpdateService {
 }
 
 class UpdateInfo {
-  final String latestVersion;
-  final String downloadUrl;
-  final String? releaseNotes;
 
   UpdateInfo({
     required this.latestVersion,
     required this.downloadUrl,
     this.releaseNotes,
   });
+  final String latestVersion;
+  final String downloadUrl;
+  final String? releaseNotes;
 }

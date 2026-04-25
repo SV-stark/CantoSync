@@ -1,25 +1,14 @@
-import 'dart:async';
-import 'package:flutter/foundation.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:hive_flutter/hive_flutter.dart';
+import 'package:isar/isar.dart';
+import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:rxdart/rxdart.dart';
-import 'package:canto_sync/core/constants/app_constants.dart';
+import 'package:canto_sync/features/library/data/library_service.dart';
 import 'package:canto_sync/features/library/data/book.dart';
 import 'package:canto_sync/features/stats/data/listening_stats.dart';
+import 'dart:convert';
 
 final listeningStatsServiceProvider = Provider<ListeningStatsService>((ref) {
-  try {
-    final dailyBox = Hive.box<DailyListeningStats>(AppConstants.dailyStatsBox);
-    final authorBox = Hive.box<AuthorStats>(AppConstants.authorStatsBox);
-    final bookBox = Hive.box<BookCompletionStats>(AppConstants.bookStatsBox);
-    final speedBox = Hive.box<ListeningSpeedPreference>(
-      AppConstants.speedStatsBox,
-    );
-    return ListeningStatsService(dailyBox, authorBox, bookBox, speedBox);
-  } catch (e) {
-    debugPrint('Error accessing stats boxes: $e');
-    rethrow;
-  }
+  final isar = ref.watch(isarProvider);
+  return ListeningStatsService(isar);
 });
 
 final listeningStatsProvider = StreamProvider<ListeningStatsSummary>((ref) {
@@ -28,16 +17,6 @@ final listeningStatsProvider = StreamProvider<ListeningStatsSummary>((ref) {
 });
 
 class ListeningStatsSummary {
-  final double totalHoursListened;
-  final int totalBooksCompleted;
-  final int totalBooksStarted;
-  final int currentStreak;
-  final int longestStreak;
-  final List<DailyListeningStats> last30Days;
-  final List<AuthorStats> topAuthors;
-  final double averageListeningSpeed;
-  final int totalListeningSessions;
-  final Map<String, int> weeklyActivity;
 
   ListeningStatsSummary({
     required this.totalHoursListened,
@@ -51,34 +30,28 @@ class ListeningStatsSummary {
     required this.totalListeningSessions,
     required this.weeklyActivity,
   });
+  final double totalHoursListened;
+  final int totalBooksCompleted;
+  final int totalBooksStarted;
+  final int currentStreak;
+  final int longestStreak;
+  final List<DailyListeningStats> last30Days;
+  final List<AuthorStats> topAuthors;
+  final double averageListeningSpeed;
+  final int totalListeningSessions;
+  final Map<String, int> weeklyActivity;
 }
 
 class ListeningStatsService {
-  final Box<DailyListeningStats> _dailyBox;
-  final Box<AuthorStats> _authorBox;
-  final Box<BookCompletionStats> _bookBox;
-  final Box<ListeningSpeedPreference> _speedBox;
 
-  ListeningStatsService(
-    this._dailyBox,
-    this._authorBox,
-    this._bookBox,
-    this._speedBox,
-  );
+  ListeningStatsService(this._isar);
+  final Isar _isar;
 
   Stream<ListeningStatsSummary> watchStats() {
-    final dailyStream = _dailyBox.watch().debounceTime(
-      const Duration(seconds: 1),
-    );
-    final authorStream = _authorBox.watch().debounceTime(
-      const Duration(seconds: 1),
-    );
-    final bookStream = _bookBox.watch().debounceTime(
-      const Duration(seconds: 1),
-    );
-    final speedStream = _speedBox.watch().debounceTime(
-      const Duration(seconds: 1),
-    );
+    final dailyStream = _isar.dailyListeningStats.where().watch(fireImmediately: true);
+    final authorStream = _isar.authorStats.where().watch(fireImmediately: true);
+    final bookStream = _isar.bookCompletionStats.where().watch(fireImmediately: true);
+    final speedStream = _isar.listeningSpeedPreferences.where().watch(fireImmediately: true);
 
     return Rx.combineLatest4(
       dailyStream,
@@ -90,10 +63,10 @@ class ListeningStatsService {
   }
 
   ListeningStatsSummary _calculateStatsSync() {
-    final dailyStats = _dailyBox.values.toList();
-    final authorStats = _authorBox.values.toList();
-    final bookStats = _bookBox.values.toList();
-    final speedPref = _speedBox.get('preference') ?? ListeningSpeedPreference();
+    final dailyStats = _isar.dailyListeningStats.where().findAllSync();
+    final authorStats = _isar.authorStats.where().findAllSync();
+    final bookStats = _isar.bookCompletionStats.where().findAllSync();
+    final speedPref = _isar.listeningSpeedPreferences.getSync(0) ?? ListeningSpeedPreference();
 
     // Calculate totals
     double totalHours = 0;
@@ -237,100 +210,106 @@ class ListeningStatsService {
     if (secondsListened <= 0) return;
 
     final today = _formatDate(DateTime.now());
-    final bookPath = book.path;
-    final author = book.author ?? 'Unknown Author';
+    final bookPath = book.path ?? '';
+    final authorName = book.author ?? 'Unknown Author';
 
-    // Update daily stats
-    var dailyStats = _dailyBox.get(today);
-    if (dailyStats == null) {
-      dailyStats = DailyListeningStats(date: today);
-      await _dailyBox.put(today, dailyStats);
-    }
-    dailyStats.totalSecondsListened += secondsListened;
-    if (!dailyStats.booksListened.contains(bookPath)) {
-      dailyStats.booksListened.add(bookPath);
-    }
-    dailyStats.listeningSessions++;
-    await dailyStats.save();
-
-    // Update author stats
-    var authorStats = _authorBox.get(author);
-    if (authorStats == null) {
-      authorStats = AuthorStats(authorName: author);
-      await _authorBox.put(author, authorStats);
-    }
-    authorStats.totalSecondsListened += secondsListened;
-    if (!authorStats.bookTitles.contains(book.title)) {
-      authorStats.bookTitles.add(book.title);
-      authorStats.booksStarted++;
-    }
-    await authorStats.save();
-
-    // Update book stats
-    var bookStats = _bookBox.get(bookPath);
-    if (bookStats == null) {
-      bookStats = BookCompletionStats(
-        bookPath: bookPath,
-        bookTitle: book.title,
-        author: author,
-        startedDate: DateTime.now(),
-      );
-      await _bookBox.put(bookPath, bookStats);
-    }
-    bookStats.totalSecondsListened += secondsListened;
-    await bookStats.save();
-
-    // Update speed preference if provided
-    if (playbackSpeed != null) {
-      var speedPref = _speedBox.get('preference') ?? ListeningSpeedPreference();
-      speedPref.speedUsageCount[playbackSpeed] =
-          (speedPref.speedUsageCount[playbackSpeed] ?? 0) + 1;
-      speedPref.totalSessionsAtSpeed++;
-
-      // Recalculate weighted average
-      double totalWeight = 0;
-      double weightedSum = 0;
-      speedPref.speedUsageCount.forEach((speed, count) {
-        weightedSum += speed * count;
-        totalWeight += count;
-      });
-
-      if (totalWeight > 0) {
-        speedPref.averageSpeed = weightedSum / totalWeight;
+    await _isar.writeTxn(() async {
+      // Update daily stats
+      var dailyStats = await _isar.dailyListeningStats.filter().dateEqualTo(today).findFirst();
+      dailyStats ??= DailyListeningStats(date: today);
+      dailyStats.totalSecondsListened += secondsListened;
+      if (!dailyStats.booksListened.contains(bookPath)) {
+        dailyStats.booksListened.add(bookPath);
       }
+      dailyStats.listeningSessions++;
+      await _isar.dailyListeningStats.put(dailyStats);
 
-      await _speedBox.put('preference', speedPref);
-    }
+      // Update author stats
+      var authorStats = await _isar.authorStats.filter().authorNameEqualTo(authorName).findFirst();
+      authorStats ??= AuthorStats(authorName: authorName);
+      authorStats.totalSecondsListened += secondsListened;
+      if (!authorStats.bookTitles.contains(book.title ?? 'Unknown')) {
+        authorStats.bookTitles.add(book.title ?? 'Unknown');
+        authorStats.booksStarted++;
+      }
+      await _isar.authorStats.put(authorStats);
+
+      // Update book stats
+      var bookStats = await _isar.bookCompletionStats.filter().bookPathEqualTo(bookPath).findFirst();
+      bookStats ??= BookCompletionStats(
+          bookPath: bookPath,
+          bookTitle: book.title ?? 'Unknown',
+          author: authorName,
+          startedDate: DateTime.now(),
+        );
+      bookStats.totalSecondsListened += secondsListened;
+      await _isar.bookCompletionStats.put(bookStats);
+
+      // Update speed preference if provided
+      if (playbackSpeed != null) {
+        var speedPref = await _isar.listeningSpeedPreferences.get(0) ?? ListeningSpeedPreference();
+        Map<double, int> speedUsage = {};
+        if (speedPref.speedUsageCountJson != null) {
+          try {
+            final Map<String, dynamic> decoded = json.decode(speedPref.speedUsageCountJson!);
+            speedUsage = decoded.map((key, value) => MapEntry(double.parse(key), value as int));
+          } catch (_) {}
+        }
+        
+        speedUsage[playbackSpeed] = (speedUsage[playbackSpeed] ?? 0) + 1;
+        speedPref.totalSessionsAtSpeed++;
+
+        // Recalculate weighted average
+        double totalWeight = 0;
+        double weightedSum = 0;
+        speedUsage.forEach((speed, count) {
+          weightedSum += speed * count;
+          totalWeight += count;
+        });
+
+        if (totalWeight > 0) {
+          speedPref.averageSpeed = weightedSum / totalWeight;
+        }
+        
+        speedPref.speedUsageCountJson = json.encode(speedUsage.map((k, v) => MapEntry(k.toString(), v)));
+        speedPref.id = 0;
+        await _isar.listeningSpeedPreferences.put(speedPref);
+      }
+    });
   }
 
   Future<void> markBookAsCompleted(Book book) async {
-    final bookPath = book.path;
-    var bookStats =
-        _bookBox.get(bookPath) ??
-        BookCompletionStats(
+    final bookPath = book.path ?? '';
+    final authorName = book.author ?? 'Unknown Author';
+
+    await _isar.writeTxn(() async {
+      var bookStats = await _isar.bookCompletionStats.filter().bookPathEqualTo(bookPath).findFirst();
+      bookStats ??= BookCompletionStats(
           bookPath: bookPath,
-          bookTitle: book.title,
-          author: book.author ?? 'Unknown Author',
+          bookTitle: book.title ?? 'Unknown',
+          author: authorName,
           startedDate: DateTime.now(),
         );
 
-    bookStats.isCompleted = true;
-    bookStats.completedDate = DateTime.now();
-    await _bookBox.put(bookPath, bookStats);
+      bookStats.isCompleted = true;
+      bookStats.completedDate = DateTime.now();
+      await _isar.bookCompletionStats.put(bookStats);
 
-    // Update author completed count
-    final author = book.author ?? 'Unknown Author';
-    var authorStats = _authorBox.get(author);
-    if (authorStats != null) {
-      authorStats.booksCompleted++;
-      await authorStats.save();
-    }
+      // Update author completed count
+      var authorStats = await _isar.authorStats.filter().authorNameEqualTo(authorName).findFirst();
+      if (authorStats != null) {
+        authorStats.booksCompleted++;
+        await _isar.authorStats.put(authorStats);
+      }
+    });
   }
 
   Future<void> resetAllStats() async {
-    await _dailyBox.clear();
-    await _authorBox.clear();
-    await _bookBox.clear();
-    await _speedBox.clear();
+    await _isar.writeTxn(() async {
+      await _isar.dailyListeningStats.clear();
+      await _isar.authorStats.clear();
+      await _isar.bookCompletionStats.clear();
+      await _isar.listeningSpeedPreferences.clear();
+    });
   }
 }

@@ -1,5 +1,5 @@
 import 'package:fluent_ui/fluent_ui.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:canto_sync/core/services/media_service.dart';
 import 'package:canto_sync/core/services/sleep_timer_service.dart';
 import 'package:canto_sync/core/services/app_settings_service.dart';
@@ -7,9 +7,6 @@ import 'package:canto_sync/features/player/ui/widgets/waveform_visualizer.dart';
 import 'package:canto_sync/core/utils/format_duration.dart';
 
 class PlayerFooterSection extends ConsumerWidget {
-  final Duration chapterDuration;
-  final Duration chapterPosition;
-  final Duration? remainingTimer;
 
   const PlayerFooterSection({
     super.key,
@@ -17,12 +14,13 @@ class PlayerFooterSection extends ConsumerWidget {
     required this.chapterPosition,
     required this.remainingTimer,
   });
+  final Duration chapterDuration;
+  final Duration chapterPosition;
+  final Duration? remainingTimer;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final mediaService = ref.watch(mediaServiceProvider);
-    final white70 = Colors.white.withValues(alpha: 0.7);
-    final white54 = Colors.white.withValues(alpha: 0.54);
 
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceEvenly,
@@ -77,15 +75,15 @@ class PlayerFooterSection extends ConsumerWidget {
 }
 
 class _FooterButton extends StatelessWidget {
-  final IconData icon;
-  final String label;
-  final VoidCallback onTap;
 
   const _FooterButton({
     required this.icon,
     required this.label,
     required this.onTap,
   });
+  final IconData icon;
+  final String label;
+  final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
@@ -108,14 +106,14 @@ class _FooterButton extends StatelessWidget {
 }
 
 class SpeedControlDialog extends StatefulWidget {
-  final double initialRate;
-  final ValueChanged<double> onRateChanged;
 
   const SpeedControlDialog({
     super.key,
     required this.initialRate,
     required this.onRateChanged,
   });
+  final double initialRate;
+  final ValueChanged<double> onRateChanged;
 
   @override
   State<SpeedControlDialog> createState() => _SpeedControlDialogState();
@@ -227,10 +225,10 @@ void showEQMenu(BuildContext context, MediaService mediaService) {
 }
 
 class EQOption extends StatelessWidget {
-  final String label;
-  final VoidCallback onTap;
 
   const EQOption({super.key, required this.label, required this.onTap});
+  final String label;
+  final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
@@ -245,10 +243,10 @@ class EQOption extends StatelessWidget {
 }
 
 class TimerOption extends StatelessWidget {
-  final String label;
-  final VoidCallback onTap;
 
   const TimerOption({super.key, required this.label, required this.onTap});
+  final String label;
+  final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
@@ -350,13 +348,13 @@ void showSleepTimerMenu(
 }
 
 class WaveformSection extends ConsumerWidget {
-  final bool isPlaying;
 
   const WaveformSection({super.key, required this.isPlaying});
+  final bool isPlaying;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    if (!ref.watch(appSettingsProvider).showWaveform) {
+    if (!ref.watch(appSettingsNotifierProvider).showWaveform) {
       return const SizedBox.shrink();
     }
     return Column(
@@ -373,9 +371,6 @@ class WaveformSection extends ConsumerWidget {
 }
 
 class GlobalProgressBar extends StatelessWidget {
-  final double globalPositionSeconds;
-  final Duration totalDuration;
-  final String percentageText;
 
   const GlobalProgressBar({
     super.key,
@@ -383,6 +378,9 @@ class GlobalProgressBar extends StatelessWidget {
     required this.totalDuration,
     required this.percentageText,
   });
+  final double globalPositionSeconds;
+  final Duration totalDuration;
+  final String percentageText;
 
   @override
   Widget build(BuildContext context) {

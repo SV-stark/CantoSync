@@ -1,6 +1,7 @@
 import 'package:fluent_ui/fluent_ui.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:media_kit/media_kit.dart';
+import 'package:rxdart/rxdart.dart';
 import 'package:canto_sync/core/services/app_settings_service.dart';
 import 'package:canto_sync/core/services/media_service.dart';
 import 'package:canto_sync/features/library/data/library_service.dart';
@@ -213,7 +214,7 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
                           currentBook,
                           size: 450,
                           showReflection: ref
-                              .read(appSettingsProvider)
+                              .read(appSettingsNotifierProvider)
                               .showCoverReflection,
                         ),
                         const SizedBox(width: 60),
@@ -260,7 +261,7 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
                         currentBook,
                         size: 300,
                         showReflection: ref
-                            .read(appSettingsProvider)
+                            .read(appSettingsNotifierProvider)
                             .showCoverReflection,
                       ),
                       const SizedBox(height: 30),
@@ -335,7 +336,7 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
   }) {
     // Standard Fluent Accent Color or Custom Golden if desired.
     final accentColor = FluentTheme.of(context).accentColor;
-    // Using white with alpha values instead of Material shortcuts
+    // Using white with opacity
     final white70 = Colors.white.withValues(alpha: 0.7);
     final white24 = Colors.white.withValues(alpha: 0.24);
 
@@ -595,7 +596,7 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
         ),
 
         // Waveform Visualization
-        if (ref.watch(appSettingsProvider).showWaveform) ...[
+        if (ref.watch(appSettingsNotifierProvider).showWaveform) ...[
           const SizedBox(height: 20),
           WaveformVisualizer(
             isPlaying: isPlaying,
@@ -651,8 +652,7 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
                 const Icon(
                   FluentIcons.ringer,
                   size: 16,
-                  color: Colors
-                      .white, // white70 might fail if variable scope issue, using literal or constant
+                  color: Colors.white,
                 ),
                 const SizedBox(width: 8),
                 SizedBox(
@@ -751,7 +751,8 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
                   ? 'Bookmark at ${_formatDuration(position)}'
                   : textController.text.trim();
 
-              book.bookmarks?.add(
+              book.bookmarks ??= [];
+              book.bookmarks!.add(
                 Bookmark(
                   label: label,
                   timestampSeconds: globalPositionSecondsWrapper(
@@ -762,7 +763,7 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
                   ),
                 ),
               );
-              await book.save();
+              await ref.read(libraryServiceProvider).saveBook(book);
               if (context.mounted) Navigator.pop(context);
             },
           ),
@@ -916,10 +917,10 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
 }
 
 class _EQOption extends StatelessWidget {
-  final String label;
-  final VoidCallback onTap;
 
   const _EQOption({required this.label, required this.onTap});
+  final String label;
+  final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
@@ -934,10 +935,10 @@ class _EQOption extends StatelessWidget {
 }
 
 class _TimerOption extends StatelessWidget {
-  final String label;
-  final VoidCallback onTap;
 
   const _TimerOption({required this.label, required this.onTap});
+  final String label;
+  final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
@@ -955,15 +956,15 @@ class _TimerOption extends StatelessWidget {
 }
 
 class _FooterButton extends StatelessWidget {
-  final IconData icon;
-  final String label;
-  final VoidCallback onTap;
 
   const _FooterButton({
     required this.icon,
     required this.label,
     required this.onTap,
   });
+  final IconData icon;
+  final String label;
+  final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
@@ -986,13 +987,13 @@ class _FooterButton extends StatelessWidget {
 }
 
 class _SpeedControlDialog extends StatefulWidget {
-  final double initialRate;
-  final ValueChanged<double> onRateChanged;
 
   const _SpeedControlDialog({
     required this.initialRate,
     required this.onRateChanged,
   });
+  final double initialRate;
+  final ValueChanged<double> onRateChanged;
 
   @override
   State<_SpeedControlDialog> createState() => _SpeedControlDialogState();

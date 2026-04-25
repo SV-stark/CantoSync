@@ -3,10 +3,10 @@ import 'package:fluent_ui/fluent_ui.dart';
 import 'package:canto_sync/core/utils/format_duration.dart';
 
 class SleepTimerOverlay extends StatelessWidget {
-  final Duration? remainingTime;
-  final double opacity;
 
   const SleepTimerOverlay({super.key, this.remainingTime, this.opacity = 0.25});
+  final Duration? remainingTime;
+  final double opacity;
 
   @override
   Widget build(BuildContext context) {

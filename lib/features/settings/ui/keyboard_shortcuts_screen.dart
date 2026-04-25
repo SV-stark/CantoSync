@@ -1,5 +1,5 @@
 import 'package:fluent_ui/fluent_ui.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:canto_sync/core/data/keyboard_shortcuts.dart';
 import 'package:canto_sync/core/services/keyboard_shortcuts_service.dart';
 
@@ -109,10 +109,10 @@ class _KeyboardShortcutsScreenState
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       decoration: BoxDecoration(
-        color: FluentTheme.of(context).accentColor.withAlpha(25),
+        color: FluentTheme.of(context).accentColor.withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(4),
         border: Border.all(
-          color: FluentTheme.of(context).accentColor.withAlpha(76),
+          color: FluentTheme.of(context).accentColor.withValues(alpha: 0.3),
         ),
       ),
       child: Text(
@@ -185,15 +185,15 @@ class _KeyboardShortcutsScreenState
 }
 
 class _EditShortcutDialog extends StatefulWidget {
-  final KeyboardShortcut shortcut;
-  final Function(KeyboardShortcut) onSave;
-  final VoidCallback onCancel;
 
   const _EditShortcutDialog({
     required this.shortcut,
     required this.onSave,
     required this.onCancel,
   });
+  final KeyboardShortcut shortcut;
+  final Function(KeyboardShortcut) onSave;
+  final VoidCallback onCancel;
 
   @override
   State<_EditShortcutDialog> createState() => _EditShortcutDialogState();
@@ -295,7 +295,7 @@ class _EditShortcutDialogState extends State<_EditShortcutDialog> {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       decoration: BoxDecoration(
-        color: FluentTheme.of(context).accentColor.withAlpha(25),
+        color: FluentTheme.of(context).accentColor.withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(8),
         border: Border.all(
           color: FluentTheme.of(context).accentColor,

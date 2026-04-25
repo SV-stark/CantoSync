@@ -4,9 +4,6 @@ import 'package:fluent_ui/fluent_ui.dart';
 import 'package:canto_sync/features/library/data/book.dart';
 
 class CoverArtWithReflection extends StatelessWidget {
-  final Book? book;
-  final double size;
-  final bool showReflection;
 
   const CoverArtWithReflection({
     super.key,
@@ -14,6 +11,9 @@ class CoverArtWithReflection extends StatelessWidget {
     required this.size,
     this.showReflection = true,
   });
+  final Book? book;
+  final double size;
+  final bool showReflection;
 
   @override
   Widget build(BuildContext context) {
@@ -56,8 +56,8 @@ class CoverArtWithReflection extends StatelessWidget {
           Container(
             width: size * 0.9,
             height: size * 0.15,
-            decoration: BoxDecoration(
-              borderRadius: const BorderRadius.vertical(
+            decoration: const BoxDecoration(
+              borderRadius: BorderRadius.vertical(
                 bottom: Radius.circular(20),
               ),
             ),

@@ -2,7 +2,7 @@ import 'dart:async';
 import 'dart:io';
 import 'package:flutter/material.dart' as material;
 import 'package:fluent_ui/fluent_ui.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:canto_sync/core/services/media_service.dart';
 import 'package:canto_sync/core/services/playback_sync_service.dart';
 import 'package:canto_sync/features/library/data/library_service.dart';
@@ -10,8 +10,8 @@ import 'package:canto_sync/features/player/ui/player_screen.dart';
 import 'package:canto_sync/core/utils/format_duration.dart';
 
 class MiniPlayer extends ConsumerStatefulWidget {
-  final VoidCallback? onTap;
   const MiniPlayer({super.key, this.onTap});
+  final VoidCallback? onTap;
 
   @override
   ConsumerState<MiniPlayer> createState() => _MiniPlayerState();
@@ -142,7 +142,7 @@ class _MiniPlayerState extends ConsumerState<MiniPlayer> {
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
                           Text(
-                            currentBook.title,
+                            currentBook.title ?? 'Unknown',
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
                             style: const TextStyle(fontWeight: FontWeight.bold),
@@ -230,10 +230,10 @@ class _MiniPlayerState extends ConsumerState<MiniPlayer> {
 }
 
 class _MarqueeText extends StatefulWidget {
-  final String text;
-  final TextStyle? style;
 
   const _MarqueeText({required this.text, this.style});
+  final String text;
+  final TextStyle? style;
 
   @override
   State<_MarqueeText> createState() => _MarqueeTextState();

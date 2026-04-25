@@ -1,5 +1,5 @@
 import 'dart:async';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:canto_sync/core/services/media_service.dart';
 
 final sleepTimerServiceProvider =
@@ -9,10 +9,10 @@ final sleepTimerServiceProvider =
     });
 
 class SleepTimerState {
-  final Duration? remainingTime;
-  final bool isEndOfChapter;
 
   SleepTimerState({this.remainingTime, this.isEndOfChapter = false});
+  final Duration? remainingTime;
+  final bool isEndOfChapter;
 
   SleepTimerState copyWith({Duration? remainingTime, bool? isEndOfChapter}) {
     return SleepTimerState(

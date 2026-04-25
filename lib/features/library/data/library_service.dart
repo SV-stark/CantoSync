@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:isar/isar.dart';
 import 'package:media_kit/media_kit.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
+import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:metadata_god/metadata_god.dart';
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
@@ -65,7 +66,7 @@ Stream<List<Book>> libraryBooks(LibraryBooksRef ref) {
 
     if (searchQuery.isEmpty) return filteredBooks;
     return filteredBooks.where((book) {
-      final title = book.title.toLowerCase();
+      final title = book.title?.toLowerCase() ?? '';
       final author = book.author?.toLowerCase() ?? '';
       final album = book.album?.toLowerCase() ?? '';
       return title.contains(searchQuery) ||
@@ -81,7 +82,7 @@ List<Book> libraryRecentBooks(LibraryRecentBooksRef ref) {
   return booksAsync.maybeWhen(
     data: (books) {
       final sorted = List<Book>.from(books);
-      sorted.sort((a, b) => b.lastPlayed.compareTo(a.lastPlayed));
+      sorted.sort((a, b) => (b.lastPlayed ?? DateTime(0)).compareTo(a.lastPlayed ?? DateTime(0)));
       return sorted.take(5).toList();
     },
     orElse: () => [],
@@ -103,7 +104,7 @@ Future<Map<String, List<Book>>> libraryGroupedBooks(LibraryGroupedBooksRef ref) 
   for (final entry in groups.entries) {
     final seriesBooks = entry.value;
     if (entry.key != 'Standalone') {
-      seriesBooks.sort((a, b) => a.title.compareTo(b.title));
+      seriesBooks.sort((a, b) => (a.title ?? '').compareTo(b.title ?? ''));
 
       for (var i = 0; i < seriesBooks.length; i++) {
         final book = seriesBooks[i];
@@ -122,10 +123,10 @@ Future<Map<String, List<Book>>> libraryGroupedBooks(LibraryGroupedBooksRef ref) 
 }
 
 class LibraryService {
-  final Isar _isar;
-  final Ref _ref;
 
   LibraryService(this._isar, this._ref);
+  final Isar _isar;
+  final Ref _ref;
 
   Future<List<Book>> getAllBooks() async {
     return _isar.books.where().findAll();
@@ -145,6 +146,18 @@ class LibraryService {
 
   Stream<List<Book>> listenToBooks() {
     return _isar.books.where().watch(fireImmediately: true);
+  }
+
+  Future<void> removeCollection(String collectionName) async {
+    final books = await getAllBooks();
+    await _isar.writeTxn(() async {
+      for (final book in books) {
+        if (book.collections?.contains(collectionName) ?? false) {
+          book.collections!.remove(collectionName);
+          await _isar.books.put(book);
+        }
+      }
+    });
   }
 
   Future<void> rescanLibraries() async {
@@ -169,7 +182,8 @@ class LibraryService {
       for (final book in existingBooks) {
         bool isManaged = false;
         for (final libPath in libraryPaths) {
-          if (p.isWithin(libPath, book.path) || p.equals(libPath, book.path)) {
+          final bookPath = book.path;
+          if (bookPath != null && (p.isWithin(libPath, bookPath) || p.equals(libPath, bookPath))) {
             isManaged = true;
             break;
           }
@@ -203,7 +217,9 @@ class LibraryService {
 
   Future<void> updateBookCover(Book book, String newCoverFile) async {
     try {
-      final bookDir = book.isDirectory ? book.path : p.dirname(book.path);
+      final bookPath = book.path;
+      if (bookPath == null) return;
+      final bookDir = (book.isDirectory ?? false) ? bookPath : p.dirname(bookPath);
       final ext = p.extension(newCoverFile);
       final targetPath = p.join(bookDir, 'CoverSC$ext');
 

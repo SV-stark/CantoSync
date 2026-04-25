@@ -13,7 +13,9 @@ import 'package:canto_sync/core/services/app_settings_service.dart';
 import 'package:canto_sync/features/library/ui/metadata_editor.dart';
 import 'package:canto_sync/features/library/ui/book_info_dialog.dart';
 import 'package:canto_sync/core/constants/app_constants.dart';
-import 'package:canto_sync/core/utils/logger.dart';
+import 'package:riverpod_annotation/riverpod_annotation.dart';
+
+part 'library_screen.g.dart';
 
 @riverpod
 class LibraryViewMode extends _$LibraryViewMode {
@@ -49,7 +51,7 @@ class LibraryScreen extends HookConsumerWidget {
     final sortedCollections = collections.toList()..sort();
 
     Future<void> pickFolder() async {
-      String? selectedDirectory = await FilePicker.platform.getDirectoryPath();
+      String? selectedDirectory = await FilePicker.getDirectoryPath();
       if (selectedDirectory != null) {
         ref.read(appSettingsNotifierProvider.notifier).addLibraryPath(selectedDirectory);
       }
@@ -161,15 +163,15 @@ class LibraryScreen extends HookConsumerWidget {
 }
 
 class _Sidebar extends ConsumerWidget {
-  final String? selectedCollection;
-  final List<String> sortedCollections;
-  final FlyoutController flyoutController;
 
   const _Sidebar({
     required this.selectedCollection,
     required this.sortedCollections,
     required this.flyoutController,
   });
+  final String? selectedCollection;
+  final List<String> sortedCollections;
+  final FlyoutController flyoutController;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -252,8 +254,8 @@ class _Sidebar extends ConsumerWidget {
 }
 
 class _EmptyState extends StatelessWidget {
-  final VoidCallback onAddFolder;
   const _EmptyState({required this.onAddFolder});
+  final VoidCallback onAddFolder;
 
   @override
   Widget build(BuildContext context) {
@@ -273,10 +275,6 @@ class _EmptyState extends StatelessWidget {
 }
 
 class _BookList extends ConsumerWidget {
-  final List<Book> books;
-  final bool isGridView;
-  final FlyoutController flyoutController;
-  final Map<String, int>? seriesTotals;
 
   const _BookList({
     required this.books,
@@ -284,6 +282,10 @@ class _BookList extends ConsumerWidget {
     required this.flyoutController,
     this.seriesTotals,
   });
+  final List<Book> books;
+  final bool isGridView;
+  final FlyoutController flyoutController;
+  final Map<String, int>? seriesTotals;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -304,7 +306,7 @@ class _BookList extends ConsumerWidget {
             child: BookCard(
               book: book,
               flyoutController: flyoutController,
-              seriesTotal: book.series != null ? seriesTotals?[book.series!] : null,
+              seriesTotal: (book.series != null && seriesTotals != null) ? seriesTotals![book.series!] : null,
             ),
           );
         },
@@ -314,15 +316,17 @@ class _BookList extends ConsumerWidget {
         itemCount: books.length,
         itemBuilder: (context, index) {
           final book = books[index];
-          return ListTile(
-            leading: ClipRRect(
-              borderRadius: BorderRadius.circular(4),
-              child: book.coverPath != null ? Image.file(File(book.coverPath!), width: 40, height: 40, fit: BoxFit.cover) : const Icon(FluentIcons.music_note),
-            ),
-            title: Text(book.title ?? 'Unknown'),
-            subtitle: Text(book.author ?? 'Unknown Author'),
-            onPressed: () => ref.read(playbackSyncProvider).resumeBook(book.path!),
+          return GestureDetector(
             onSecondaryTapDown: (detail) => _showBookContextMenu(context, ref, book, detail.globalPosition, flyoutController),
+            child: ListTile(
+              leading: ClipRRect(
+                borderRadius: BorderRadius.circular(4),
+                child: book.coverPath != null ? Image.file(File(book.coverPath!), width: 40, height: 40, fit: BoxFit.cover) : const Icon(FluentIcons.music_note),
+              ),
+              title: Text(book.title ?? 'Unknown'),
+              subtitle: Text(book.author ?? 'Unknown Author'),
+              onPressed: () => ref.read(playbackSyncProvider).resumeBook(book.path!),
+            ),
           );
         },
       );
@@ -331,10 +335,10 @@ class _BookList extends ConsumerWidget {
 }
 
 class _GroupedView extends ConsumerWidget {
-  final bool viewMode;
-  final FlyoutController flyoutController;
 
   const _GroupedView({required this.viewMode, required this.flyoutController});
+  final bool viewMode;
+  final FlyoutController flyoutController;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -374,8 +378,8 @@ class _GroupedView extends ConsumerWidget {
 }
 
 class _RecentsRow extends ConsumerWidget {
-  final FlyoutController flyoutController;
   const _RecentsRow({required this.flyoutController});
+  final FlyoutController flyoutController;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -409,11 +413,11 @@ class _RecentsRow extends ConsumerWidget {
 }
 
 class BookCard extends ConsumerWidget {
+
+  const BookCard({required this.book, required this.flyoutController, this.seriesTotal, super.key});
   final Book book;
   final FlyoutController flyoutController;
   final int? seriesTotal;
-
-  const BookCard({required this.book, required this.flyoutController, this.seriesTotal, super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -454,7 +458,7 @@ class BookCard extends ConsumerWidget {
                                 radius: 18.0,
                                 lineWidth: 3.0,
                                 percent: progress,
-                                center: Text("${(progress * 100).toInt()}%", style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.white)),
+                                center: Text('${(progress * 100).toInt()}%', style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.white)),
                                 progressColor: Colors.white,
                                 backgroundColor: Colors.white.withAlpha(51),
                                 circularStrokeCap: CircularStrokeCap.round,
@@ -463,7 +467,7 @@ class BookCard extends ConsumerWidget {
                             ),
                           
                           if (isCompleted)
-                            const _Badge(icon: FluentIcons.check_mark, label: 'Completed', color: Colors.successPrimaryColor),
+                            _Badge(icon: FluentIcons.check_mark, label: 'Completed', color: Colors.green),
                           if (hasProgress && !isCompleted)
                             _Badge(icon: FluentIcons.play_resume, label: 'Continue', color: Colors.orange, topOffset: isCompleted ? 36 : 8),
                           
@@ -512,12 +516,12 @@ class BookCard extends ConsumerWidget {
 }
 
 class _Badge extends StatelessWidget {
+
+  const _Badge({required this.icon, required this.label, required this.color, this.topOffset = 8});
   final IconData icon;
   final String label;
   final Color color;
   final double topOffset;
-
-  const _Badge({required this.icon, required this.label, required this.color, this.topOffset = 8});
 
   @override
   Widget build(BuildContext context) {
@@ -563,7 +567,7 @@ void _showBookContextMenu(BuildContext context, WidgetRef ref, Book book, Offset
             context: context,
             builder: (context) => ContentDialog(
               title: const Text('Delete Book?'),
-              content: Text('Are you sure you want to remove "${book.title}"?'),
+              content: Text('Are you sure you want to remove "${book.title ?? 'Unknown'}"?'),
               actions: [
                 Button(child: const Text('Cancel'), onPressed: () => Navigator.pop(context)),
                 FilledButton(

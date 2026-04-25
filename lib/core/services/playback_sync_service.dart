@@ -1,6 +1,6 @@
 import 'dart:async';
 import 'package:flutter/foundation.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:metadata_god/metadata_god.dart';
 import 'package:path/path.dart' as p;
 import 'package:canto_sync/core/services/media_service.dart';
@@ -30,6 +30,10 @@ class CurrentBookPathNotifier extends Notifier<String?> {
 }
 
 class PlaybackSyncService {
+
+  PlaybackSyncService(this._mediaService, this._libraryService, this._ref) {
+    _init();
+  }
   final MediaService _mediaService;
   final LibraryService _libraryService;
   final Ref _ref;
@@ -43,10 +47,6 @@ class PlaybackSyncService {
   Book? _currentBook;
   int _sessionSeconds = 0;
   Timer? _statsTimer;
-
-  PlaybackSyncService(this._mediaService, this._libraryService, this._ref) {
-    _init();
-  }
 
   void _init() {
     Duration lastPosition = Duration.zero;
@@ -128,7 +128,7 @@ class PlaybackSyncService {
     bool isDirectory = false;
     int? lastTrackIndex;
 
-    final books = _libraryService.books;
+    final books = await _libraryService.getAllBooks();
     final book = books.cast<Book?>().firstWhere(
       (b) => b?.path == path,
       orElse: () => null,
@@ -140,7 +140,7 @@ class PlaybackSyncService {
       album = book.album;
       lastPosition = book.positionSeconds;
       audioFiles = book.audioFiles;
-      isDirectory = book.isDirectory;
+      isDirectory = book.isDirectory ?? false;
       lastTrackIndex = book.lastTrackIndex;
     }
 
@@ -156,10 +156,7 @@ class PlaybackSyncService {
         double totalDurationSeconds = 0;
         List<Map<String, dynamic>> fileDataList = [];
 
-        Book? bookObj;
-        try {
-          bookObj = _libraryService.books.firstWhere((b) => b.path == path);
-        } catch (_) {}
+        Book? bookObj = _currentBook;
 
         try {
           if (bookObj?.filesMetadata != null &&
@@ -212,7 +209,7 @@ class PlaybackSyncService {
                     ),
                   )
                   .toList();
-              await bookObj.save();
+              await _libraryService.saveBook(bookObj);
             }
           }
 

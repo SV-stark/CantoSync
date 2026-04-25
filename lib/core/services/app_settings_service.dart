@@ -1,10 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
-import 'package:hive_flutter/hive_flutter.dart';
+import 'package:isar/isar.dart';
 import 'package:freezed_annotation/freezed_annotation.dart';
+import 'package:canto_sync/features/library/data/library_service.dart';
 import 'package:canto_sync/core/services/media_service.dart';
-import 'package:canto_sync/core/constants/app_constants.dart';
-import 'package:canto_sync/core/utils/logger.dart';
 
 part 'app_settings_service.freezed.dart';
 part 'app_settings_service.g.dart';
@@ -17,9 +16,10 @@ enum AudioPreset {
   ),
   bassBoost('Bass Boost', 'bass=g=6');
 
+  const AudioPreset(this.label, this.filter);
+
   final String label;
   final String filter;
-  const AudioPreset(this.label, this.filter);
 }
 
 enum PlayerThemeMode {
@@ -27,8 +27,9 @@ enum PlayerThemeMode {
   trueBlack('True Black (OLED)'),
   adaptive('Adaptive (Cover Art)');
 
-  final String label;
   const PlayerThemeMode(this.label);
+
+  final String label;
 }
 
 @freezed
@@ -45,70 +46,69 @@ class AppSettings with _$AppSettings {
   }) = _AppSettings;
 }
 
+@collection
+class IsarAppSettings {
+  Id id = 0; // Always 0 for the single settings document
+
+  @enumerated
+  ThemeMode themeMode = ThemeMode.system;
+
+  @enumerated
+  AudioPreset audioPreset = AudioPreset.flat;
+
+  List<String> libraryPaths = [];
+  bool skipSilence = false;
+  bool loudnessNormalization = false;
+
+  @enumerated
+  PlayerThemeMode playerThemeMode = PlayerThemeMode.standard;
+
+  bool showWaveform = true;
+  bool showCoverReflection = true;
+}
+
 @riverpod
 class AppSettingsNotifier extends _$AppSettingsNotifier {
-  late Box _box;
+  late Isar _isar;
 
   @override
   AppSettings build() {
-    try {
-      _box = Hive.box(AppConstants.settingsBox);
-
-      final themeIndex = _box.get(
-        'themeMode',
-        defaultValue: ThemeMode.system.index,
-      );
-      final presetIndex = _box.get(
-        'audioPreset',
-        defaultValue: AudioPreset.flat.index,
-      );
-      final pathsRaw = _box.get('libraryPaths', defaultValue: <String>[]);
-      List<String> paths = [];
-      if (pathsRaw is List) {
-        paths = pathsRaw.cast<String>().toList();
-      } else {
-        // Corrupted data, reset
-        _box.delete('libraryPaths');
-      }
-
-      final skipSilence = _box.get('skipSilence', defaultValue: false);
-      final loudnessNormalization = _box.get(
-        'loudnessNormalization',
-        defaultValue: false,
-      );
-      
-      final playerThemeModeIndex = _box.get(
-        'playerThemeMode',
-        defaultValue: PlayerThemeMode.standard.index,
-      );
-      final showWaveform = _box.get('showWaveform', defaultValue: true);
-      final showCoverReflection = _box.get('showCoverReflection', defaultValue: true);
-
-      return AppSettings(
-        themeMode: ThemeMode.values[themeIndex % ThemeMode.values.length],
-        audioPreset: AudioPreset.values[presetIndex % AudioPreset.values.length],
-        libraryPaths: paths,
-        skipSilence: skipSilence,
-        loudnessNormalization: loudnessNormalization,
-        playerThemeMode: PlayerThemeMode.values[playerThemeModeIndex % PlayerThemeMode.values.length],
-        showWaveform: showWaveform,
-        showCoverReflection: showCoverReflection,
-      );
-    } catch (e, stack) {
-      logger.e('Error loading AppSettings', error: e, stackTrace: stack);
-      // Fallback to default
+    _isar = ref.watch(isarProvider);
+    
+    final isarSettings = _isar.isarAppSettings.getSync(0);
+    
+    if (isarSettings == null) {
       return const AppSettings();
     }
+
+    return AppSettings(
+      themeMode: isarSettings.themeMode,
+      audioPreset: isarSettings.audioPreset,
+      libraryPaths: isarSettings.libraryPaths,
+      skipSilence: isarSettings.skipSilence,
+      loudnessNormalization: isarSettings.loudnessNormalization,
+      playerThemeMode: isarSettings.playerThemeMode,
+      showWaveform: isarSettings.showWaveform,
+      showCoverReflection: isarSettings.showCoverReflection,
+    );
+  }
+
+  void _updateIsar(void Function(IsarAppSettings) update) {
+    _isar.writeTxnSync(() {
+      final settings = _isar.isarAppSettings.getSync(0) ?? IsarAppSettings();
+      update(settings);
+      _isar.isarAppSettings.putSync(settings);
+    });
   }
 
   void setThemeMode(ThemeMode mode) {
     state = state.copyWith(themeMode: mode);
-    _box.put('themeMode', mode.index);
+    _updateIsar((s) => s.themeMode = mode);
   }
 
   void setAudioPreset(AudioPreset preset) {
     state = state.copyWith(audioPreset: preset);
-    _box.put('audioPreset', preset.index);
+    _updateIsar((s) => s.audioPreset = preset);
 
     // Apply filter immediately
     ref.read(mediaServiceProvider).setAudioFilter(preset.filter);
@@ -116,13 +116,13 @@ class AppSettingsNotifier extends _$AppSettingsNotifier {
 
   void setSkipSilence(bool enabled) {
     state = state.copyWith(skipSilence: enabled);
-    _box.put('skipSilence', enabled);
+    _updateIsar((s) => s.skipSilence = enabled);
     ref.read(mediaServiceProvider).setSkipSilence(enabled);
   }
 
   void setLoudnessNormalization(bool enabled) {
     state = state.copyWith(loudnessNormalization: enabled);
-    _box.put('loudnessNormalization', enabled);
+    _updateIsar((s) => s.loudnessNormalization = enabled);
     ref.read(mediaServiceProvider).setLoudnessNormalization(enabled);
   }
 
@@ -130,28 +130,28 @@ class AppSettingsNotifier extends _$AppSettingsNotifier {
     if (!state.libraryPaths.contains(path)) {
       final newPaths = [...state.libraryPaths, path];
       state = state.copyWith(libraryPaths: newPaths);
-      _box.put('libraryPaths', newPaths);
+      _updateIsar((s) => s.libraryPaths = newPaths);
     }
   }
 
   void removeLibraryPath(String path) {
     final newPaths = state.libraryPaths.where((p) => p != path).toList();
     state = state.copyWith(libraryPaths: newPaths);
-    _box.put('libraryPaths', newPaths);
+    _updateIsar((s) => s.libraryPaths = newPaths);
   }
 
   void setPlayerThemeMode(PlayerThemeMode mode) {
     state = state.copyWith(playerThemeMode: mode);
-    _box.put('playerThemeMode', mode.index);
+    _updateIsar((s) => s.playerThemeMode = mode);
   }
 
   void setShowWaveform(bool enabled) {
     state = state.copyWith(showWaveform: enabled);
-    _box.put('showWaveform', enabled);
+    _updateIsar((s) => s.showWaveform = enabled);
   }
 
   void setShowCoverReflection(bool enabled) {
     state = state.copyWith(showCoverReflection: enabled);
-    _box.put('showCoverReflection', enabled);
+    _updateIsar((s) => s.showCoverReflection = enabled);
   }
 }

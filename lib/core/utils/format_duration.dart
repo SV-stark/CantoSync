@@ -1,4 +1,3 @@
-import 'package:flutter/foundation.dart';
 
 String formatDuration(Duration d) {
   if (d.inHours > 0) {

@@ -1,6 +1,6 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:hotkey_manager/hotkey_manager.dart';
 import 'package:canto_sync/core/services/media_service.dart';
 import 'package:canto_sync/core/services/keyboard_shortcuts_service.dart';
@@ -11,9 +11,9 @@ final hotkeyServiceProvider = Provider<HotkeyService>((ref) {
 });
 
 class HotkeyService {
-  final Ref _ref;
 
   HotkeyService(this._ref);
+  final Ref _ref;
 
   Future<void> init() async {
     try {
@@ -83,11 +83,4 @@ class HotkeyService {
     }
   }
 
-  Future<void> _registerHotKey(HotKey hotKey, VoidCallback onDown) async {
-    try {
-      await hotKeyManager.register(hotKey, keyDownHandler: (_) => onDown());
-    } catch (e) {
-      debugPrint('Failed to register hotkey ${hotKey.key}: $e');
-    }
-  }
 }

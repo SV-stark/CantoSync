@@ -2,9 +2,9 @@ import 'dart:ui';
 import 'package:fluent_ui/fluent_ui.dart';
 
 class GlassPlayerCard extends StatelessWidget {
-  final Widget child;
 
   const GlassPlayerCard({super.key, required this.child});
+  final Widget child;
 
   @override
   Widget build(BuildContext context) {

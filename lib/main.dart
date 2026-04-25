@@ -1,136 +1,68 @@
 import 'dart:async';
-import 'dart:io';
-import 'package:flutter/foundation.dart';
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
-import 'package:hive_flutter/hive_flutter.dart';
 import 'package:isar/isar.dart';
-import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
-import 'package:media_kit/media_kit.dart';
-import 'package:metadata_god/metadata_god.dart';
-import 'package:system_theme/system_theme.dart';
 import 'package:window_manager/window_manager.dart';
-import 'package:canto_sync/features/library/data/book.dart';
-import 'package:canto_sync/features/stats/data/listening_stats.dart';
-import 'package:canto_sync/core/data/keyboard_shortcuts.dart';
-import 'package:canto_sync/features/player/ui/player_screen.dart';
-import 'package:canto_sync/features/library/ui/library_screen.dart';
-import 'package:canto_sync/features/settings/ui/settings_screen.dart';
-import 'package:canto_sync/features/stats/ui/stats_screen.dart';
-import 'package:canto_sync/features/player/ui/widgets/mini_player.dart';
+import 'package:media_kit/media_kit.dart';
+import 'package:system_theme/system_theme.dart';
+import 'package:canto_sync/core/services/app_settings_service.dart';
 import 'package:canto_sync/core/services/hotkey_service.dart';
 import 'package:canto_sync/core/services/tray_service.dart';
 import 'package:canto_sync/core/services/update_service.dart';
-import 'package:canto_sync/core/services/app_settings_service.dart';
 import 'package:canto_sync/core/services/playback_sync_service.dart';
 import 'package:canto_sync/features/library/data/library_service.dart';
+import 'package:canto_sync/features/library/data/book.dart';
+import 'package:canto_sync/features/library/ui/library_screen.dart';
+import 'package:canto_sync/features/player/ui/player_screen.dart';
+import 'package:canto_sync/features/player/ui/widgets/mini_player.dart';
+import 'package:canto_sync/features/settings/ui/settings_screen.dart';
+import 'package:canto_sync/features/stats/ui/stats_screen.dart';
 import 'package:canto_sync/core/ui/window_buttons.dart';
-import 'package:canto_sync/core/constants/app_constants.dart';
-import 'package:canto_sync/core/services/data_migration_service.dart';
 import 'package:canto_sync/core/utils/logger.dart';
-
-Future<Box<T>> _openHiveBoxWithRecovery<T>(
-  String boxName, {
-  TypeAdapter<T>? adapter,
-}) async {
-  try {
-    return Hive.openBox<T>(boxName);
-  } catch (e) {
-    logger.e('Error opening $boxName: $e. Resetting...');
-    await Hive.deleteBoxFromDisk(boxName);
-    return Hive.openBox<T>(boxName);
-  }
-}
+import 'package:canto_sync/features/stats/data/listening_stats.dart';
 
 void main() async {
-  runZonedGuarded(
-    () async {
-      WidgetsFlutterBinding.ensureInitialized();
+  WidgetsFlutterBinding.ensureInitialized();
+  MediaKit.ensureInitialized();
 
-      FlutterError.onError = (FlutterErrorDetails details) {
-        FlutterError.presentError(details);
-        logger.e('FLUTTER ERROR: ${details.exception}', error: details.exception, stackTrace: details.stack);
-      };
+  await windowManager.ensureInitialized();
 
-      PlatformDispatcher.instance.onError = (error, stack) {
-        logger.e('PLATFORM ERROR: $error', error: error, stackTrace: stack);
-        return true;
-      };
+  WindowOptions windowOptions = const WindowOptions(
+    size: Size(1280, 800),
+    minimumSize: Size(900, 600),
+    center: true,
+    backgroundColor: Colors.transparent,
+    skipTaskbar: false,
+    titleBarStyle: TitleBarStyle.hidden,
+    title: 'CantoSync',
+  );
 
-      await windowManager.ensureInitialized();
+  await windowManager.waitUntilReadyToShow(windowOptions, () async {
+    await windowManager.show();
+    await windowManager.focus();
+  });
 
-      late final Isar isar;
+  final dir = await getApplicationSupportDirectory();
+  final isar = await Isar.open(
+    [
+      BookSchema,
+      IsarAppSettingsSchema,
+      DailyListeningStatsSchema,
+      AuthorStatsSchema,
+      BookCompletionStatsSchema,
+      ListeningSpeedPreferenceSchema,
+    ],
+    directory: dir.path,
+  );
 
-      try {
-        MediaKit.ensureInitialized();
-        MetadataGod.initialize();
-        final appDir = await getApplicationDocumentsDirectory();
-        final cantoSyncDir = Directory(p.join(appDir.path, 'CantoSync'));
-        if (!await cantoSyncDir.exists()) {
-          await cantoSyncDir.create(recursive: true);
-        }
-        await Hive.initFlutter(cantoSyncDir.path);
-
-        // Initialize Isar
-        isar = await Isar.open(
-          [BookSchema],
-          directory: cantoSyncDir.path,
-        );
-
-        // Keep other Hive adapters for now
-        Hive.registerAdapter(DailyListeningStatsAdapter());
-        Hive.registerAdapter(AuthorStatsAdapter());
-        Hive.registerAdapter(BookCompletionStatsAdapter());
-        Hive.registerAdapter(ListeningSpeedPreferenceAdapter());
-        Hive.registerAdapter(KeyboardShortcutAdapter());
-
-        await _openHiveBoxWithRecovery(AppConstants.settingsBox);
-        await _openHiveBoxWithRecovery<DailyListeningStats>(
-          AppConstants.dailyStatsBox,
-        );
-        await _openHiveBoxWithRecovery<AuthorStats>(
-          AppConstants.authorStatsBox,
-        );
-        await _openHiveBoxWithRecovery<BookCompletionStats>(
-          AppConstants.bookStatsBox,
-        );
-        await _openHiveBoxWithRecovery<ListeningSpeedPreference>(
-          AppConstants.speedStatsBox,
-        );
-        await _openHiveBoxWithRecovery<KeyboardShortcut>(
-          AppConstants.keyboardShortcutsBox,
-        );
-
-        await DataMigrationService.runMigrations();
-        await SystemTheme.accentColor.load();
-      } catch (e, stack) {
-        logger.f('Critical Initialization Error', error: e, stackTrace: stack);
-      }
-
-      WindowOptions windowOptions = const WindowOptions(
-        size: Size(1000, 700),
-        minimumSize: Size(400, 500),
-        center: true,
-        backgroundColor: Colors.black,
-        skipTaskbar: false,
-        titleBarStyle: TitleBarStyle.hidden,
-      );
-
-      await windowManager.waitUntilReadyToShow(windowOptions);
-      
-      runApp(
-        ProviderScope(
-          overrides: [
-            isarProvider.overrideWithValue(isar),
-          ],
-          child: const CantoSyncApp(),
-        ),
-      );
-    },
-    (error, stack) {
-      logger.f('CRITICAL GLOBAL ERROR', error: error, stackTrace: stack);
-    },
+  runApp(
+    ProviderScope(
+      overrides: [
+        isarProvider.overrideWithValue(isar),
+      ],
+      child: const CantoSyncApp(),
+    ),
   );
 }
 
@@ -141,24 +73,13 @@ class CantoSyncApp extends ConsumerStatefulWidget {
   ConsumerState<CantoSyncApp> createState() => _CantoSyncAppState();
 }
 
-class _CantoSyncAppState extends ConsumerState<CantoSyncApp>
-    with WindowListener {
+class _CantoSyncAppState extends ConsumerState<CantoSyncApp> with WindowListener {
   int _index = 0;
 
   @override
   void initState() {
     super.initState();
     windowManager.addListener(this);
-
-    WidgetsBinding.instance.addPostFrameCallback((_) async {
-      try {
-        await windowManager.show();
-        await windowManager.focus();
-      } catch (e) {
-        logger.e('Error showing window', error: e);
-      }
-    });
-
     _initServices();
   }
 
@@ -170,9 +91,13 @@ class _CantoSyncAppState extends ConsumerState<CantoSyncApp>
 
   Future<void> _initServices() async {
     try {
-      await windowManager.setPreventClose(true);
-      await ref.read(hotkeyServiceProvider).init();
-      await ref.read(trayServiceProvider).init();
+      // Hotkeys
+      ref.read(hotkeyServiceProvider);
+      // Tray
+      ref.read(trayServiceProvider);
+      // Playback Sync
+      ref.read(playbackSyncProvider);
+      // Updates
       _checkUpdates();
     } catch (e) {
       logger.e('Error in _initServices', error: e);
@@ -224,17 +149,22 @@ class _CantoSyncAppState extends ConsumerState<CantoSyncApp>
           children: [
             Expanded(
               child: NavigationView(
-                appBar: const NavigationAppBar(
+                titleBar: const TitleBar(
+                  height: 32,
                   title: DragToMoveArea(
-                    child: Align(
-                      alignment: AlignmentDirectional.centerStart,
-                      child: Text('CantoSync'),
+                    child: Row(
+                      children: [
+                        Align(
+                          alignment: AlignmentDirectional.centerStart,
+                          child: Padding(
+                            padding: EdgeInsets.only(left: 12),
+                            child: Text('CantoSync', style: TextStyle(fontSize: 12)),
+                          ),
+                        ),
+                        Spacer(),
+                        WindowButtons(),
+                      ],
                     ),
-                  ),
-                  automaticallyImplyLeading: true,
-                  actions: Row(
-                    mainAxisAlignment: MainAxisAlignment.end,
-                    children: [Spacer(), WindowButtons()],
                   ),
                 ),
                 pane: NavigationPane(

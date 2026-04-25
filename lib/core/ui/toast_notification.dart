@@ -1,10 +1,6 @@
 import 'package:fluent_ui/fluent_ui.dart';
 
 class ToastNotification extends StatefulWidget {
-  final String message;
-  final IconData icon;
-  final Color? backgroundColor;
-  final Duration duration;
 
   const ToastNotification({
     super.key,
@@ -13,6 +9,10 @@ class ToastNotification extends StatefulWidget {
     this.backgroundColor,
     this.duration = const Duration(seconds: 3),
   });
+  final String message;
+  final IconData icon;
+  final Color? backgroundColor;
+  final Duration duration;
 
   @override
   State<ToastNotification> createState() => _ToastNotificationState();

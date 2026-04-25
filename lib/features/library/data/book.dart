@@ -4,6 +4,32 @@ part 'book.g.dart';
 
 @collection
 class Book {
+
+  Book({
+    this.path,
+    this.title,
+    this.author,
+    this.narrator,
+    this.durationSeconds,
+    this.positionSeconds,
+    this.lastPlayed,
+    this.coverPath,
+    this.album,
+    this.series,
+    this.seriesIndex,
+    this.bookmarks,
+    this.audioFiles,
+    this.isDirectory = false,
+    this.lastTrackIndex,
+    this.description,
+    this.filesMetadata,
+    this.collections,
+  }) {
+    lastPlayed ??= DateTime.now();
+    bookmarks ??= [];
+    audioFiles ??= [];
+    collections ??= [];
+  }
   Id id = Isar.autoIncrement;
 
   @Index(unique: true, replace: true)
@@ -41,39 +67,10 @@ class Book {
   String? narrator;
 
   List<String>? collections;
-
-  Book({
-    this.path,
-    this.title,
-    this.author,
-    this.narrator,
-    this.durationSeconds,
-    this.positionSeconds,
-    this.lastPlayed,
-    this.coverPath,
-    this.album,
-    this.series,
-    this.seriesIndex,
-    this.bookmarks,
-    this.audioFiles,
-    this.isDirectory = false,
-    this.lastTrackIndex,
-    this.description,
-    this.filesMetadata,
-    this.collections,
-  }) {
-    this.lastPlayed ??= DateTime.now();
-    this.bookmarks ??= [];
-    this.audioFiles ??= [];
-    this.collections ??= [];
-  }
 }
 
 @embedded
 class Bookmark {
-  String? label;
-  double? timestampSeconds;
-  DateTime? createdAt;
 
   Bookmark({
     this.label,
@@ -84,13 +81,13 @@ class Bookmark {
     timestampSeconds ??= 0;
     createdAt ??= DateTime.now();
   }
+  String? label;
+  double? timestampSeconds;
+  DateTime? createdAt;
 }
 
 @embedded
 class FileMetadata {
-  String? title;
-  double? duration;
-  String? path;
 
   FileMetadata({
     this.title,
@@ -100,4 +97,7 @@ class FileMetadata {
     title ??= '';
     path ??= '';
   }
+  String? title;
+  double? duration;
+  String? path;
 }

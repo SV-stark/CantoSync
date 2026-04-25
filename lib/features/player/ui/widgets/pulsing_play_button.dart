@@ -2,9 +2,6 @@ import 'package:flutter/material.dart' as material;
 import 'package:fluent_ui/fluent_ui.dart';
 
 class PulsingPlayButton extends StatefulWidget {
-  final bool isPlaying;
-  final VoidCallback onPressed;
-  final double size;
 
   const PulsingPlayButton({
     super.key,
@@ -12,6 +9,9 @@ class PulsingPlayButton extends StatefulWidget {
     required this.onPressed,
     this.size = 80,
   });
+  final bool isPlaying;
+  final VoidCallback onPressed;
+  final double size;
 
   @override
   State<PulsingPlayButton> createState() => _PulsingPlayButtonState();

@@ -1,7 +1,7 @@
 import 'dart:ui';
 import 'package:file_picker/file_picker.dart';
 import 'package:fluent_ui/fluent_ui.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:canto_sync/core/services/app_settings_service.dart';
 import 'package:canto_sync/core/services/update_service.dart';
@@ -20,22 +20,22 @@ final appVersionProvider = FutureProvider<String>((ref) async {
 });
 
 final packageInfoProvider = FutureProvider<PackageInfo>((ref) async {
-  return await PackageInfo.fromPlatform();
+  return PackageInfo.fromPlatform();
 });
 
 class SettingsScreen extends ConsumerWidget {
   const SettingsScreen({super.key});
 
   Future<void> _pickFolder(WidgetRef ref) async {
-    final String? result = await FilePicker.platform.getDirectoryPath();
+    final String? result = await FilePicker.getDirectoryPath();
     if (result != null) {
-      ref.read(appSettingsProvider.notifier).addLibraryPath(result);
+      ref.read(appSettingsNotifierProvider.notifier).addLibraryPath(result);
       ref.read(libraryServiceProvider).scanDirectory(result);
     }
   }
 
   Future<void> _rescanAll(BuildContext context, WidgetRef ref) async {
-    final paths = ref.read(appSettingsProvider).libraryPaths;
+    final paths = ref.read(appSettingsNotifierProvider).libraryPaths;
     for (final path in paths) {
       await ref.read(libraryServiceProvider).scanDirectory(path);
     }
@@ -46,11 +46,8 @@ class SettingsScreen extends ConsumerWidget {
         return InfoBar(
           title: const Text('Library Scanned'),
           content: const Text('All library folders have been rescanned.'),
-          action: IconButton(
-            icon: const Icon(FluentIcons.clear),
-            onPressed: close,
-          ),
           severity: InfoBarSeverity.success,
+          onClose: close,
         );
       },
     );
@@ -58,7 +55,7 @@ class SettingsScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final settings = ref.watch(appSettingsProvider);
+    final settings = ref.watch(appSettingsNotifierProvider);
 
     return ScaffoldPage.withPadding(
       header: const PageHeader(
@@ -96,7 +93,7 @@ class SettingsScreen extends ConsumerWidget {
                     }).toList(),
                     onChanged: (mode) {
                       if (mode != null) {
-                        ref.read(appSettingsProvider.notifier).setThemeMode(mode);
+                        ref.read(appSettingsNotifierProvider.notifier).setThemeMode(mode);
                       }
                     },
                   ),
@@ -116,7 +113,7 @@ class SettingsScreen extends ConsumerWidget {
                     }).toList(),
                     onChanged: (mode) {
                       if (mode != null) {
-                        ref.read(appSettingsProvider.notifier).setPlayerThemeMode(mode);
+                        ref.read(appSettingsNotifierProvider.notifier).setPlayerThemeMode(mode);
                       }
                     },
                   ),
@@ -150,7 +147,7 @@ class SettingsScreen extends ConsumerWidget {
                     }).toList(),
                     onChanged: (preset) {
                       if (preset != null) {
-                        ref.read(appSettingsProvider.notifier).setAudioPreset(preset);
+                        ref.read(appSettingsNotifierProvider.notifier).setAudioPreset(preset);
                       }
                     },
                   ),
@@ -163,7 +160,7 @@ class SettingsScreen extends ConsumerWidget {
                   icon: FluentIcons.forward,
                   value: settings.skipSilence,
                   onChanged: (v) {
-                    ref.read(appSettingsProvider.notifier).setSkipSilence(v);
+                    ref.read(appSettingsNotifierProvider.notifier).setSkipSilence(v);
                   },
                 ),
                 const Divider(),
@@ -174,7 +171,7 @@ class SettingsScreen extends ConsumerWidget {
                   icon: FluentIcons.volume2,
                   value: settings.loudnessNormalization,
                   onChanged: (v) {
-                    ref.read(appSettingsProvider.notifier).setLoudnessNormalization(v);
+                    ref.read(appSettingsNotifierProvider.notifier).setLoudnessNormalization(v);
                   },
                 ),
               ],
@@ -199,7 +196,7 @@ class SettingsScreen extends ConsumerWidget {
                   icon: FluentIcons.area_chart,
                   value: settings.showWaveform,
                   onChanged: (v) {
-                    ref.read(appSettingsProvider.notifier).setShowWaveform(v);
+                    ref.read(appSettingsNotifierProvider.notifier).setShowWaveform(v);
                   },
                 ),
                 const Divider(),
@@ -210,7 +207,7 @@ class SettingsScreen extends ConsumerWidget {
                   icon: FluentIcons.photo2,
                   value: settings.showCoverReflection,
                   onChanged: (v) {
-                    ref.read(appSettingsProvider.notifier).setShowCoverReflection(v);
+                    ref.read(appSettingsNotifierProvider.notifier).setShowCoverReflection(v);
                   },
                 ),
               ],
@@ -265,7 +262,7 @@ class SettingsScreen extends ConsumerWidget {
                     ),
                     child: Row(
                       children: [
-                        Icon(FluentIcons.info, color: Colors.grey, size: 20),
+                        const Icon(FluentIcons.info, color: Colors.grey, size: 20),
                         const SizedBox(width: 12),
                         Expanded(
                           child: Text(
@@ -354,7 +351,7 @@ class SettingsScreen extends ConsumerWidget {
                           ],
                         ),
                       ),
-                      Icon(
+                      const Icon(
                         FluentIcons.chevron_right,
                         color: Colors.grey,
                         size: 20,
@@ -733,7 +730,7 @@ class SettingsScreen extends ConsumerWidget {
               size: 18,
             ),
             onPressed: () {
-              ref.read(appSettingsProvider.notifier).removeLibraryPath(path);
+              ref.read(appSettingsNotifierProvider.notifier).removeLibraryPath(path);
             },
           ),
         ],
@@ -1006,7 +1003,7 @@ class SettingsScreen extends ConsumerWidget {
                   ],
                 ),
               ),
-              Icon(
+              const Icon(
                 FluentIcons.open_in_new_window,
                 color: Colors.grey,
                 size: 16,

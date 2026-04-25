@@ -1,5 +1,5 @@
 import 'dart:io';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:tray_manager/tray_manager.dart';
 import 'package:window_manager/window_manager.dart';
 import 'package:canto_sync/core/services/media_service.dart';
@@ -9,9 +9,9 @@ final trayServiceProvider = Provider<TrayService>((ref) {
 });
 
 class TrayService extends TrayListener {
-  final Ref _ref;
 
   TrayService(this._ref);
+  final Ref _ref;
 
   Future<void> init() async {
     trayManager.addListener(this);

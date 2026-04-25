@@ -35,7 +35,7 @@ final libraryServiceProvider = Provider<LibraryService>.internal(
 );
 
 typedef LibraryServiceRef = ProviderRef<LibraryService>;
-String _$libraryBooksHash() => r'99be94668c8408b1abfdb8d8ade711b96730695b';
+String _$libraryBooksHash() => r'0fdb88ecf41e25776e7c1903575e572fc15a0612';
 
 /// See also [libraryBooks].
 @ProviderFor(libraryBooks)
@@ -50,7 +50,7 @@ final libraryBooksProvider = AutoDisposeStreamProvider<List<Book>>.internal(
 
 typedef LibraryBooksRef = AutoDisposeStreamProviderRef<List<Book>>;
 String _$libraryRecentBooksHash() =>
-    r'89d56a3c5a1bac20adc56ff1c115d563c5420c3f';
+    r'c0252209d2584dcab6f0d89d3426f283843d5d27';
 
 /// See also [libraryRecentBooks].
 @ProviderFor(libraryRecentBooks)
@@ -66,7 +66,7 @@ final libraryRecentBooksProvider = AutoDisposeProvider<List<Book>>.internal(
 
 typedef LibraryRecentBooksRef = AutoDisposeProviderRef<List<Book>>;
 String _$libraryGroupedBooksHash() =>
-    r'c9a3b4080261ed74a65434f7510a80d2a676f40f';
+    r'a9940489c3fdd67f059a3c2a68e7465c1276b26d';
 
 /// See also [libraryGroupedBooks].
 @ProviderFor(libraryGroupedBooks)

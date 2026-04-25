@@ -21,6 +21,7 @@ import 'package:canto_sync/features/stats/ui/stats_screen.dart';
 import 'package:canto_sync/core/ui/window_buttons.dart';
 import 'package:canto_sync/core/utils/logger.dart';
 import 'package:canto_sync/features/stats/data/listening_stats.dart';
+import 'package:canto_sync/core/data/keyboard_shortcuts.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -52,6 +53,7 @@ void main() async {
       AuthorStatsSchema,
       BookCompletionStatsSchema,
       ListeningSpeedPreferenceSchema,
+      KeyboardShortcutSchema,
     ],
     directory: dir.path,
   );
@@ -92,9 +94,9 @@ class _CantoSyncAppState extends ConsumerState<CantoSyncApp> with WindowListener
   Future<void> _initServices() async {
     try {
       // Hotkeys
-      ref.read(hotkeyServiceProvider);
+      await ref.read(hotkeyServiceProvider).init();
       // Tray
-      ref.read(trayServiceProvider);
+      await ref.read(trayServiceProvider).init();
       // Playback Sync
       ref.read(playbackSyncProvider);
       // Updates

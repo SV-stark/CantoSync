@@ -91,25 +91,25 @@ class _MiniPlayerState extends ConsumerState<MiniPlayer> {
       onTap: widget.onTap,
       child: Container(
         height: 80,
+        margin: const EdgeInsets.all(8),
         decoration: BoxDecoration(
-          color: FluentTheme.of(context).cardColor,
-          border: Border(
-            top: BorderSide(
-              color: FluentTheme.of(
-                context,
-              ).resources.dividerStrokeColorDefault,
-            ),
+          color: FluentTheme.of(context).micaBackgroundColor.withValues(alpha: 0.95),
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(
+            color: FluentTheme.of(context).resources.dividerStrokeColorDefault,
           ),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withAlpha(26),
+              color: Colors.black.withValues(alpha: 0.1),
               blurRadius: 10,
-              offset: const Offset(0, -2),
+              offset: const Offset(0, 4),
             ),
           ],
         ),
-        child: Column(
-          children: [
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(8),
+          child: Column(
+            children: [
             if (sliderMax > 0)
               SizedBox(
                 height: 3,

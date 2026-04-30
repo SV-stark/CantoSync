@@ -327,10 +327,14 @@ class LibraryService {
       album = metadata.album;
 
       if (metadata.picture != null) {
+        logger.i('Found cover art in metadata for $metadataSourcePath. Size: ${metadata.picture!.data.length} bytes');
         coverPath = await _extractAndCacheCover(
           metadata.picture!,
           metadataSourcePath,
         );
+        logger.i('Extracted cover to: $coverPath');
+      } else {
+        logger.w('No cover art found in metadata for $metadataSourcePath');
       }
 
       description = await _extractDescription(metadataSourcePath, probePlayer);

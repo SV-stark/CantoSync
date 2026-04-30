@@ -150,61 +150,68 @@ class _CantoSyncAppState extends ConsumerState<CantoSyncApp> with WindowListener
             glowFactor: is10footScreen(context) ? 2.0 : 0.0,
           ),
         ),
-        home: Column(
+        home: Stack(
           children: [
-            Expanded(
-              child: NavigationView(
-                titleBar: const TitleBar(
-                  height: 32,
-                  title: DragToMoveArea(
-                    child: Row(
-                      children: [
-                        Align(
-                          alignment: AlignmentDirectional.centerStart,
-                          child: Padding(
-                            padding: EdgeInsets.only(left: 12),
-                            child: Text('CantoSync', style: TextStyle(fontSize: 12)),
-                          ),
+            NavigationView(
+              titleBar: const TitleBar(
+                height: 32,
+                title: DragToMoveArea(
+                  child: Row(
+                    children: [
+                      Align(
+                        alignment: AlignmentDirectional.centerStart,
+                        child: Padding(
+                          padding: EdgeInsets.only(left: 12),
+                          child: Text('CantoSync', style: TextStyle(fontSize: 12)),
                         ),
-                        Spacer(),
-                        WindowButtons(),
-                      ],
-                    ),
+                      ),
+                    ],
                   ),
                 ),
-                pane: NavigationPane(
-                  selected: _index,
-                  onChanged: (i) => setState(() => _index = i),
-                  displayMode: PaneDisplayMode.compact,
-                  items: [
-                    PaneItem(
-                      icon: const Icon(FluentIcons.library),
-                      title: const Text('Library'),
-                      body: const LibraryScreen(),
-                    ),
-                    PaneItem(
-                      icon: const Icon(FluentIcons.music_in_collection),
-                      title: const Text('Player'),
-                      body: const PlayerScreen(),
-                    ),
-                    PaneItem(
-                      icon: const Icon(FluentIcons.pie_double),
-                      title: const Text('Statistics'),
-                      body: const StatsScreen(),
-                    ),
-                  ],
-                  footerItems: [
-                    PaneItem(
-                      icon: const Icon(FluentIcons.settings),
-                      title: const Text('Settings'),
-                      body: const SettingsScreen(),
-                    ),
-                  ],
-                ),
+              ),
+              pane: NavigationPane(
+                selected: _index,
+                onChanged: (i) => setState(() => _index = i),
+                displayMode: PaneDisplayMode.compact,
+                items: [
+                  PaneItem(
+                    icon: const Icon(FluentIcons.library),
+                    title: const Text('Library'),
+                    body: const LibraryScreen(),
+                  ),
+                  PaneItem(
+                    icon: const Icon(FluentIcons.music_in_collection),
+                    title: const Text('Player'),
+                    body: const PlayerScreen(),
+                  ),
+                  PaneItem(
+                    icon: const Icon(FluentIcons.pie_double),
+                    title: const Text('Statistics'),
+                    body: const StatsScreen(),
+                  ),
+                ],
+                footerItems: [
+                  PaneItem(
+                    icon: const Icon(FluentIcons.settings),
+                    title: const Text('Settings'),
+                    body: const SettingsScreen(),
+                  ),
+                ],
+              ),
+            ),
+            const Align(
+              alignment: Alignment.topRight,
+              child: SizedBox(
+                width: 138,
+                height: 32,
+                child: WindowButtons(),
               ),
             ),
             if (_index != 1)
-              MiniPlayer(onTap: () => setState(() => _index = 1)),
+              Align(
+                alignment: Alignment.bottomCenter,
+                child: MiniPlayer(onTap: () => setState(() => _index = 1)),
+              ),
           ],
         ),
       );

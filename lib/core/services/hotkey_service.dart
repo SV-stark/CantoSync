@@ -23,33 +23,65 @@ class HotkeyService {
     }
 
     final shortcuts = _ref.read(keyboardShortcutsProvider);
-    final playPauseShortcut = shortcuts.firstWhere(
-      (s) => s.action == ShortcutAction.playPause,
-      orElse: () => shortcuts.first,
-    );
-    final skipForwardShortcut = shortcuts.firstWhere(
-      (s) => s.action == ShortcutAction.skipForward,
-      orElse: () => shortcuts.first,
-    );
-    final skipBackwardShortcut = shortcuts.firstWhere(
-      (s) => s.action == ShortcutAction.skipBackward,
-      orElse: () => shortcuts.first,
-    );
+    
+    for (final shortcut in shortcuts) {
+      VoidCallback? callback;
+      
+      switch (shortcut.action) {
+        case ShortcutAction.playPause:
+          callback = () => _ref.read(mediaServiceProvider).playOrPause();
+          break;
+        case ShortcutAction.stop:
+          callback = () => _ref.read(mediaServiceProvider).pause();
+          break;
+        case ShortcutAction.nextTrack:
+          callback = () => _ref.read(mediaServiceProvider).nextChapter();
+          break;
+        case ShortcutAction.previousTrack:
+          callback = () => _ref.read(mediaServiceProvider).previousChapter();
+          break;
+        case ShortcutAction.skipForward:
+          callback = () {
+            final media = _ref.read(mediaServiceProvider);
+            media.seek(media.position + const Duration(seconds: 15));
+          };
+          break;
+        case ShortcutAction.skipBackward:
+          callback = () {
+            final media = _ref.read(mediaServiceProvider);
+            media.seek(media.position - const Duration(seconds: 15));
+          };
+          break;
+        case ShortcutAction.volumeUp:
+          callback = () {
+            final media = _ref.read(mediaServiceProvider);
+            media.setVolume((media.volume + 5).clamp(0, 100));
+          };
+          break;
+        case ShortcutAction.volumeDown:
+          callback = () {
+            final media = _ref.read(mediaServiceProvider);
+            media.setVolume((media.volume - 5).clamp(0, 100));
+          };
+          break;
+        case ShortcutAction.increaseSpeed:
+          callback = () {
+            final media = _ref.read(mediaServiceProvider);
+            media.setRate((media.playRate + 0.1).clamp(0.5, 3.0));
+          };
+          break;
+        case ShortcutAction.decreaseSpeed:
+          callback = () {
+            final media = _ref.read(mediaServiceProvider);
+            media.setRate((media.playRate - 0.1).clamp(0.5, 3.0));
+          };
+          break;
+      }
 
-    await _registerHotKeyFromShortcut(
-      playPauseShortcut,
-      () => _ref.read(mediaServiceProvider).playOrPause(),
-    );
-
-    await _registerHotKeyFromShortcut(skipForwardShortcut, () {
-      final media = _ref.read(mediaServiceProvider);
-      media.seek(media.position + const Duration(seconds: 15));
-    });
-
-    await _registerHotKeyFromShortcut(skipBackwardShortcut, () {
-      final media = _ref.read(mediaServiceProvider);
-      media.seek(media.position - const Duration(seconds: 15));
-    });
+      if (callback != null) {
+        await _registerHotKeyFromShortcut(shortcut, callback);
+      }
+    }
   }
 
   Future<void> _registerHotKeyFromShortcut(

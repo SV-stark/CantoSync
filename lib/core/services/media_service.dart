@@ -32,6 +32,7 @@ class MediaService {
   Stream<Duration> get durationStream => _player.stream.duration;
   Stream<double> get volumeStream => _player.stream.volume;
   Stream<Playlist> get playlistStream => _player.stream.playlist;
+  Stream<bool> get completedStream => _player.stream.completed;
 
   void _initFilters() {
     try {

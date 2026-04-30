@@ -42,6 +42,7 @@ void main() async {
   await windowManager.waitUntilReadyToShow(windowOptions, () async {
     await windowManager.show();
     await windowManager.focus();
+    await windowManager.setPreventClose(true);
   });
 
   final dir = await getApplicationSupportDirectory();
@@ -99,6 +100,8 @@ class _CantoSyncAppState extends ConsumerState<CantoSyncApp> with WindowListener
       await ref.read(trayServiceProvider).init();
       // Playback Sync
       ref.read(playbackSyncProvider);
+      // Library Scan
+      ref.read(libraryServiceProvider).rescanLibraries();
       // Updates
       _checkUpdates();
     } catch (e) {

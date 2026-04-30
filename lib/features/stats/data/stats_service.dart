@@ -58,15 +58,15 @@ class ListeningStatsService {
       authorStream,
       bookStream,
       speedStream,
-      (_, __, ___, ____) => _calculateStatsSync(),
-    );
+      (_, __, ___, ____) => null,
+    ).asyncMap((_) => _calculateStats());
   }
 
-  ListeningStatsSummary _calculateStatsSync() {
-    final dailyStats = _isar.dailyListeningStats.where().findAllSync();
-    final authorStats = _isar.authorStats.where().findAllSync();
-    final bookStats = _isar.bookCompletionStats.where().findAllSync();
-    final speedPref = _isar.listeningSpeedPreferences.getSync(0) ?? ListeningSpeedPreference();
+  Future<ListeningStatsSummary> _calculateStats() async {
+    final dailyStats = await _isar.dailyListeningStats.where().findAll();
+    final authorStats = await _isar.authorStats.where().findAll();
+    final bookStats = await _isar.bookCompletionStats.where().findAll();
+    final speedPref = await _isar.listeningSpeedPreferences.get(0) ?? ListeningSpeedPreference();
 
     // Calculate totals
     double totalHours = 0;

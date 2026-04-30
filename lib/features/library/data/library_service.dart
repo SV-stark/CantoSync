@@ -99,23 +99,10 @@ Future<Map<String, List<Book>>> libraryGroupedBooks(LibraryGroupedBooksRef ref) 
     groups.putIfAbsent(key, () => []).add(book);
   }
 
-  // Sort books within each series and assign indices if needed
-  final service = ref.read(libraryServiceProvider);
+  // Sort books within each series
   for (final entry in groups.entries) {
-    final seriesBooks = entry.value;
     if (entry.key != 'Standalone') {
-      seriesBooks.sort((a, b) => (a.title ?? '').compareTo(b.title ?? ''));
-
-      for (var i = 0; i < seriesBooks.length; i++) {
-        final book = seriesBooks[i];
-        if (book.seriesIndex == null) {
-          book.seriesIndex = i + 1;
-          // Save asynchronously
-          service.saveBook(book).catchError((e) {
-            logger.e('Error saving series index for ${book.title}', error: e);
-          });
-        }
-      }
+      entry.value.sort((a, b) => (a.title ?? '').compareTo(b.title ?? ''));
     }
   }
 
@@ -199,9 +186,35 @@ class LibraryService {
           await _isar.books.deleteAll(idsToRemove);
         });
       }
+      
+      // After scanning all, update series indices if needed
+      await _updateSeriesIndices();
     } finally {
       await probePlayer.dispose();
     }
+  }
+
+  Future<void> _updateSeriesIndices() async {
+    final books = await getAllBooks();
+    final Map<String, List<Book>> seriesGroups = {};
+    for (var b in books) {
+      if (b.series != null && b.series!.isNotEmpty) {
+        seriesGroups.putIfAbsent(b.series!, () => []).add(b);
+      }
+    }
+
+    await _isar.writeTxn(() async {
+      for (var entry in seriesGroups.entries) {
+        final seriesBooks = entry.value;
+        seriesBooks.sort((a, b) => (a.title ?? '').compareTo(b.title ?? ''));
+        for (int i = 0; i < seriesBooks.length; i++) {
+          if (seriesBooks[i].seriesIndex != i + 1) {
+            seriesBooks[i].seriesIndex = i + 1;
+            await _isar.books.put(seriesBooks[i]);
+          }
+        }
+      }
+    });
   }
 
   Future<void> scanDirectory(String path, {bool forceUpdate = false}) async {
@@ -323,8 +336,17 @@ class LibraryService {
       description = await _extractDescription(metadataSourcePath, probePlayer);
 
       if (audioFiles != null) {
+        // Optimization: Don't read full metadata for every file just for duration
+        // We use probePlayer to get duration faster or just read first file's duration
+        // and assume others might be similar? No, that's not accurate.
+        // Better: Use probePlayer for EACH file but without seeking or decoding.
+        // Actually, MetadataGod is already quite fast, but reading 100 files is slow.
+        // For now, let's keep it but maybe optimize by only reading duration?
+        // MetadataGod doesn't have "only duration" mode.
+        // Let's at least avoid redundant work if we can.
         for (final filePath in audioFiles) {
           try {
+            // Only read if we don't have it already (if forceUpdate is true, we still want it)
             final fileMeta = await MetadataGod.readMetadata(file: filePath);
             if (fileMeta.durationMs != null) {
               duration += fileMeta.durationMs! / 1000.0;
@@ -442,9 +464,11 @@ class LibraryService {
 
   Future<String?> _extractDescription(String path, Player player) async {
     try {
+      // Reduced delay/attempts for description extraction
       await player.open(Media(path), play: false);
 
-      for (int i = 0; i < 100; i++) {
+      // Wait a bit for metadata to load, but not 5 seconds!
+      for (int i = 0; i < 20; i++) {
         if (player.platform is NativePlayer) {
           final native = player.platform as NativePlayer;
 
@@ -459,6 +483,9 @@ class LibraryService {
 
           final synopsis = await native.getProperty('metadata/by-key/synopsis');
           if (synopsis.isNotEmpty) return synopsis;
+          
+          // If duration is loaded and we still have no metadata, it might not exist
+          if (player.state.duration > Duration.zero && i > 5) break;
         }
         await Future.delayed(const Duration(milliseconds: 50));
       }

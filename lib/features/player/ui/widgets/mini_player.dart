@@ -48,23 +48,49 @@ class _MiniPlayerState extends ConsumerState<MiniPlayer> {
     final isMultiFile =
         totalDuration.inSeconds > (duration.inSeconds + 10) || currentIndex > 0;
 
+    Chapter? currentChapter;
     String? chapterTitle;
     if (chapters.isNotEmpty) {
       if (isMultiFile) {
         // Multi-file: each chapter corresponds to a playlist file
         if (currentIndex < chapters.length) {
-          chapterTitle = chapters[currentIndex].title;
+          currentChapter = chapters[currentIndex];
+          chapterTitle = currentChapter.title;
         }
       } else {
         // Single-file (e.g. M4B): use position-based lookup
         final posSeconds = position.inMilliseconds / 1000.0;
-        final current = chapters.lastWhere(
+        currentChapter = chapters.lastWhere(
           (c) => c.startTime <= posSeconds + 1.0,
           orElse: () => chapters.first,
         );
-        chapterTitle = current.title;
+        chapterTitle = currentChapter.title;
       }
     }
+
+    // Chapter Progress (Local) - needed for correct slider mapping in single-file books
+    Duration chapterPosition = position;
+    Duration chapterDuration = duration;
+
+    if (currentChapter != null && !isMultiFile) {
+      final start = Duration(
+        milliseconds: (currentChapter.startTime * 1000).toInt(),
+      );
+      final end = currentChapter.endTime != null
+          ? Duration(milliseconds: (currentChapter.endTime! * 1000).toInt())
+          : duration;
+
+      chapterDuration = end - start;
+      chapterPosition = position - start;
+
+      if (chapterPosition.isNegative) chapterPosition = Duration.zero;
+      if (chapterPosition > chapterDuration) chapterPosition = chapterDuration;
+    }
+
+    final sliderMax = chapterDuration.inMilliseconds.toDouble();
+    final sliderValue = _isDragging
+        ? _dragValue
+        : chapterPosition.inMilliseconds.toDouble().clamp(0.0, sliderMax);
 
     return GestureDetector(
       onTap: widget.onTap,
@@ -117,9 +143,16 @@ class _MiniPlayerState extends ConsumerState<MiniPlayer> {
                     setState(() => _dragValue = val);
                   },
                   onChangeEnd: (val) async {
-                    await mediaService.seek(
-                      Duration(milliseconds: val.toInt()),
-                    );
+                    if (currentChapter != null && !isMultiFile) {
+                      final startMs = (currentChapter.startTime * 1000).toInt();
+                      await mediaService.seek(
+                        Duration(milliseconds: startMs + val.toInt()),
+                      );
+                    } else {
+                      await mediaService.seek(
+                        Duration(milliseconds: val.toInt()),
+                      );
+                    }
                     await Future.delayed(const Duration(milliseconds: 200));
                     if (mounted) {
                       setState(() => _isDragging = false);

@@ -54,13 +54,14 @@ class SleepTimerService extends Notifier<SleepTimerState> {
     cancelTimer();
     state = state.copyWith(isEndOfChapter: true);
 
-    _posSub = ref.read(mediaServiceProvider).durationStream.listen((duration) {
-      if (state.isEndOfChapter && state.remainingTime == null) {
+    _posSub = ref.read(mediaServiceProvider).positionStream.listen((position) {
+      if (state.isEndOfChapter) {
         final mediaService = ref.read(mediaServiceProvider);
-        final position = mediaService.position;
+        final duration = mediaService.duration;
         final remaining = duration - position;
-        if (remaining <= const Duration(seconds: 2) &&
-            remaining > Duration.zero) {
+        if (duration > Duration.zero &&
+            remaining <= const Duration(seconds: 1) &&
+            remaining >= Duration.zero) {
           mediaService.pause();
           cancelTimer();
         }

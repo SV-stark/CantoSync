@@ -36,11 +36,6 @@ class _MiniPlayerState extends ConsumerState<MiniPlayer> {
     final totalDuration =
         ref.watch(playerTotalDurationProvider).value ?? duration;
 
-    final sliderMax = duration.inMilliseconds.toDouble();
-    final sliderValue = _isDragging
-        ? _dragValue
-        : position.inMilliseconds.toDouble().clamp(0.0, sliderMax);
-
     final chapters = ref.watch(playerChaptersProvider).value ?? [];
     final currentIndex = mediaService.currentIndex;
 

@@ -178,6 +178,7 @@ class PlaybackSyncService {
                   fileDuration = meta.durationMs! / 1000.0;
                 }
               } catch (e) {
+                debugPrint('Error reading metadata for file: $e');
               }
               return {
                 'title': fileTitle,
@@ -223,6 +224,7 @@ class PlaybackSyncService {
             }
           }
         } catch (e) {
+          debugPrint('Error processing multi-file book chapters: $e');
         }
 
         await _mediaService.open(

@@ -24,11 +24,13 @@ class Book {
     this.description,
     this.filesMetadata,
     this.collections,
+    this.internalChapters,
   }) {
     lastPlayed ??= DateTime.now();
     bookmarks ??= [];
     audioFiles ??= [];
     collections ??= [];
+    internalChapters ??= [];
   }
   Id id = Isar.autoIncrement;
 
@@ -67,6 +69,7 @@ class Book {
   String? narrator;
 
   List<String>? collections;
+  List<ChapterMetadata>? internalChapters;
 }
 
 @embedded
@@ -100,4 +103,21 @@ class FileMetadata {
   String? title;
   double? duration;
   String? path;
+}
+@embedded
+class ChapterMetadata {
+
+  ChapterMetadata({
+    this.title,
+    this.startTime,
+    this.endTime,
+    this.coverPath,
+  }) {
+    title ??= '';
+    startTime ??= 0;
+  }
+  String? title;
+  double? startTime;
+  double? endTime;
+  String? coverPath;
 }

@@ -267,6 +267,13 @@ class PlaybackSyncService {
       title: title,
       artist: author,
       album: album,
+      chapters: book?.internalChapters
+          ?.map((c) => Chapter(
+                title: c.title ?? '',
+                startTime: c.startTime ?? 0,
+                endTime: c.endTime,
+              ))
+          .toList(),
     );
 
     if (lastPosition != null && lastPosition > 0.1) {

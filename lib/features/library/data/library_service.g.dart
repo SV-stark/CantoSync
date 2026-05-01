@@ -66,7 +66,7 @@ final libraryRecentBooksProvider = AutoDisposeProvider<List<Book>>.internal(
 
 typedef LibraryRecentBooksRef = AutoDisposeProviderRef<List<Book>>;
 String _$libraryGroupedBooksHash() =>
-    r'a9940489c3fdd67f059a3c2a68e7465c1276b26d';
+    r'b5d6018acd391ee730d96664375277766bfc30ef';
 
 /// See also [libraryGroupedBooks].
 @ProviderFor(libraryGroupedBooks)

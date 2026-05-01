@@ -314,6 +314,8 @@ class LibraryService {
     double duration = 0;
 
     final folderName = p.basename(path);
+    final List<ChapterMetadata> internalChapters = [];
+    final List<FileMetadata> fileMetaList = [];
 
     try {
       String metadataSourcePath = path;
@@ -323,13 +325,24 @@ class LibraryService {
 
       final metadata = await parseFile(
         metadataSourcePath,
-        options: const ParseOptions(duration: true),
+        options: const ParseOptions(duration: true, includeChapters: true),
       );
       title = metadata.common.title;
       author = metadata.common.artist;
       album = metadata.common.album;
 
-      final cover = selectCover(metadata.common.picture);
+      // Robust cover selection: try selectCover, then fallback to first picture
+      final pictures = metadata.common.picture;
+      Picture? cover;
+      if (pictures != null && pictures.isNotEmpty) {
+        try {
+          cover = selectCover(pictures);
+        } catch (_) {
+          cover = pictures.first;
+        }
+        cover ??= pictures.first;
+      }
+
       if (cover != null) {
         logger.i(
           'Found cover art in metadata for $metadataSourcePath. Size: ${cover.data.length} bytes',
@@ -343,29 +356,58 @@ class LibraryService {
         logger.w('No cover art found in metadata for $metadataSourcePath');
       }
 
+      if (metadata.format.chapters != null && metadata.format.chapters!.isNotEmpty) {
+        for (final chapter in metadata.format.chapters!) {
+          String? chapterCoverPath;
+          if (chapter.image != null) {
+            chapterCoverPath = await _extractAndCacheCover(
+              chapter.image!,
+              '$metadataSourcePath#${chapter.title}',
+            );
+          }
+          internalChapters.add(
+            ChapterMetadata(
+              title: chapter.title,
+              startTime: chapter.start / (chapter.timeScale ?? 1000),
+              endTime: chapter.end != null
+                  ? chapter.end! / (chapter.timeScale ?? 1000)
+                  : null,
+              coverPath: chapterCoverPath,
+            ),
+          );
+        }
+        logger.i('Extracted ${internalChapters.length} internal chapters for $metadataSourcePath');
+      }
+
       description = (metadata.common.longDescription ?? metadata.common.description) as String?;
 
       if (audioFiles != null) {
-        // Optimization: Don't read full metadata for every file just for duration
-        // We use probePlayer to get duration faster or just read first file's duration
-        // and assume others might be similar? No, that's not accurate.
-        // Better: Use probePlayer for EACH file but without seeking or decoding.
-        // Actually, MetadataGod is already quite fast, but reading 100 files is slow.
-        // For now, let's keep it but maybe optimize by only reading duration?
-        // MetadataGod doesn't have "only duration" mode.
-        // Let's at least avoid redundant work if we can.
         for (final filePath in audioFiles) {
           try {
-            // Only read if we don't have it already (if forceUpdate is true, we still want it)
             final fileMeta = await parseFile(
               filePath,
               options: const ParseOptions(duration: true),
             );
-            if (fileMeta.format.duration != null) {
-              duration += fileMeta.format.duration!;
+            final fDuration = fileMeta.format.duration;
+            if (fDuration != null) {
+              duration += fDuration;
             }
+            fileMetaList.add(
+              FileMetadata(
+                path: filePath,
+                title: fileMeta.common.title ?? p.basename(filePath),
+                duration: fDuration,
+              ),
+            );
           } catch (e) {
             logger.w('Error reading duration for $filePath: $e');
+            fileMetaList.add(
+              FileMetadata(
+                path: filePath,
+                title: p.basename(filePath),
+                duration: null,
+              ),
+            );
           }
         }
       } else {
@@ -386,6 +428,8 @@ class LibraryService {
       existingBook.audioFiles = audioFiles;
       existingBook.isDirectory = isDirectory;
       existingBook.description = description;
+      existingBook.filesMetadata = fileMetaList.isNotEmpty ? fileMetaList : null;
+      existingBook.internalChapters = internalChapters.isNotEmpty ? internalChapters : null;
       await saveBook(existingBook);
     } else {
       final book = Book(
@@ -399,6 +443,8 @@ class LibraryService {
         audioFiles: audioFiles,
         isDirectory: isDirectory,
         description: description,
+        filesMetadata: fileMetaList.isNotEmpty ? fileMetaList : null,
+        internalChapters: internalChapters.isNotEmpty ? internalChapters : null,
       );
       await saveBook(book);
     }

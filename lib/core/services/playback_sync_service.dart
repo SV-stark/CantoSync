@@ -1,7 +1,7 @@
 import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
-import 'package:metadata_god/metadata_god.dart';
+import 'package:metadata_audio/metadata_audio.dart' hide Chapter;
 import 'package:path/path.dart' as p;
 import 'package:canto_sync/core/services/media_service.dart';
 import 'package:canto_sync/features/library/data/library_service.dart';
@@ -170,12 +170,15 @@ class PlaybackSyncService {
               double? fileDuration;
 
               try {
-                final meta = await MetadataGod.readMetadata(file: filePath);
-                if (meta.title != null && meta.title!.isNotEmpty) {
-                  fileTitle = meta.title!;
+                final meta = await parseFile(
+                  filePath,
+                  options: const ParseOptions(duration: true),
+                );
+                if (meta.common.title != null && meta.common.title!.isNotEmpty) {
+                  fileTitle = meta.common.title!;
                 }
-                if (meta.durationMs != null) {
-                  fileDuration = meta.durationMs! / 1000.0;
+                if (meta.format.duration != null) {
+                  fileDuration = meta.format.duration!;
                 }
               } catch (e) {
                 debugPrint('Error reading metadata for file: $e');

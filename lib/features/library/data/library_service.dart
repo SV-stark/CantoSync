@@ -4,7 +4,7 @@ import 'package:isar/isar.dart';
 import 'package:media_kit/media_kit.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
-import 'package:metadata_god/metadata_god.dart';
+import 'package:metadata_audio/metadata_audio.dart' hide Chapter;
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
 import 'package:crypto/crypto.dart';
@@ -321,15 +321,21 @@ class LibraryService {
         metadataSourcePath = audioFiles.first;
       }
 
-      final metadata = await MetadataGod.readMetadata(file: metadataSourcePath);
-      title = metadata.title;
-      author = metadata.artist;
-      album = metadata.album;
+      final metadata = await parseFile(
+        metadataSourcePath,
+        options: const ParseOptions(duration: true),
+      );
+      title = metadata.common.title;
+      author = metadata.common.artist;
+      album = metadata.common.album;
 
-      if (metadata.picture != null) {
-        logger.i('Found cover art in metadata for $metadataSourcePath. Size: ${metadata.picture!.data.length} bytes');
+      final cover = selectCover(metadata.common.picture);
+      if (cover != null) {
+        logger.i(
+          'Found cover art in metadata for $metadataSourcePath. Size: ${cover.data.length} bytes',
+        );
         coverPath = await _extractAndCacheCover(
-          metadata.picture!,
+          cover,
           metadataSourcePath,
         );
         logger.i('Extracted cover to: $coverPath');
@@ -337,7 +343,7 @@ class LibraryService {
         logger.w('No cover art found in metadata for $metadataSourcePath');
       }
 
-      description = await _extractDescription(metadataSourcePath, probePlayer);
+      description = (metadata.common.longDescription ?? metadata.common.description) as String?;
 
       if (audioFiles != null) {
         // Optimization: Don't read full metadata for every file just for duration
@@ -351,17 +357,20 @@ class LibraryService {
         for (final filePath in audioFiles) {
           try {
             // Only read if we don't have it already (if forceUpdate is true, we still want it)
-            final fileMeta = await MetadataGod.readMetadata(file: filePath);
-            if (fileMeta.durationMs != null) {
-              duration += fileMeta.durationMs! / 1000.0;
+            final fileMeta = await parseFile(
+              filePath,
+              options: const ParseOptions(duration: true),
+            );
+            if (fileMeta.format.duration != null) {
+              duration += fileMeta.format.duration!;
             }
           } catch (e) {
             logger.w('Error reading duration for $filePath: $e');
           }
         }
       } else {
-        if (metadata.durationMs != null) {
-          duration = metadata.durationMs! / 1000.0;
+        if (metadata.format.duration != null) {
+          duration = metadata.format.duration!;
         }
       }
     } catch (e) {
@@ -407,7 +416,7 @@ class LibraryService {
       }
 
       final imageHash = md5.convert(picture.data).toString();
-      final ext = picture.mimeType == 'image/png' ? '.png' : '.jpg';
+      final ext = picture.format == 'image/png' ? '.png' : '.jpg';
       final coverFile = File(p.join(coversDir.path, '$imageHash$ext'));
 
       if (!await coverFile.exists()) {
@@ -464,38 +473,5 @@ class LibraryService {
     } catch (e) {
       logger.e('Error removing bookmark', error: e);
     }
-  }
-
-  Future<String?> _extractDescription(String path, Player player) async {
-    try {
-      // Reduced delay/attempts for description extraction
-      await player.open(Media(path), play: false);
-
-      // Wait a bit for metadata to load, but not 5 seconds!
-      for (int i = 0; i < 20; i++) {
-        if (player.platform is NativePlayer) {
-          final native = player.platform as NativePlayer;
-
-          final comment = await native.getProperty('metadata/by-key/comment');
-          if (comment.isNotEmpty) return comment;
-
-          final commentUpper = await native.getProperty('metadata/COMMENT');
-          if (commentUpper.isNotEmpty) return commentUpper;
-
-          final desc = await native.getProperty('metadata/by-key/description');
-          if (desc.isNotEmpty) return desc;
-
-          final synopsis = await native.getProperty('metadata/by-key/synopsis');
-          if (synopsis.isNotEmpty) return synopsis;
-          
-          // If duration is loaded and we still have no metadata, it might not exist
-          if (player.state.duration > Duration.zero && i > 5) break;
-        }
-        await Future.delayed(const Duration(milliseconds: 50));
-      }
-    } catch (e) {
-      logger.e('Error extracting description with media_kit', error: e);
-    }
-    return null;
   }
 }

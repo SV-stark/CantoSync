@@ -53,7 +53,8 @@ dependencies:
   media_kit_libs_windows_video: ^1.0.11
   media_kit_libs_linux: ^1.2.1
   path: ^1.9.0
-  metadata_god: ^1.1.0
+  # metadata_god: ^1.1.0
+  metadata_audio: ^0.7.2
   crypto: ^3.0.3
   tray_manager: ^0.5.2
   hotkey_manager: ^0.2.3

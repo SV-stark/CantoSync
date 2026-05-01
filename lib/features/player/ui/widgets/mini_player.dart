@@ -267,7 +267,8 @@ class _MiniPlayerState extends ConsumerState<MiniPlayer> {
                 ),
               ),
             ),
-          ],
+            ],
+          ),
         ),
       ),
     );

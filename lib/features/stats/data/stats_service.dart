@@ -58,7 +58,7 @@ class ListeningStatsService {
       authorStream,
       bookStream,
       speedStream,
-      (_, __, ___, ____) => null,
+      (_, _, _, _) => null,
     ).asyncMap((_) => _calculateStats());
   }
 

@@ -1,12 +1,8 @@
 import 'dart:async';
-import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:canto_sync/core/services/media_service.dart';
+import 'package:riverpod_annotation/riverpod_annotation.dart';
 
-final sleepTimerServiceProvider =
-    NotifierProvider<SleepTimerService, SleepTimerState>(() {
-      final service = SleepTimerService();
-      return service;
-    });
+part 'sleep_timer_service.g.dart';
 
 class SleepTimerState {
 
@@ -22,7 +18,8 @@ class SleepTimerState {
   }
 }
 
-class SleepTimerService extends Notifier<SleepTimerState> {
+@Riverpod(keepAlive: true)
+class SleepTimer extends _$SleepTimer {
   Timer? _timer;
   StreamSubscription? _posSub;
 

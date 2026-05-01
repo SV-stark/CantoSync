@@ -1,9 +1,9 @@
 import 'dart:async';
 import 'dart:io';
-import 'package:isar/isar.dart';
+import 'package:isar_community/isar.dart';
 import 'package:media_kit/media_kit.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
-import 'package:hooks_riverpod/hooks_riverpod.dart';
+
 import 'package:metadata_audio/metadata_audio.dart' hide Chapter;
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
@@ -15,12 +15,12 @@ import 'book.dart';
 part 'library_service.g.dart';
 
 @Riverpod(keepAlive: true)
-Isar isar(IsarRef ref) {
+Isar isar(Ref ref) {
   throw UnimplementedError('Isar must be initialized in main.dart and overridden in ProviderScope');
 }
 
 @Riverpod(keepAlive: true)
-LibraryService libraryService(LibraryServiceRef ref) {
+LibraryService libraryService(Ref ref) {
   final isarInstance = ref.watch(isarProvider);
   return LibraryService(isarInstance, ref);
 }
@@ -50,7 +50,7 @@ class LibraryCollectionFilter extends _$LibraryCollectionFilter {
 }
 
 @riverpod
-Stream<List<Book>> libraryBooks(LibraryBooksRef ref) {
+Stream<List<Book>> libraryBooks(Ref ref) {
   final service = ref.watch(libraryServiceProvider);
   final searchQuery = ref.watch(librarySearchQueryProvider).toLowerCase();
   final collectionFilter = ref.watch(libraryCollectionFilterProvider);
@@ -71,13 +71,14 @@ Stream<List<Book>> libraryBooks(LibraryBooksRef ref) {
       final album = book.album?.toLowerCase() ?? '';
       return title.contains(searchQuery) ||
           author.contains(searchQuery) ||
+          author.contains(searchQuery) ||
           album.contains(searchQuery);
     }).toList();
   });
 }
 
 @riverpod
-List<Book> libraryRecentBooks(LibraryRecentBooksRef ref) {
+List<Book> libraryRecentBooks(Ref ref) {
   final booksAsync = ref.watch(libraryBooksProvider);
   return booksAsync.maybeWhen(
     data: (books) {
@@ -90,7 +91,7 @@ List<Book> libraryRecentBooks(LibraryRecentBooksRef ref) {
 }
 
 @riverpod
-Future<Map<String, List<Book>>> libraryGroupedBooks(LibraryGroupedBooksRef ref) async {
+Future<Map<String, List<Book>>> libraryGroupedBooks(Ref ref) async {
   final books = await ref.watch(libraryBooksProvider.future);
 
   final Map<String, List<Book>> groups = {};
@@ -148,7 +149,7 @@ class LibraryService {
   }
 
   Future<void> rescanLibraries() async {
-    final settings = _ref.read(appSettingsNotifierProvider);
+    final settings = _ref.read(appSettingsProvider);
     final libraryPaths = settings.libraryPaths;
 
     final probePlayer = Player(

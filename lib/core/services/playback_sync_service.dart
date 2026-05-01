@@ -1,32 +1,30 @@
 import 'dart:async';
 import 'package:flutter/foundation.dart';
-import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:metadata_audio/metadata_audio.dart' hide Chapter;
 import 'package:path/path.dart' as p;
 import 'package:canto_sync/core/services/media_service.dart';
 import 'package:canto_sync/features/library/data/library_service.dart';
 import 'package:canto_sync/features/library/data/book.dart';
 import 'package:canto_sync/features/stats/data/stats_service.dart';
+import 'package:riverpod_annotation/riverpod_annotation.dart';
 
-final playbackSyncProvider = Provider<PlaybackSyncService>((ref) {
+part 'playback_sync_service.g.dart';
+
+@Riverpod(keepAlive: true)
+PlaybackSyncService playbackSync(Ref ref) {
   final mediaService = ref.watch(mediaServiceProvider);
   final libraryService = ref.watch(libraryServiceProvider);
   final service = PlaybackSyncService(mediaService, libraryService, ref);
   ref.onDispose(() => service.dispose());
   return service;
-});
+}
 
-final currentBookPathProvider =
-    NotifierProvider<CurrentBookPathNotifier, String?>(() {
-      return CurrentBookPathNotifier();
-    });
-
-class CurrentBookPathNotifier extends Notifier<String?> {
+@riverpod
+class CurrentBookPath extends _$CurrentBookPath {
   @override
   String? build() => null;
 
-  @override
-  set state(String? value) => super.state = value;
+  void update(String? value) => state = value;
 }
 
 class PlaybackSyncService {
@@ -84,7 +82,7 @@ class PlaybackSyncService {
 
   void setCurrentBook(String path) {
     _currentPath = path;
-    _ref.read(currentBookPathProvider.notifier).state = path;
+    _ref.read(currentBookPathProvider.notifier).update(path);
   }
 
   void _recordStatsSession(int seconds) async {
@@ -117,7 +115,7 @@ class PlaybackSyncService {
 
   Future<void> resumeBook(String path) async {
     _currentPath = path;
-    _ref.read(currentBookPathProvider.notifier).state = path;
+    _ref.read(currentBookPathProvider.notifier).update(path);
 
     // Find book to get last position and metadata
     String? title;

@@ -1,16 +1,18 @@
 import 'dart:async';
 import 'dart:convert';
 import 'package:flutter/foundation.dart';
-import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:media_kit/media_kit.dart';
 import 'package:canto_sync/core/services/app_settings_service.dart';
+import 'package:riverpod_annotation/riverpod_annotation.dart';
 
-// Provider
-final mediaServiceProvider = Provider<MediaService>((ref) {
+part 'media_service.g.dart';
+
+@Riverpod(keepAlive: true)
+MediaService mediaService(Ref ref) {
   final service = MediaService(ref);
   ref.onDispose(() => service.dispose());
   return service;
-});
+}
 
 class MediaService {
 
@@ -37,7 +39,7 @@ class MediaService {
   void _initFilters() {
     try {
       // Initialize filters from settings
-      final settings = _ref.read(appSettingsNotifierProvider);
+      final settings = _ref.read(appSettingsProvider);
       _skipSilence = settings.skipSilence;
       _loudnessNormalization = settings.loudnessNormalization;
       _activePresetFilter = settings.audioPreset.filter;

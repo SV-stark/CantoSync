@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
-import 'package:isar/isar.dart';
+import 'package:isar_community/isar.dart';
 import 'package:freezed_annotation/freezed_annotation.dart';
 import 'package:canto_sync/features/library/data/library_service.dart';
 import 'package:canto_sync/core/services/media_service.dart';
@@ -33,7 +33,7 @@ enum PlayerThemeMode {
 }
 
 @freezed
-class AppSettings with _$AppSettings {
+abstract class AppSettings with _$AppSettings {
   const factory AppSettings({
     @Default(ThemeMode.system) ThemeMode themeMode,
     @Default(AudioPreset.flat) AudioPreset audioPreset,
@@ -155,3 +155,4 @@ class AppSettingsNotifier extends _$AppSettingsNotifier {
     _updateIsar((s) => s.showCoverReflection = enabled);
   }
 }
+

@@ -17,21 +17,9 @@ const KeyboardShortcutSchema = CollectionSchema(
   name: r'KeyboardShortcut',
   id: 4759584051836721976,
   properties: {
-    r'action': PropertySchema(
-      id: 0,
-      name: r'action',
-      type: IsarType.string,
-    ),
-    r'alt': PropertySchema(
-      id: 1,
-      name: r'alt',
-      type: IsarType.bool,
-    ),
-    r'ctrl': PropertySchema(
-      id: 2,
-      name: r'ctrl',
-      type: IsarType.bool,
-    ),
+    r'action': PropertySchema(id: 0, name: r'action', type: IsarType.string),
+    r'alt': PropertySchema(id: 1, name: r'alt', type: IsarType.bool),
+    r'ctrl': PropertySchema(id: 2, name: r'ctrl', type: IsarType.bool),
     r'description': PropertySchema(
       id: 3,
       name: r'description',
@@ -42,17 +30,14 @@ const KeyboardShortcutSchema = CollectionSchema(
       name: r'keyValue',
       type: IsarType.string,
     ),
-    r'shift': PropertySchema(
-      id: 5,
-      name: r'shift',
-      type: IsarType.bool,
-    ),
+    r'shift': PropertySchema(id: 5, name: r'shift', type: IsarType.bool),
     r'shortcutString': PropertySchema(
       id: 6,
       name: r'shortcutString',
       type: IsarType.string,
-    )
+    ),
   },
+
   estimateSize: _keyboardShortcutEstimateSize,
   serialize: _keyboardShortcutSerialize,
   deserialize: _keyboardShortcutDeserialize,
@@ -69,16 +54,17 @@ const KeyboardShortcutSchema = CollectionSchema(
           name: r'action',
           type: IndexType.hash,
           caseSensitive: true,
-        )
+        ),
       ],
-    )
+    ),
   },
   links: {},
   embeddedSchemas: {},
+
   getId: _keyboardShortcutGetId,
   getLinks: _keyboardShortcutGetLinks,
   attach: _keyboardShortcutAttach,
-  version: '3.1.0+1',
+  version: '3.3.2',
 );
 
 int _keyboardShortcutEstimateSize(
@@ -162,7 +148,10 @@ List<IsarLinkBase<dynamic>> _keyboardShortcutGetLinks(KeyboardShortcut object) {
 }
 
 void _keyboardShortcutAttach(
-    IsarCollection<dynamic> col, Id id, KeyboardShortcut object) {
+  IsarCollection<dynamic> col,
+  Id id,
+  KeyboardShortcut object,
+) {
   object.id = id;
 }
 
@@ -215,8 +204,10 @@ extension KeyboardShortcutByIndex on IsarCollection<KeyboardShortcut> {
     return putAllByIndex(r'action', objects);
   }
 
-  List<Id> putAllByActionSync(List<KeyboardShortcut> objects,
-      {bool saveLinks = true}) {
+  List<Id> putAllByActionSync(
+    List<KeyboardShortcut> objects, {
+    bool saveLinks = true,
+  }) {
     return putAllByIndexSync(r'action', objects, saveLinks: saveLinks);
   }
 }
@@ -233,17 +224,15 @@ extension KeyboardShortcutQueryWhereSort
 extension KeyboardShortcutQueryWhere
     on QueryBuilder<KeyboardShortcut, KeyboardShortcut, QWhereClause> {
   QueryBuilder<KeyboardShortcut, KeyboardShortcut, QAfterWhereClause> idEqualTo(
-      Id id) {
+    Id id,
+  ) {
     return QueryBuilder.apply(this, (query) {
-      return query.addWhereClause(IdWhereClause.between(
-        lower: id,
-        upper: id,
-      ));
+      return query.addWhereClause(IdWhereClause.between(lower: id, upper: id));
     });
   }
 
   QueryBuilder<KeyboardShortcut, KeyboardShortcut, QAfterWhereClause>
-      idNotEqualTo(Id id) {
+  idNotEqualTo(Id id) {
     return QueryBuilder.apply(this, (query) {
       if (query.whereSort == Sort.asc) {
         return query
@@ -266,7 +255,7 @@ extension KeyboardShortcutQueryWhere
   }
 
   QueryBuilder<KeyboardShortcut, KeyboardShortcut, QAfterWhereClause>
-      idGreaterThan(Id id, {bool include = false}) {
+  idGreaterThan(Id id, {bool include = false}) {
     return QueryBuilder.apply(this, (query) {
       return query.addWhereClause(
         IdWhereClause.greaterThan(lower: id, includeLower: include),
@@ -275,7 +264,7 @@ extension KeyboardShortcutQueryWhere
   }
 
   QueryBuilder<KeyboardShortcut, KeyboardShortcut, QAfterWhereClause>
-      idLessThan(Id id, {bool include = false}) {
+  idLessThan(Id id, {bool include = false}) {
     return QueryBuilder.apply(this, (query) {
       return query.addWhereClause(
         IdWhereClause.lessThan(upper: id, includeUpper: include),
@@ -290,56 +279,65 @@ extension KeyboardShortcutQueryWhere
     bool includeUpper = true,
   }) {
     return QueryBuilder.apply(this, (query) {
-      return query.addWhereClause(IdWhereClause.between(
-        lower: lowerId,
-        includeLower: includeLower,
-        upper: upperId,
-        includeUpper: includeUpper,
-      ));
+      return query.addWhereClause(
+        IdWhereClause.between(
+          lower: lowerId,
+          includeLower: includeLower,
+          upper: upperId,
+          includeUpper: includeUpper,
+        ),
+      );
     });
   }
 
   QueryBuilder<KeyboardShortcut, KeyboardShortcut, QAfterWhereClause>
-      actionEqualTo(String action) {
+  actionEqualTo(String action) {
     return QueryBuilder.apply(this, (query) {
-      return query.addWhereClause(IndexWhereClause.equalTo(
-        indexName: r'action',
-        value: [action],
-      ));
+      return query.addWhereClause(
+        IndexWhereClause.equalTo(indexName: r'action', value: [action]),
+      );
     });
   }
 
   QueryBuilder<KeyboardShortcut, KeyboardShortcut, QAfterWhereClause>
-      actionNotEqualTo(String action) {
+  actionNotEqualTo(String action) {
     return QueryBuilder.apply(this, (query) {
       if (query.whereSort == Sort.asc) {
         return query
-            .addWhereClause(IndexWhereClause.between(
-              indexName: r'action',
-              lower: [],
-              upper: [action],
-              includeUpper: false,
-            ))
-            .addWhereClause(IndexWhereClause.between(
-              indexName: r'action',
-              lower: [action],
-              includeLower: false,
-              upper: [],
-            ));
+            .addWhereClause(
+              IndexWhereClause.between(
+                indexName: r'action',
+                lower: [],
+                upper: [action],
+                includeUpper: false,
+              ),
+            )
+            .addWhereClause(
+              IndexWhereClause.between(
+                indexName: r'action',
+                lower: [action],
+                includeLower: false,
+                upper: [],
+              ),
+            );
       } else {
         return query
-            .addWhereClause(IndexWhereClause.between(
-              indexName: r'action',
-              lower: [action],
-              includeLower: false,
-              upper: [],
-            ))
-            .addWhereClause(IndexWhereClause.between(
-              indexName: r'action',
-              lower: [],
-              upper: [action],
-              includeUpper: false,
-            ));
+            .addWhereClause(
+              IndexWhereClause.between(
+                indexName: r'action',
+                lower: [action],
+                includeLower: false,
+                upper: [],
+              ),
+            )
+            .addWhereClause(
+              IndexWhereClause.between(
+                indexName: r'action',
+                lower: [],
+                upper: [action],
+                includeUpper: false,
+              ),
+            );
       }
     });
   }
@@ -348,53 +346,56 @@ extension KeyboardShortcutQueryWhere
 extension KeyboardShortcutQueryFilter
     on QueryBuilder<KeyboardShortcut, KeyboardShortcut, QFilterCondition> {
   QueryBuilder<KeyboardShortcut, KeyboardShortcut, QAfterFilterCondition>
-      actionEqualTo(
-    String value, {
-    bool caseSensitive = true,
-  }) {
+  actionEqualTo(String value, {bool caseSensitive = true}) {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.equalTo(
-        property: r'action',
-        value: value,
-        caseSensitive: caseSensitive,
-      ));
+      return query.addFilterCondition(
+        FilterCondition.equalTo(
+          property: r'action',
+          value: value,
+          caseSensitive: caseSensitive,
+        ),
+      );
     });
   }
 
   QueryBuilder<KeyboardShortcut, KeyboardShortcut, QAfterFilterCondition>
-      actionGreaterThan(
-    String value, {
-    bool include = false,
-    bool caseSensitive = true,
-  }) {
-    return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.greaterThan(
-        include: include,
-        property: r'action',
-        value: value,
-        caseSensitive: caseSensitive,
-      ));
-    });
-  }
-
-  QueryBuilder<KeyboardShortcut, KeyboardShortcut, QAfterFilterCondition>
-      actionLessThan(
+  actionGreaterThan(
     String value, {
     bool include = false,
     bool caseSensitive = true,
   }) {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.lessThan(
-        include: include,
-        property: r'action',
-        value: value,
-        caseSensitive: caseSensitive,
-      ));
+      return query.addFilterCondition(
+        FilterCondition.greaterThan(
+          include: include,
+          property: r'action',
+          value: value,
+          caseSensitive: caseSensitive,
+        ),
+      );
     });
   }
 
   QueryBuilder<KeyboardShortcut, KeyboardShortcut, QAfterFilterCondition>
-      actionBetween(
+  actionLessThan(
+    String value, {
+    bool include = false,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.lessThan(
+          include: include,
+          property: r'action',
+          value: value,
+          caseSensitive: caseSensitive,
+        ),
+      );
+    });
+  }
+
+  QueryBuilder<KeyboardShortcut, KeyboardShortcut, QAfterFilterCondition>
+  actionBetween(
     String lower,
     String upper, {
     bool includeLower = true,
@@ -402,155 +403,158 @@ extension KeyboardShortcutQueryFilter
     bool caseSensitive = true,
   }) {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.between(
-        property: r'action',
-        lower: lower,
-        includeLower: includeLower,
-        upper: upper,
-        includeUpper: includeUpper,
-        caseSensitive: caseSensitive,
-      ));
+      return query.addFilterCondition(
+        FilterCondition.between(
+          property: r'action',
+          lower: lower,
+          includeLower: includeLower,
+          upper: upper,
+          includeUpper: includeUpper,
+          caseSensitive: caseSensitive,
+        ),
+      );
     });
   }
 
   QueryBuilder<KeyboardShortcut, KeyboardShortcut, QAfterFilterCondition>
-      actionStartsWith(
-    String value, {
-    bool caseSensitive = true,
-  }) {
+  actionStartsWith(String value, {bool caseSensitive = true}) {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.startsWith(
-        property: r'action',
-        value: value,
-        caseSensitive: caseSensitive,
-      ));
+      return query.addFilterCondition(
+        FilterCondition.startsWith(
+          property: r'action',
+          value: value,
+          caseSensitive: caseSensitive,
+        ),
+      );
     });
   }
 
   QueryBuilder<KeyboardShortcut, KeyboardShortcut, QAfterFilterCondition>
-      actionEndsWith(
-    String value, {
-    bool caseSensitive = true,
-  }) {
+  actionEndsWith(String value, {bool caseSensitive = true}) {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.endsWith(
-        property: r'action',
-        value: value,
-        caseSensitive: caseSensitive,
-      ));
+      return query.addFilterCondition(
+        FilterCondition.endsWith(
+          property: r'action',
+          value: value,
+          caseSensitive: caseSensitive,
+        ),
+      );
     });
   }
 
   QueryBuilder<KeyboardShortcut, KeyboardShortcut, QAfterFilterCondition>
-      actionContains(String value, {bool caseSensitive = true}) {
+  actionContains(String value, {bool caseSensitive = true}) {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.contains(
-        property: r'action',
-        value: value,
-        caseSensitive: caseSensitive,
-      ));
+      return query.addFilterCondition(
+        FilterCondition.contains(
+          property: r'action',
+          value: value,
+          caseSensitive: caseSensitive,
+        ),
+      );
     });
   }
 
   QueryBuilder<KeyboardShortcut, KeyboardShortcut, QAfterFilterCondition>
-      actionMatches(String pattern, {bool caseSensitive = true}) {
+  actionMatches(String pattern, {bool caseSensitive = true}) {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.matches(
-        property: r'action',
-        wildcard: pattern,
-        caseSensitive: caseSensitive,
-      ));
+      return query.addFilterCondition(
+        FilterCondition.matches(
+          property: r'action',
+          wildcard: pattern,
+          caseSensitive: caseSensitive,
+        ),
+      );
     });
   }
 
   QueryBuilder<KeyboardShortcut, KeyboardShortcut, QAfterFilterCondition>
-      actionIsEmpty() {
+  actionIsEmpty() {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.equalTo(
-        property: r'action',
-        value: '',
-      ));
+      return query.addFilterCondition(
+        FilterCondition.equalTo(property: r'action', value: ''),
+      );
     });
   }
 
   QueryBuilder<KeyboardShortcut, KeyboardShortcut, QAfterFilterCondition>
-      actionIsNotEmpty() {
+  actionIsNotEmpty() {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.greaterThan(
-        property: r'action',
-        value: '',
-      ));
+      return query.addFilterCondition(
+        FilterCondition.greaterThan(property: r'action', value: ''),
+      );
     });
   }
 
   QueryBuilder<KeyboardShortcut, KeyboardShortcut, QAfterFilterCondition>
-      altEqualTo(bool value) {
+  altEqualTo(bool value) {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.equalTo(
-        property: r'alt',
-        value: value,
-      ));
+      return query.addFilterCondition(
+        FilterCondition.equalTo(property: r'alt', value: value),
+      );
     });
   }
 
   QueryBuilder<KeyboardShortcut, KeyboardShortcut, QAfterFilterCondition>
-      ctrlEqualTo(bool value) {
+  ctrlEqualTo(bool value) {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.equalTo(
-        property: r'ctrl',
-        value: value,
-      ));
+      return query.addFilterCondition(
+        FilterCondition.equalTo(property: r'ctrl', value: value),
+      );
     });
   }
 
   QueryBuilder<KeyboardShortcut, KeyboardShortcut, QAfterFilterCondition>
-      descriptionEqualTo(
-    String value, {
-    bool caseSensitive = true,
-  }) {
+  descriptionEqualTo(String value, {bool caseSensitive = true}) {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.equalTo(
-        property: r'description',
-        value: value,
-        caseSensitive: caseSensitive,
-      ));
+      return query.addFilterCondition(
+        FilterCondition.equalTo(
+          property: r'description',
+          value: value,
+          caseSensitive: caseSensitive,
+        ),
+      );
     });
   }
 
   QueryBuilder<KeyboardShortcut, KeyboardShortcut, QAfterFilterCondition>
-      descriptionGreaterThan(
-    String value, {
-    bool include = false,
-    bool caseSensitive = true,
-  }) {
-    return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.greaterThan(
-        include: include,
-        property: r'description',
-        value: value,
-        caseSensitive: caseSensitive,
-      ));
-    });
-  }
-
-  QueryBuilder<KeyboardShortcut, KeyboardShortcut, QAfterFilterCondition>
-      descriptionLessThan(
+  descriptionGreaterThan(
     String value, {
     bool include = false,
     bool caseSensitive = true,
   }) {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.lessThan(
-        include: include,
-        property: r'description',
-        value: value,
-        caseSensitive: caseSensitive,
-      ));
+      return query.addFilterCondition(
+        FilterCondition.greaterThan(
+          include: include,
+          property: r'description',
+          value: value,
+          caseSensitive: caseSensitive,
+        ),
+      );
     });
   }
 
   QueryBuilder<KeyboardShortcut, KeyboardShortcut, QAfterFilterCondition>
-      descriptionBetween(
+  descriptionLessThan(
+    String value, {
+    bool include = false,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.lessThan(
+          include: include,
+          property: r'description',
+          value: value,
+          caseSensitive: caseSensitive,
+        ),
+      );
+    });
+  }
+
+  QueryBuilder<KeyboardShortcut, KeyboardShortcut, QAfterFilterCondition>
+  descriptionBetween(
     String lower,
     String upper, {
     bool includeLower = true,
@@ -558,191 +562,195 @@ extension KeyboardShortcutQueryFilter
     bool caseSensitive = true,
   }) {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.between(
-        property: r'description',
-        lower: lower,
-        includeLower: includeLower,
-        upper: upper,
-        includeUpper: includeUpper,
-        caseSensitive: caseSensitive,
-      ));
+      return query.addFilterCondition(
+        FilterCondition.between(
+          property: r'description',
+          lower: lower,
+          includeLower: includeLower,
+          upper: upper,
+          includeUpper: includeUpper,
+          caseSensitive: caseSensitive,
+        ),
+      );
     });
   }
 
   QueryBuilder<KeyboardShortcut, KeyboardShortcut, QAfterFilterCondition>
-      descriptionStartsWith(
-    String value, {
-    bool caseSensitive = true,
-  }) {
+  descriptionStartsWith(String value, {bool caseSensitive = true}) {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.startsWith(
-        property: r'description',
-        value: value,
-        caseSensitive: caseSensitive,
-      ));
+      return query.addFilterCondition(
+        FilterCondition.startsWith(
+          property: r'description',
+          value: value,
+          caseSensitive: caseSensitive,
+        ),
+      );
     });
   }
 
   QueryBuilder<KeyboardShortcut, KeyboardShortcut, QAfterFilterCondition>
-      descriptionEndsWith(
-    String value, {
-    bool caseSensitive = true,
-  }) {
+  descriptionEndsWith(String value, {bool caseSensitive = true}) {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.endsWith(
-        property: r'description',
-        value: value,
-        caseSensitive: caseSensitive,
-      ));
+      return query.addFilterCondition(
+        FilterCondition.endsWith(
+          property: r'description',
+          value: value,
+          caseSensitive: caseSensitive,
+        ),
+      );
     });
   }
 
   QueryBuilder<KeyboardShortcut, KeyboardShortcut, QAfterFilterCondition>
-      descriptionContains(String value, {bool caseSensitive = true}) {
+  descriptionContains(String value, {bool caseSensitive = true}) {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.contains(
-        property: r'description',
-        value: value,
-        caseSensitive: caseSensitive,
-      ));
+      return query.addFilterCondition(
+        FilterCondition.contains(
+          property: r'description',
+          value: value,
+          caseSensitive: caseSensitive,
+        ),
+      );
     });
   }
 
   QueryBuilder<KeyboardShortcut, KeyboardShortcut, QAfterFilterCondition>
-      descriptionMatches(String pattern, {bool caseSensitive = true}) {
+  descriptionMatches(String pattern, {bool caseSensitive = true}) {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.matches(
-        property: r'description',
-        wildcard: pattern,
-        caseSensitive: caseSensitive,
-      ));
+      return query.addFilterCondition(
+        FilterCondition.matches(
+          property: r'description',
+          wildcard: pattern,
+          caseSensitive: caseSensitive,
+        ),
+      );
     });
   }
 
   QueryBuilder<KeyboardShortcut, KeyboardShortcut, QAfterFilterCondition>
-      descriptionIsEmpty() {
+  descriptionIsEmpty() {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.equalTo(
-        property: r'description',
-        value: '',
-      ));
+      return query.addFilterCondition(
+        FilterCondition.equalTo(property: r'description', value: ''),
+      );
     });
   }
 
   QueryBuilder<KeyboardShortcut, KeyboardShortcut, QAfterFilterCondition>
-      descriptionIsNotEmpty() {
+  descriptionIsNotEmpty() {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.greaterThan(
-        property: r'description',
-        value: '',
-      ));
+      return query.addFilterCondition(
+        FilterCondition.greaterThan(property: r'description', value: ''),
+      );
     });
   }
 
   QueryBuilder<KeyboardShortcut, KeyboardShortcut, QAfterFilterCondition>
-      idEqualTo(Id value) {
+  idEqualTo(Id value) {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.equalTo(
-        property: r'id',
-        value: value,
-      ));
+      return query.addFilterCondition(
+        FilterCondition.equalTo(property: r'id', value: value),
+      );
     });
   }
 
   QueryBuilder<KeyboardShortcut, KeyboardShortcut, QAfterFilterCondition>
-      idGreaterThan(
-    Id value, {
-    bool include = false,
-  }) {
+  idGreaterThan(Id value, {bool include = false}) {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.greaterThan(
-        include: include,
-        property: r'id',
-        value: value,
-      ));
+      return query.addFilterCondition(
+        FilterCondition.greaterThan(
+          include: include,
+          property: r'id',
+          value: value,
+        ),
+      );
     });
   }
 
   QueryBuilder<KeyboardShortcut, KeyboardShortcut, QAfterFilterCondition>
-      idLessThan(
-    Id value, {
-    bool include = false,
-  }) {
+  idLessThan(Id value, {bool include = false}) {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.lessThan(
-        include: include,
-        property: r'id',
-        value: value,
-      ));
+      return query.addFilterCondition(
+        FilterCondition.lessThan(
+          include: include,
+          property: r'id',
+          value: value,
+        ),
+      );
     });
   }
 
   QueryBuilder<KeyboardShortcut, KeyboardShortcut, QAfterFilterCondition>
-      idBetween(
+  idBetween(
     Id lower,
     Id upper, {
     bool includeLower = true,
     bool includeUpper = true,
   }) {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.between(
-        property: r'id',
-        lower: lower,
-        includeLower: includeLower,
-        upper: upper,
-        includeUpper: includeUpper,
-      ));
+      return query.addFilterCondition(
+        FilterCondition.between(
+          property: r'id',
+          lower: lower,
+          includeLower: includeLower,
+          upper: upper,
+          includeUpper: includeUpper,
+        ),
+      );
     });
   }
 
   QueryBuilder<KeyboardShortcut, KeyboardShortcut, QAfterFilterCondition>
-      keyValueEqualTo(
-    String value, {
-    bool caseSensitive = true,
-  }) {
+  keyValueEqualTo(String value, {bool caseSensitive = true}) {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.equalTo(
-        property: r'keyValue',
-        value: value,
-        caseSensitive: caseSensitive,
-      ));
+      return query.addFilterCondition(
+        FilterCondition.equalTo(
+          property: r'keyValue',
+          value: value,
+          caseSensitive: caseSensitive,
+        ),
+      );
     });
   }
 
   QueryBuilder<KeyboardShortcut, KeyboardShortcut, QAfterFilterCondition>
-      keyValueGreaterThan(
-    String value, {
-    bool include = false,
-    bool caseSensitive = true,
-  }) {
-    return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.greaterThan(
-        include: include,
-        property: r'keyValue',
-        value: value,
-        caseSensitive: caseSensitive,
-      ));
-    });
-  }
-
-  QueryBuilder<KeyboardShortcut, KeyboardShortcut, QAfterFilterCondition>
-      keyValueLessThan(
+  keyValueGreaterThan(
     String value, {
     bool include = false,
     bool caseSensitive = true,
   }) {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.lessThan(
-        include: include,
-        property: r'keyValue',
-        value: value,
-        caseSensitive: caseSensitive,
-      ));
+      return query.addFilterCondition(
+        FilterCondition.greaterThan(
+          include: include,
+          property: r'keyValue',
+          value: value,
+          caseSensitive: caseSensitive,
+        ),
+      );
     });
   }
 
   QueryBuilder<KeyboardShortcut, KeyboardShortcut, QAfterFilterCondition>
-      keyValueBetween(
+  keyValueLessThan(
+    String value, {
+    bool include = false,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.lessThan(
+          include: include,
+          property: r'keyValue',
+          value: value,
+          caseSensitive: caseSensitive,
+        ),
+      );
+    });
+  }
+
+  QueryBuilder<KeyboardShortcut, KeyboardShortcut, QAfterFilterCondition>
+  keyValueBetween(
     String lower,
     String upper, {
     bool includeLower = true,
@@ -750,145 +758,149 @@ extension KeyboardShortcutQueryFilter
     bool caseSensitive = true,
   }) {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.between(
-        property: r'keyValue',
-        lower: lower,
-        includeLower: includeLower,
-        upper: upper,
-        includeUpper: includeUpper,
-        caseSensitive: caseSensitive,
-      ));
+      return query.addFilterCondition(
+        FilterCondition.between(
+          property: r'keyValue',
+          lower: lower,
+          includeLower: includeLower,
+          upper: upper,
+          includeUpper: includeUpper,
+          caseSensitive: caseSensitive,
+        ),
+      );
     });
   }
 
   QueryBuilder<KeyboardShortcut, KeyboardShortcut, QAfterFilterCondition>
-      keyValueStartsWith(
-    String value, {
-    bool caseSensitive = true,
-  }) {
+  keyValueStartsWith(String value, {bool caseSensitive = true}) {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.startsWith(
-        property: r'keyValue',
-        value: value,
-        caseSensitive: caseSensitive,
-      ));
+      return query.addFilterCondition(
+        FilterCondition.startsWith(
+          property: r'keyValue',
+          value: value,
+          caseSensitive: caseSensitive,
+        ),
+      );
     });
   }
 
   QueryBuilder<KeyboardShortcut, KeyboardShortcut, QAfterFilterCondition>
-      keyValueEndsWith(
-    String value, {
-    bool caseSensitive = true,
-  }) {
+  keyValueEndsWith(String value, {bool caseSensitive = true}) {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.endsWith(
-        property: r'keyValue',
-        value: value,
-        caseSensitive: caseSensitive,
-      ));
+      return query.addFilterCondition(
+        FilterCondition.endsWith(
+          property: r'keyValue',
+          value: value,
+          caseSensitive: caseSensitive,
+        ),
+      );
     });
   }
 
   QueryBuilder<KeyboardShortcut, KeyboardShortcut, QAfterFilterCondition>
-      keyValueContains(String value, {bool caseSensitive = true}) {
+  keyValueContains(String value, {bool caseSensitive = true}) {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.contains(
-        property: r'keyValue',
-        value: value,
-        caseSensitive: caseSensitive,
-      ));
+      return query.addFilterCondition(
+        FilterCondition.contains(
+          property: r'keyValue',
+          value: value,
+          caseSensitive: caseSensitive,
+        ),
+      );
     });
   }
 
   QueryBuilder<KeyboardShortcut, KeyboardShortcut, QAfterFilterCondition>
-      keyValueMatches(String pattern, {bool caseSensitive = true}) {
+  keyValueMatches(String pattern, {bool caseSensitive = true}) {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.matches(
-        property: r'keyValue',
-        wildcard: pattern,
-        caseSensitive: caseSensitive,
-      ));
+      return query.addFilterCondition(
+        FilterCondition.matches(
+          property: r'keyValue',
+          wildcard: pattern,
+          caseSensitive: caseSensitive,
+        ),
+      );
     });
   }
 
   QueryBuilder<KeyboardShortcut, KeyboardShortcut, QAfterFilterCondition>
-      keyValueIsEmpty() {
+  keyValueIsEmpty() {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.equalTo(
-        property: r'keyValue',
-        value: '',
-      ));
+      return query.addFilterCondition(
+        FilterCondition.equalTo(property: r'keyValue', value: ''),
+      );
     });
   }
 
   QueryBuilder<KeyboardShortcut, KeyboardShortcut, QAfterFilterCondition>
-      keyValueIsNotEmpty() {
+  keyValueIsNotEmpty() {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.greaterThan(
-        property: r'keyValue',
-        value: '',
-      ));
+      return query.addFilterCondition(
+        FilterCondition.greaterThan(property: r'keyValue', value: ''),
+      );
     });
   }
 
   QueryBuilder<KeyboardShortcut, KeyboardShortcut, QAfterFilterCondition>
-      shiftEqualTo(bool value) {
+  shiftEqualTo(bool value) {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.equalTo(
-        property: r'shift',
-        value: value,
-      ));
+      return query.addFilterCondition(
+        FilterCondition.equalTo(property: r'shift', value: value),
+      );
     });
   }
 
   QueryBuilder<KeyboardShortcut, KeyboardShortcut, QAfterFilterCondition>
-      shortcutStringEqualTo(
-    String value, {
-    bool caseSensitive = true,
-  }) {
+  shortcutStringEqualTo(String value, {bool caseSensitive = true}) {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.equalTo(
-        property: r'shortcutString',
-        value: value,
-        caseSensitive: caseSensitive,
-      ));
+      return query.addFilterCondition(
+        FilterCondition.equalTo(
+          property: r'shortcutString',
+          value: value,
+          caseSensitive: caseSensitive,
+        ),
+      );
     });
   }
 
   QueryBuilder<KeyboardShortcut, KeyboardShortcut, QAfterFilterCondition>
-      shortcutStringGreaterThan(
-    String value, {
-    bool include = false,
-    bool caseSensitive = true,
-  }) {
-    return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.greaterThan(
-        include: include,
-        property: r'shortcutString',
-        value: value,
-        caseSensitive: caseSensitive,
-      ));
-    });
-  }
-
-  QueryBuilder<KeyboardShortcut, KeyboardShortcut, QAfterFilterCondition>
-      shortcutStringLessThan(
+  shortcutStringGreaterThan(
     String value, {
     bool include = false,
     bool caseSensitive = true,
   }) {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.lessThan(
-        include: include,
-        property: r'shortcutString',
-        value: value,
-        caseSensitive: caseSensitive,
-      ));
+      return query.addFilterCondition(
+        FilterCondition.greaterThan(
+          include: include,
+          property: r'shortcutString',
+          value: value,
+          caseSensitive: caseSensitive,
+        ),
+      );
     });
   }
 
   QueryBuilder<KeyboardShortcut, KeyboardShortcut, QAfterFilterCondition>
-      shortcutStringBetween(
+  shortcutStringLessThan(
+    String value, {
+    bool include = false,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.lessThan(
+          include: include,
+          property: r'shortcutString',
+          value: value,
+          caseSensitive: caseSensitive,
+        ),
+      );
+    });
+  }
+
+  QueryBuilder<KeyboardShortcut, KeyboardShortcut, QAfterFilterCondition>
+  shortcutStringBetween(
     String lower,
     String upper, {
     bool includeLower = true,
@@ -896,84 +908,86 @@ extension KeyboardShortcutQueryFilter
     bool caseSensitive = true,
   }) {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.between(
-        property: r'shortcutString',
-        lower: lower,
-        includeLower: includeLower,
-        upper: upper,
-        includeUpper: includeUpper,
-        caseSensitive: caseSensitive,
-      ));
+      return query.addFilterCondition(
+        FilterCondition.between(
+          property: r'shortcutString',
+          lower: lower,
+          includeLower: includeLower,
+          upper: upper,
+          includeUpper: includeUpper,
+          caseSensitive: caseSensitive,
+        ),
+      );
     });
   }
 
   QueryBuilder<KeyboardShortcut, KeyboardShortcut, QAfterFilterCondition>
-      shortcutStringStartsWith(
-    String value, {
-    bool caseSensitive = true,
-  }) {
+  shortcutStringStartsWith(String value, {bool caseSensitive = true}) {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.startsWith(
-        property: r'shortcutString',
-        value: value,
-        caseSensitive: caseSensitive,
-      ));
+      return query.addFilterCondition(
+        FilterCondition.startsWith(
+          property: r'shortcutString',
+          value: value,
+          caseSensitive: caseSensitive,
+        ),
+      );
     });
   }
 
   QueryBuilder<KeyboardShortcut, KeyboardShortcut, QAfterFilterCondition>
-      shortcutStringEndsWith(
-    String value, {
-    bool caseSensitive = true,
-  }) {
+  shortcutStringEndsWith(String value, {bool caseSensitive = true}) {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.endsWith(
-        property: r'shortcutString',
-        value: value,
-        caseSensitive: caseSensitive,
-      ));
+      return query.addFilterCondition(
+        FilterCondition.endsWith(
+          property: r'shortcutString',
+          value: value,
+          caseSensitive: caseSensitive,
+        ),
+      );
     });
   }
 
   QueryBuilder<KeyboardShortcut, KeyboardShortcut, QAfterFilterCondition>
-      shortcutStringContains(String value, {bool caseSensitive = true}) {
+  shortcutStringContains(String value, {bool caseSensitive = true}) {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.contains(
-        property: r'shortcutString',
-        value: value,
-        caseSensitive: caseSensitive,
-      ));
+      return query.addFilterCondition(
+        FilterCondition.contains(
+          property: r'shortcutString',
+          value: value,
+          caseSensitive: caseSensitive,
+        ),
+      );
     });
   }
 
   QueryBuilder<KeyboardShortcut, KeyboardShortcut, QAfterFilterCondition>
-      shortcutStringMatches(String pattern, {bool caseSensitive = true}) {
+  shortcutStringMatches(String pattern, {bool caseSensitive = true}) {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.matches(
-        property: r'shortcutString',
-        wildcard: pattern,
-        caseSensitive: caseSensitive,
-      ));
+      return query.addFilterCondition(
+        FilterCondition.matches(
+          property: r'shortcutString',
+          wildcard: pattern,
+          caseSensitive: caseSensitive,
+        ),
+      );
     });
   }
 
   QueryBuilder<KeyboardShortcut, KeyboardShortcut, QAfterFilterCondition>
-      shortcutStringIsEmpty() {
+  shortcutStringIsEmpty() {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.equalTo(
-        property: r'shortcutString',
-        value: '',
-      ));
+      return query.addFilterCondition(
+        FilterCondition.equalTo(property: r'shortcutString', value: ''),
+      );
     });
   }
 
   QueryBuilder<KeyboardShortcut, KeyboardShortcut, QAfterFilterCondition>
-      shortcutStringIsNotEmpty() {
+  shortcutStringIsNotEmpty() {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.greaterThan(
-        property: r'shortcutString',
-        value: '',
-      ));
+      return query.addFilterCondition(
+        FilterCondition.greaterThan(property: r'shortcutString', value: ''),
+      );
     });
   }
 }
@@ -987,14 +1001,14 @@ extension KeyboardShortcutQueryLinks
 extension KeyboardShortcutQuerySortBy
     on QueryBuilder<KeyboardShortcut, KeyboardShortcut, QSortBy> {
   QueryBuilder<KeyboardShortcut, KeyboardShortcut, QAfterSortBy>
-      sortByAction() {
+  sortByAction() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'action', Sort.asc);
     });
   }
 
   QueryBuilder<KeyboardShortcut, KeyboardShortcut, QAfterSortBy>
-      sortByActionDesc() {
+  sortByActionDesc() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'action', Sort.desc);
     });
@@ -1007,7 +1021,7 @@ extension KeyboardShortcutQuerySortBy
   }
 
   QueryBuilder<KeyboardShortcut, KeyboardShortcut, QAfterSortBy>
-      sortByAltDesc() {
+  sortByAltDesc() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'alt', Sort.desc);
     });
@@ -1020,35 +1034,35 @@ extension KeyboardShortcutQuerySortBy
   }
 
   QueryBuilder<KeyboardShortcut, KeyboardShortcut, QAfterSortBy>
-      sortByCtrlDesc() {
+  sortByCtrlDesc() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'ctrl', Sort.desc);
     });
   }
 
   QueryBuilder<KeyboardShortcut, KeyboardShortcut, QAfterSortBy>
-      sortByDescription() {
+  sortByDescription() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'description', Sort.asc);
     });
   }
 
   QueryBuilder<KeyboardShortcut, KeyboardShortcut, QAfterSortBy>
-      sortByDescriptionDesc() {
+  sortByDescriptionDesc() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'description', Sort.desc);
     });
   }
 
   QueryBuilder<KeyboardShortcut, KeyboardShortcut, QAfterSortBy>
-      sortByKeyValue() {
+  sortByKeyValue() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'keyValue', Sort.asc);
     });
   }
 
   QueryBuilder<KeyboardShortcut, KeyboardShortcut, QAfterSortBy>
-      sortByKeyValueDesc() {
+  sortByKeyValueDesc() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'keyValue', Sort.desc);
     });
@@ -1061,21 +1075,21 @@ extension KeyboardShortcutQuerySortBy
   }
 
   QueryBuilder<KeyboardShortcut, KeyboardShortcut, QAfterSortBy>
-      sortByShiftDesc() {
+  sortByShiftDesc() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'shift', Sort.desc);
     });
   }
 
   QueryBuilder<KeyboardShortcut, KeyboardShortcut, QAfterSortBy>
-      sortByShortcutString() {
+  sortByShortcutString() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'shortcutString', Sort.asc);
     });
   }
 
   QueryBuilder<KeyboardShortcut, KeyboardShortcut, QAfterSortBy>
-      sortByShortcutStringDesc() {
+  sortByShortcutStringDesc() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'shortcutString', Sort.desc);
     });
@@ -1085,14 +1099,14 @@ extension KeyboardShortcutQuerySortBy
 extension KeyboardShortcutQuerySortThenBy
     on QueryBuilder<KeyboardShortcut, KeyboardShortcut, QSortThenBy> {
   QueryBuilder<KeyboardShortcut, KeyboardShortcut, QAfterSortBy>
-      thenByAction() {
+  thenByAction() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'action', Sort.asc);
     });
   }
 
   QueryBuilder<KeyboardShortcut, KeyboardShortcut, QAfterSortBy>
-      thenByActionDesc() {
+  thenByActionDesc() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'action', Sort.desc);
     });
@@ -1105,7 +1119,7 @@ extension KeyboardShortcutQuerySortThenBy
   }
 
   QueryBuilder<KeyboardShortcut, KeyboardShortcut, QAfterSortBy>
-      thenByAltDesc() {
+  thenByAltDesc() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'alt', Sort.desc);
     });
@@ -1118,21 +1132,21 @@ extension KeyboardShortcutQuerySortThenBy
   }
 
   QueryBuilder<KeyboardShortcut, KeyboardShortcut, QAfterSortBy>
-      thenByCtrlDesc() {
+  thenByCtrlDesc() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'ctrl', Sort.desc);
     });
   }
 
   QueryBuilder<KeyboardShortcut, KeyboardShortcut, QAfterSortBy>
-      thenByDescription() {
+  thenByDescription() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'description', Sort.asc);
     });
   }
 
   QueryBuilder<KeyboardShortcut, KeyboardShortcut, QAfterSortBy>
-      thenByDescriptionDesc() {
+  thenByDescriptionDesc() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'description', Sort.desc);
     });
@@ -1145,21 +1159,21 @@ extension KeyboardShortcutQuerySortThenBy
   }
 
   QueryBuilder<KeyboardShortcut, KeyboardShortcut, QAfterSortBy>
-      thenByIdDesc() {
+  thenByIdDesc() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'id', Sort.desc);
     });
   }
 
   QueryBuilder<KeyboardShortcut, KeyboardShortcut, QAfterSortBy>
-      thenByKeyValue() {
+  thenByKeyValue() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'keyValue', Sort.asc);
     });
   }
 
   QueryBuilder<KeyboardShortcut, KeyboardShortcut, QAfterSortBy>
-      thenByKeyValueDesc() {
+  thenByKeyValueDesc() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'keyValue', Sort.desc);
     });
@@ -1172,21 +1186,21 @@ extension KeyboardShortcutQuerySortThenBy
   }
 
   QueryBuilder<KeyboardShortcut, KeyboardShortcut, QAfterSortBy>
-      thenByShiftDesc() {
+  thenByShiftDesc() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'shift', Sort.desc);
     });
   }
 
   QueryBuilder<KeyboardShortcut, KeyboardShortcut, QAfterSortBy>
-      thenByShortcutString() {
+  thenByShortcutString() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'shortcutString', Sort.asc);
     });
   }
 
   QueryBuilder<KeyboardShortcut, KeyboardShortcut, QAfterSortBy>
-      thenByShortcutStringDesc() {
+  thenByShortcutStringDesc() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'shortcutString', Sort.desc);
     });
@@ -1195,8 +1209,9 @@ extension KeyboardShortcutQuerySortThenBy
 
 extension KeyboardShortcutQueryWhereDistinct
     on QueryBuilder<KeyboardShortcut, KeyboardShortcut, QDistinct> {
-  QueryBuilder<KeyboardShortcut, KeyboardShortcut, QDistinct> distinctByAction(
-      {bool caseSensitive = true}) {
+  QueryBuilder<KeyboardShortcut, KeyboardShortcut, QDistinct> distinctByAction({
+    bool caseSensitive = true,
+  }) {
     return QueryBuilder.apply(this, (query) {
       return query.addDistinctBy(r'action', caseSensitive: caseSensitive);
     });
@@ -1215,31 +1230,33 @@ extension KeyboardShortcutQueryWhereDistinct
   }
 
   QueryBuilder<KeyboardShortcut, KeyboardShortcut, QDistinct>
-      distinctByDescription({bool caseSensitive = true}) {
+  distinctByDescription({bool caseSensitive = true}) {
     return QueryBuilder.apply(this, (query) {
       return query.addDistinctBy(r'description', caseSensitive: caseSensitive);
     });
   }
 
   QueryBuilder<KeyboardShortcut, KeyboardShortcut, QDistinct>
-      distinctByKeyValue({bool caseSensitive = true}) {
+  distinctByKeyValue({bool caseSensitive = true}) {
     return QueryBuilder.apply(this, (query) {
       return query.addDistinctBy(r'keyValue', caseSensitive: caseSensitive);
     });
   }
 
   QueryBuilder<KeyboardShortcut, KeyboardShortcut, QDistinct>
-      distinctByShift() {
+  distinctByShift() {
     return QueryBuilder.apply(this, (query) {
       return query.addDistinctBy(r'shift');
     });
   }
 
   QueryBuilder<KeyboardShortcut, KeyboardShortcut, QDistinct>
-      distinctByShortcutString({bool caseSensitive = true}) {
+  distinctByShortcutString({bool caseSensitive = true}) {
     return QueryBuilder.apply(this, (query) {
-      return query.addDistinctBy(r'shortcutString',
-          caseSensitive: caseSensitive);
+      return query.addDistinctBy(
+        r'shortcutString',
+        caseSensitive: caseSensitive,
+      );
     });
   }
 }
@@ -1271,7 +1288,7 @@ extension KeyboardShortcutQueryProperty
   }
 
   QueryBuilder<KeyboardShortcut, String, QQueryOperations>
-      descriptionProperty() {
+  descriptionProperty() {
     return QueryBuilder.apply(this, (query) {
       return query.addPropertyName(r'description');
     });
@@ -1290,7 +1307,7 @@ extension KeyboardShortcutQueryProperty
   }
 
   QueryBuilder<KeyboardShortcut, String, QQueryOperations>
-      shortcutStringProperty() {
+  shortcutStringProperty() {
     return QueryBuilder.apply(this, (query) {
       return query.addPropertyName(r'shortcutString');
     });

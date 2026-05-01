@@ -1,12 +1,15 @@
 import 'dart:io';
-import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:tray_manager/tray_manager.dart';
 import 'package:window_manager/window_manager.dart';
 import 'package:canto_sync/core/services/media_service.dart';
+import 'package:riverpod_annotation/riverpod_annotation.dart';
 
-final trayServiceProvider = Provider<TrayService>((ref) {
+part 'tray_service.g.dart';
+
+@Riverpod(keepAlive: true)
+TrayService trayService(Ref ref) {
   return TrayService(ref);
-});
+}
 
 class TrayService extends TrayListener {
 

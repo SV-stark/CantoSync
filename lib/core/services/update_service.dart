@@ -2,11 +2,14 @@ import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import 'package:package_info_plus/package_info_plus.dart';
-import 'package:hooks_riverpod/hooks_riverpod.dart';
+import 'package:riverpod_annotation/riverpod_annotation.dart';
 
-final updateServiceProvider = Provider<UpdateService>((ref) {
+part 'update_service.g.dart';
+
+@Riverpod(keepAlive: true)
+UpdateService updateService(Ref ref) {
   return UpdateService();
-});
+}
 
 class UpdateService {
   final String repoOwner = 'SV-stark';

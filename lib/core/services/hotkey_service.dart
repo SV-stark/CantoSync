@@ -1,14 +1,17 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
-import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:hotkey_manager/hotkey_manager.dart';
 import 'package:canto_sync/core/services/media_service.dart';
 import 'package:canto_sync/core/services/keyboard_shortcuts_service.dart';
 import 'package:canto_sync/core/data/keyboard_shortcuts.dart';
+import 'package:riverpod_annotation/riverpod_annotation.dart';
 
-final hotkeyServiceProvider = Provider<HotkeyService>((ref) {
+part 'hotkey_service.g.dart';
+
+@Riverpod(keepAlive: true)
+HotkeyService hotkeyService(Ref ref) {
   return HotkeyService(ref);
-});
+}
 
 class HotkeyService {
 

@@ -1,7 +1,7 @@
 import 'dart:async';
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
-import 'package:isar/isar.dart';
+import 'package:isar_community/isar.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:window_manager/window_manager.dart';
 import 'package:media_kit/media_kit.dart';
@@ -129,7 +129,7 @@ class _CantoSyncAppState extends ConsumerState<CantoSyncApp> with WindowListener
   @override
   Widget build(BuildContext context) {
     try {
-      final settings = ref.watch(appSettingsNotifierProvider);
+      final settings = ref.watch(appSettingsProvider);
 
       return FluentApp(
         title: 'CantoSync',

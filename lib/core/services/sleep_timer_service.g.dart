@@ -1,6 +1,6 @@
 // GENERATED CODE - DO NOT MODIFY BY HAND
 
-part of 'library_screen.dart';
+part of 'sleep_timer_service.dart';
 
 // **************************************************************************
 // RiverpodGenerator
@@ -9,51 +9,51 @@ part of 'library_screen.dart';
 // GENERATED CODE - DO NOT MODIFY BY HAND
 // ignore_for_file: type=lint, type=warning
 
-@ProviderFor(LibraryViewMode)
-final libraryViewModeProvider = LibraryViewModeProvider._();
+@ProviderFor(SleepTimer)
+final sleepTimerProvider = SleepTimerProvider._();
 
-final class LibraryViewModeProvider
-    extends $NotifierProvider<LibraryViewMode, bool> {
-  LibraryViewModeProvider._()
+final class SleepTimerProvider
+    extends $NotifierProvider<SleepTimer, SleepTimerState> {
+  SleepTimerProvider._()
     : super(
         from: null,
         argument: null,
         retry: null,
-        name: r'libraryViewModeProvider',
-        isAutoDispose: true,
+        name: r'sleepTimerProvider',
+        isAutoDispose: false,
         dependencies: null,
         $allTransitiveDependencies: null,
       );
 
   @override
-  String debugGetCreateSourceHash() => _$libraryViewModeHash();
+  String debugGetCreateSourceHash() => _$sleepTimerHash();
 
   @$internal
   @override
-  LibraryViewMode create() => LibraryViewMode();
+  SleepTimer create() => SleepTimer();
 
   /// {@macro riverpod.override_with_value}
-  Override overrideWithValue(bool value) {
+  Override overrideWithValue(SleepTimerState value) {
     return $ProviderOverride(
       origin: this,
-      providerOverride: $SyncValueProvider<bool>(value),
+      providerOverride: $SyncValueProvider<SleepTimerState>(value),
     );
   }
 }
 
-String _$libraryViewModeHash() => r'82372c99b776e94ce56ec5d282fb2da9d76ed1c9';
+String _$sleepTimerHash() => r'a24ca83d2ecac66eb4b876a9c5778a0d2507b319';
 
-abstract class _$LibraryViewMode extends $Notifier<bool> {
-  bool build();
+abstract class _$SleepTimer extends $Notifier<SleepTimerState> {
+  SleepTimerState build();
   @$mustCallSuper
   @override
   void runBuild() {
-    final ref = this.ref as $Ref<bool, bool>;
+    final ref = this.ref as $Ref<SleepTimerState, SleepTimerState>;
     final element =
         ref.element
             as $ClassProviderElement<
-              AnyNotifier<bool, bool>,
-              bool,
+              AnyNotifier<SleepTimerState, SleepTimerState>,
+              SleepTimerState,
               Object?,
               Object?
             >;

@@ -1,22 +1,18 @@
 import 'package:flutter/foundation.dart';
-import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:canto_sync/features/library/data/library_service.dart';
 import 'package:canto_sync/core/data/keyboard_shortcuts.dart';
 import 'package:canto_sync/core/services/media_service.dart';
 import 'package:canto_sync/core/services/sleep_timer_service.dart';
-import 'package:isar/isar.dart';
+import 'package:isar_community/isar.dart';
 import 'package:window_manager/window_manager.dart';
+import 'package:riverpod_annotation/riverpod_annotation.dart';
 
-final keyboardShortcutsProvider =
-    NotifierProvider<KeyboardShortcutsNotifier, List<KeyboardShortcut>>(
-      KeyboardShortcutsNotifier.new,
-    );
+part 'keyboard_shortcuts_service.g.dart';
 
 typedef ShortcutActionCallback = void Function();
-final shortcutActionCallbacksProvider =
-    Provider<Map<String, List<ShortcutActionCallback>>>((ref) => {});
 
-class KeyboardShortcutsNotifier extends Notifier<List<KeyboardShortcut>> {
+@Riverpod(keepAlive: true)
+class KeyboardShortcuts extends _$KeyboardShortcuts {
   late Isar _isar;
 
   @override
@@ -112,8 +108,8 @@ class KeyboardShortcutsNotifier extends Notifier<List<KeyboardShortcut>> {
 
   Future<void> executeAction(String action) async {
     final mediaService = ref.read(mediaServiceProvider);
-    final sleepTimerState = ref.read(sleepTimerServiceProvider);
-    final sleepTimerNotifier = ref.read(sleepTimerServiceProvider.notifier);
+    final sleepTimerState = ref.read(sleepTimerProvider);
+    final sleepTimerNotifier = ref.read(sleepTimerProvider.notifier);
 
     switch (action) {
       case ShortcutAction.playPause:
@@ -243,3 +239,6 @@ class KeyboardShortcutsNotifier extends Notifier<List<KeyboardShortcut>> {
     return ['Playback', 'Audio', 'Speed', 'Features', 'Navigation'];
   }
 }
+
+@Riverpod(keepAlive: true)
+Map<String, List<ShortcutActionCallback>> shortcutActionCallbacks(Ref ref) => {};

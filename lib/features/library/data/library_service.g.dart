@@ -6,133 +6,367 @@ part of 'library_service.dart';
 // RiverpodGenerator
 // **************************************************************************
 
-String _$isarHash() => r'43c91a1b471054794dda6e4b0f120026c8bf7ed7';
+// GENERATED CODE - DO NOT MODIFY BY HAND
+// ignore_for_file: type=lint, type=warning
 
-/// See also [isar].
 @ProviderFor(isar)
-final isarProvider = Provider<Isar>.internal(
-  isar,
-  name: r'isarProvider',
-  debugGetCreateSourceHash:
-      const bool.fromEnvironment('dart.vm.product') ? null : _$isarHash,
-  dependencies: null,
-  allTransitiveDependencies: null,
-);
+final isarProvider = IsarProvider._();
 
-typedef IsarRef = ProviderRef<Isar>;
-String _$libraryServiceHash() => r'e04d6af8b7b495786be7f169d005ce9240428d26';
+final class IsarProvider extends $FunctionalProvider<Isar, Isar, Isar>
+    with $Provider<Isar> {
+  IsarProvider._()
+    : super(
+        from: null,
+        argument: null,
+        retry: null,
+        name: r'isarProvider',
+        isAutoDispose: false,
+        dependencies: null,
+        $allTransitiveDependencies: null,
+      );
 
-/// See also [libraryService].
+  @override
+  String debugGetCreateSourceHash() => _$isarHash();
+
+  @$internal
+  @override
+  $ProviderElement<Isar> $createElement($ProviderPointer pointer) =>
+      $ProviderElement(pointer);
+
+  @override
+  Isar create(Ref ref) {
+    return isar(ref);
+  }
+
+  /// {@macro riverpod.override_with_value}
+  Override overrideWithValue(Isar value) {
+    return $ProviderOverride(
+      origin: this,
+      providerOverride: $SyncValueProvider<Isar>(value),
+    );
+  }
+}
+
+String _$isarHash() => r'0736f5b74e3aef62a2757db5c57c6d3267d60de4';
+
 @ProviderFor(libraryService)
-final libraryServiceProvider = Provider<LibraryService>.internal(
-  libraryService,
-  name: r'libraryServiceProvider',
-  debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
-      ? null
-      : _$libraryServiceHash,
-  dependencies: null,
-  allTransitiveDependencies: null,
-);
+final libraryServiceProvider = LibraryServiceProvider._();
 
-typedef LibraryServiceRef = ProviderRef<LibraryService>;
-String _$libraryBooksHash() => r'0fdb88ecf41e25776e7c1903575e572fc15a0612';
+final class LibraryServiceProvider
+    extends $FunctionalProvider<LibraryService, LibraryService, LibraryService>
+    with $Provider<LibraryService> {
+  LibraryServiceProvider._()
+    : super(
+        from: null,
+        argument: null,
+        retry: null,
+        name: r'libraryServiceProvider',
+        isAutoDispose: false,
+        dependencies: null,
+        $allTransitiveDependencies: null,
+      );
 
-/// See also [libraryBooks].
-@ProviderFor(libraryBooks)
-final libraryBooksProvider = AutoDisposeStreamProvider<List<Book>>.internal(
-  libraryBooks,
-  name: r'libraryBooksProvider',
-  debugGetCreateSourceHash:
-      const bool.fromEnvironment('dart.vm.product') ? null : _$libraryBooksHash,
-  dependencies: null,
-  allTransitiveDependencies: null,
-);
+  @override
+  String debugGetCreateSourceHash() => _$libraryServiceHash();
 
-typedef LibraryBooksRef = AutoDisposeStreamProviderRef<List<Book>>;
-String _$libraryRecentBooksHash() =>
-    r'c0252209d2584dcab6f0d89d3426f283843d5d27';
+  @$internal
+  @override
+  $ProviderElement<LibraryService> $createElement($ProviderPointer pointer) =>
+      $ProviderElement(pointer);
 
-/// See also [libraryRecentBooks].
-@ProviderFor(libraryRecentBooks)
-final libraryRecentBooksProvider = AutoDisposeProvider<List<Book>>.internal(
-  libraryRecentBooks,
-  name: r'libraryRecentBooksProvider',
-  debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
-      ? null
-      : _$libraryRecentBooksHash,
-  dependencies: null,
-  allTransitiveDependencies: null,
-);
+  @override
+  LibraryService create(Ref ref) {
+    return libraryService(ref);
+  }
 
-typedef LibraryRecentBooksRef = AutoDisposeProviderRef<List<Book>>;
-String _$libraryGroupedBooksHash() =>
-    r'b5d6018acd391ee730d96664375277766bfc30ef';
+  /// {@macro riverpod.override_with_value}
+  Override overrideWithValue(LibraryService value) {
+    return $ProviderOverride(
+      origin: this,
+      providerOverride: $SyncValueProvider<LibraryService>(value),
+    );
+  }
+}
 
-/// See also [libraryGroupedBooks].
-@ProviderFor(libraryGroupedBooks)
-final libraryGroupedBooksProvider =
-    AutoDisposeFutureProvider<Map<String, List<Book>>>.internal(
-  libraryGroupedBooks,
-  name: r'libraryGroupedBooksProvider',
-  debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
-      ? null
-      : _$libraryGroupedBooksHash,
-  dependencies: null,
-  allTransitiveDependencies: null,
-);
+String _$libraryServiceHash() => r'36aac050924d19c9471e679e4572c1084c72e6a7';
 
-typedef LibraryGroupedBooksRef
-    = AutoDisposeFutureProviderRef<Map<String, List<Book>>>;
+@ProviderFor(LibrarySearchQuery)
+final librarySearchQueryProvider = LibrarySearchQueryProvider._();
+
+final class LibrarySearchQueryProvider
+    extends $NotifierProvider<LibrarySearchQuery, String> {
+  LibrarySearchQueryProvider._()
+    : super(
+        from: null,
+        argument: null,
+        retry: null,
+        name: r'librarySearchQueryProvider',
+        isAutoDispose: true,
+        dependencies: null,
+        $allTransitiveDependencies: null,
+      );
+
+  @override
+  String debugGetCreateSourceHash() => _$librarySearchQueryHash();
+
+  @$internal
+  @override
+  LibrarySearchQuery create() => LibrarySearchQuery();
+
+  /// {@macro riverpod.override_with_value}
+  Override overrideWithValue(String value) {
+    return $ProviderOverride(
+      origin: this,
+      providerOverride: $SyncValueProvider<String>(value),
+    );
+  }
+}
+
 String _$librarySearchQueryHash() =>
     r'409814798eb4ede9cf088f8c7c8078665599ad20';
 
-/// See also [LibrarySearchQuery].
-@ProviderFor(LibrarySearchQuery)
-final librarySearchQueryProvider =
-    AutoDisposeNotifierProvider<LibrarySearchQuery, String>.internal(
-  LibrarySearchQuery.new,
-  name: r'librarySearchQueryProvider',
-  debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
-      ? null
-      : _$librarySearchQueryHash,
-  dependencies: null,
-  allTransitiveDependencies: null,
-);
+abstract class _$LibrarySearchQuery extends $Notifier<String> {
+  String build();
+  @$mustCallSuper
+  @override
+  void runBuild() {
+    final ref = this.ref as $Ref<String, String>;
+    final element =
+        ref.element
+            as $ClassProviderElement<
+              AnyNotifier<String, String>,
+              String,
+              Object?,
+              Object?
+            >;
+    element.handleCreate(ref, build);
+  }
+}
 
-typedef _$LibrarySearchQuery = AutoDisposeNotifier<String>;
+@ProviderFor(LibraryGroupingMode)
+final libraryGroupingModeProvider = LibraryGroupingModeProvider._();
+
+final class LibraryGroupingModeProvider
+    extends $NotifierProvider<LibraryGroupingMode, bool> {
+  LibraryGroupingModeProvider._()
+    : super(
+        from: null,
+        argument: null,
+        retry: null,
+        name: r'libraryGroupingModeProvider',
+        isAutoDispose: true,
+        dependencies: null,
+        $allTransitiveDependencies: null,
+      );
+
+  @override
+  String debugGetCreateSourceHash() => _$libraryGroupingModeHash();
+
+  @$internal
+  @override
+  LibraryGroupingMode create() => LibraryGroupingMode();
+
+  /// {@macro riverpod.override_with_value}
+  Override overrideWithValue(bool value) {
+    return $ProviderOverride(
+      origin: this,
+      providerOverride: $SyncValueProvider<bool>(value),
+    );
+  }
+}
+
 String _$libraryGroupingModeHash() =>
     r'7618ee00202489c56ae91e5ee405756aa6a7e339';
 
-/// See also [LibraryGroupingMode].
-@ProviderFor(LibraryGroupingMode)
-final libraryGroupingModeProvider =
-    AutoDisposeNotifierProvider<LibraryGroupingMode, bool>.internal(
-  LibraryGroupingMode.new,
-  name: r'libraryGroupingModeProvider',
-  debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
-      ? null
-      : _$libraryGroupingModeHash,
-  dependencies: null,
-  allTransitiveDependencies: null,
-);
+abstract class _$LibraryGroupingMode extends $Notifier<bool> {
+  bool build();
+  @$mustCallSuper
+  @override
+  void runBuild() {
+    final ref = this.ref as $Ref<bool, bool>;
+    final element =
+        ref.element
+            as $ClassProviderElement<
+              AnyNotifier<bool, bool>,
+              bool,
+              Object?,
+              Object?
+            >;
+    element.handleCreate(ref, build);
+  }
+}
 
-typedef _$LibraryGroupingMode = AutoDisposeNotifier<bool>;
+@ProviderFor(LibraryCollectionFilter)
+final libraryCollectionFilterProvider = LibraryCollectionFilterProvider._();
+
+final class LibraryCollectionFilterProvider
+    extends $NotifierProvider<LibraryCollectionFilter, String?> {
+  LibraryCollectionFilterProvider._()
+    : super(
+        from: null,
+        argument: null,
+        retry: null,
+        name: r'libraryCollectionFilterProvider',
+        isAutoDispose: true,
+        dependencies: null,
+        $allTransitiveDependencies: null,
+      );
+
+  @override
+  String debugGetCreateSourceHash() => _$libraryCollectionFilterHash();
+
+  @$internal
+  @override
+  LibraryCollectionFilter create() => LibraryCollectionFilter();
+
+  /// {@macro riverpod.override_with_value}
+  Override overrideWithValue(String? value) {
+    return $ProviderOverride(
+      origin: this,
+      providerOverride: $SyncValueProvider<String?>(value),
+    );
+  }
+}
+
 String _$libraryCollectionFilterHash() =>
     r'b0d13f35c5ca3add60f3c64d50db961ab2598a17';
 
-/// See also [LibraryCollectionFilter].
-@ProviderFor(LibraryCollectionFilter)
-final libraryCollectionFilterProvider =
-    AutoDisposeNotifierProvider<LibraryCollectionFilter, String?>.internal(
-  LibraryCollectionFilter.new,
-  name: r'libraryCollectionFilterProvider',
-  debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
-      ? null
-      : _$libraryCollectionFilterHash,
-  dependencies: null,
-  allTransitiveDependencies: null,
-);
+abstract class _$LibraryCollectionFilter extends $Notifier<String?> {
+  String? build();
+  @$mustCallSuper
+  @override
+  void runBuild() {
+    final ref = this.ref as $Ref<String?, String?>;
+    final element =
+        ref.element
+            as $ClassProviderElement<
+              AnyNotifier<String?, String?>,
+              String?,
+              Object?,
+              Object?
+            >;
+    element.handleCreate(ref, build);
+  }
+}
 
-typedef _$LibraryCollectionFilter = AutoDisposeNotifier<String?>;
-// ignore_for_file: type=lint
-// ignore_for_file: subtype_of_sealed_class, invalid_use_of_internal_member, invalid_use_of_visible_for_testing_member
+@ProviderFor(libraryBooks)
+final libraryBooksProvider = LibraryBooksProvider._();
+
+final class LibraryBooksProvider
+    extends
+        $FunctionalProvider<
+          AsyncValue<List<Book>>,
+          List<Book>,
+          Stream<List<Book>>
+        >
+    with $FutureModifier<List<Book>>, $StreamProvider<List<Book>> {
+  LibraryBooksProvider._()
+    : super(
+        from: null,
+        argument: null,
+        retry: null,
+        name: r'libraryBooksProvider',
+        isAutoDispose: true,
+        dependencies: null,
+        $allTransitiveDependencies: null,
+      );
+
+  @override
+  String debugGetCreateSourceHash() => _$libraryBooksHash();
+
+  @$internal
+  @override
+  $StreamProviderElement<List<Book>> $createElement($ProviderPointer pointer) =>
+      $StreamProviderElement(pointer);
+
+  @override
+  Stream<List<Book>> create(Ref ref) {
+    return libraryBooks(ref);
+  }
+}
+
+String _$libraryBooksHash() => r'abfb842ac8f98e788f39254ea76059d9ce35e06e';
+
+@ProviderFor(libraryRecentBooks)
+final libraryRecentBooksProvider = LibraryRecentBooksProvider._();
+
+final class LibraryRecentBooksProvider
+    extends $FunctionalProvider<List<Book>, List<Book>, List<Book>>
+    with $Provider<List<Book>> {
+  LibraryRecentBooksProvider._()
+    : super(
+        from: null,
+        argument: null,
+        retry: null,
+        name: r'libraryRecentBooksProvider',
+        isAutoDispose: true,
+        dependencies: null,
+        $allTransitiveDependencies: null,
+      );
+
+  @override
+  String debugGetCreateSourceHash() => _$libraryRecentBooksHash();
+
+  @$internal
+  @override
+  $ProviderElement<List<Book>> $createElement($ProviderPointer pointer) =>
+      $ProviderElement(pointer);
+
+  @override
+  List<Book> create(Ref ref) {
+    return libraryRecentBooks(ref);
+  }
+
+  /// {@macro riverpod.override_with_value}
+  Override overrideWithValue(List<Book> value) {
+    return $ProviderOverride(
+      origin: this,
+      providerOverride: $SyncValueProvider<List<Book>>(value),
+    );
+  }
+}
+
+String _$libraryRecentBooksHash() =>
+    r'3ebcfc3c20a7def5647e10cc772f84d34497a213';
+
+@ProviderFor(libraryGroupedBooks)
+final libraryGroupedBooksProvider = LibraryGroupedBooksProvider._();
+
+final class LibraryGroupedBooksProvider
+    extends
+        $FunctionalProvider<
+          AsyncValue<Map<String, List<Book>>>,
+          Map<String, List<Book>>,
+          FutureOr<Map<String, List<Book>>>
+        >
+    with
+        $FutureModifier<Map<String, List<Book>>>,
+        $FutureProvider<Map<String, List<Book>>> {
+  LibraryGroupedBooksProvider._()
+    : super(
+        from: null,
+        argument: null,
+        retry: null,
+        name: r'libraryGroupedBooksProvider',
+        isAutoDispose: true,
+        dependencies: null,
+        $allTransitiveDependencies: null,
+      );
+
+  @override
+  String debugGetCreateSourceHash() => _$libraryGroupedBooksHash();
+
+  @$internal
+  @override
+  $FutureProviderElement<Map<String, List<Book>>> $createElement(
+    $ProviderPointer pointer,
+  ) => $FutureProviderElement(pointer);
+
+  @override
+  FutureOr<Map<String, List<Book>>> create(Ref ref) {
+    return libraryGroupedBooks(ref);
+  }
+}
+
+String _$libraryGroupedBooksHash() =>
+    r'59b2b039a0f421c0d3215de7ed4bb1dc4abc399f';

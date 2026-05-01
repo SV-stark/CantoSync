@@ -268,7 +268,7 @@ void showSleepTimerMenu(
   WidgetRef ref,
   Duration remainingChapter,
 ) {
-  final timerService = ref.read(sleepTimerServiceProvider.notifier);
+  final timerService = ref.read(sleepTimerProvider.notifier);
   showDialog(
     context: context,
     builder: (context) {
@@ -354,7 +354,7 @@ class WaveformSection extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    if (!ref.watch(appSettingsNotifierProvider).showWaveform) {
+    if (!ref.watch(appSettingsProvider).showWaveform) {
       return const SizedBox.shrink();
     }
     return Column(

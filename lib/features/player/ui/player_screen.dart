@@ -77,7 +77,7 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
   @override
   Widget build(BuildContext context) {
     final mediaService = ref.watch(mediaServiceProvider);
-    final remainingTimer = ref.watch(sleepTimerServiceProvider);
+    final remainingTimer = ref.watch(sleepTimerProvider);
 
     // Book Info
     final currentPath = ref.watch(currentBookPathProvider);
@@ -214,7 +214,7 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
                           currentBook,
                           size: 450,
                           showReflection: ref
-                              .read(appSettingsNotifierProvider)
+                              .read(appSettingsProvider)
                               .showCoverReflection,
                         ),
                         const SizedBox(width: 60),
@@ -261,7 +261,7 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
                         currentBook,
                         size: 300,
                         showReflection: ref
-                            .read(appSettingsNotifierProvider)
+                            .read(appSettingsProvider)
                             .showCoverReflection,
                       ),
                       const SizedBox(height: 30),
@@ -599,7 +599,7 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
         ),
 
         // Waveform Visualization
-        if (ref.watch(appSettingsNotifierProvider).showWaveform) ...[
+        if (ref.watch(appSettingsProvider).showWaveform) ...[
           const SizedBox(height: 20),
           WaveformVisualizer(
             isPlaying: isPlaying,
@@ -857,7 +857,7 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
     WidgetRef ref,
     Duration remainingChapter,
   ) {
-    final timerService = ref.read(sleepTimerServiceProvider.notifier);
+    final timerService = ref.read(sleepTimerProvider.notifier);
     showDialog(
       context: context,
       builder: (context) {

@@ -53,7 +53,7 @@ class LibraryScreen extends HookConsumerWidget {
     Future<void> pickFolder() async {
       String? selectedDirectory = await FilePicker.getDirectoryPath();
       if (selectedDirectory != null) {
-        ref.read(appSettingsNotifierProvider.notifier).addLibraryPath(selectedDirectory);
+        ref.read(appSettingsProvider.notifier).addLibraryPath(selectedDirectory);
       }
     }
 

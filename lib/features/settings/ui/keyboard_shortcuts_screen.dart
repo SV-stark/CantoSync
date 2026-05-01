@@ -127,7 +127,7 @@ class _KeyboardShortcutsScreenState
 
   Future<void> _showResetDialog(
     BuildContext dialogContext,
-    KeyboardShortcutsNotifier notifier,
+    KeyboardShortcuts notifier,
   ) async {
     final result = await showDialog<bool>(
       context: dialogContext,

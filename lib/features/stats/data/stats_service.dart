@@ -1,20 +1,24 @@
-import 'package:isar/isar.dart';
-import 'package:hooks_riverpod/hooks_riverpod.dart';
+import 'package:isar_community/isar.dart';
 import 'package:rxdart/rxdart.dart';
 import 'package:canto_sync/features/library/data/library_service.dart';
 import 'package:canto_sync/features/library/data/book.dart';
 import 'package:canto_sync/features/stats/data/listening_stats.dart';
 import 'dart:convert';
+import 'package:riverpod_annotation/riverpod_annotation.dart';
 
-final listeningStatsServiceProvider = Provider<ListeningStatsService>((ref) {
+part 'stats_service.g.dart';
+
+@Riverpod(keepAlive: true)
+ListeningStatsService listeningStatsService(Ref ref) {
   final isar = ref.watch(isarProvider);
   return ListeningStatsService(isar);
-});
+}
 
-final listeningStatsProvider = StreamProvider<ListeningStatsSummary>((ref) {
+@riverpod
+Stream<ListeningStatsSummary> listeningStats(Ref ref) {
   final service = ref.watch(listeningStatsServiceProvider);
   return service.watchStats();
-});
+}
 
 class ListeningStatsSummary {
 

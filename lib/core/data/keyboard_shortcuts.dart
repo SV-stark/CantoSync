@@ -1,5 +1,5 @@
 import 'package:flutter/services.dart';
-import 'package:isar/isar.dart';
+import 'package:isar_community/isar.dart';
 
 part 'keyboard_shortcuts.g.dart';
 
@@ -265,3 +265,4 @@ List<KeyboardShortcut> getDefaultShortcuts() {
     ),
   ];
 }
+

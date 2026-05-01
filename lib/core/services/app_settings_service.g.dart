@@ -59,8 +59,9 @@ const IsarAppSettingsSchema = CollectionSchema(
       name: r'themeMode',
       type: IsarType.byte,
       enumMap: _IsarAppSettingsthemeModeEnumValueMap,
-    )
+    ),
   },
+
   estimateSize: _isarAppSettingsEstimateSize,
   serialize: _isarAppSettingsSerialize,
   deserialize: _isarAppSettingsDeserialize,
@@ -69,10 +70,11 @@ const IsarAppSettingsSchema = CollectionSchema(
   indexes: {},
   links: {},
   embeddedSchemas: {},
+
   getId: _isarAppSettingsGetId,
   getLinks: _isarAppSettingsGetLinks,
   attach: _isarAppSettingsAttach,
-  version: '3.1.0+1',
+  version: '3.3.2',
 );
 
 int _isarAppSettingsEstimateSize(
@@ -114,20 +116,26 @@ IsarAppSettings _isarAppSettingsDeserialize(
   Map<Type, List<int>> allOffsets,
 ) {
   final object = IsarAppSettings();
-  object.audioPreset = _IsarAppSettingsaudioPresetValueEnumMap[
-          reader.readByteOrNull(offsets[0])] ??
+  object.audioPreset =
+      _IsarAppSettingsaudioPresetValueEnumMap[reader.readByteOrNull(
+        offsets[0],
+      )] ??
       AudioPreset.flat;
   object.id = id;
   object.libraryPaths = reader.readStringList(offsets[1]) ?? [];
   object.loudnessNormalization = reader.readBool(offsets[2]);
-  object.playerThemeMode = _IsarAppSettingsplayerThemeModeValueEnumMap[
-          reader.readByteOrNull(offsets[3])] ??
+  object.playerThemeMode =
+      _IsarAppSettingsplayerThemeModeValueEnumMap[reader.readByteOrNull(
+        offsets[3],
+      )] ??
       PlayerThemeMode.standard;
   object.showCoverReflection = reader.readBool(offsets[4]);
   object.showWaveform = reader.readBool(offsets[5]);
   object.skipSilence = reader.readBool(offsets[6]);
-  object.themeMode = _IsarAppSettingsthemeModeValueEnumMap[
-          reader.readByteOrNull(offsets[7])] ??
+  object.themeMode =
+      _IsarAppSettingsthemeModeValueEnumMap[reader.readByteOrNull(
+        offsets[7],
+      )] ??
       ThemeMode.system;
   return object;
 }
@@ -140,17 +148,21 @@ P _isarAppSettingsDeserializeProp<P>(
 ) {
   switch (propertyId) {
     case 0:
-      return (_IsarAppSettingsaudioPresetValueEnumMap[
-              reader.readByteOrNull(offset)] ??
-          AudioPreset.flat) as P;
+      return (_IsarAppSettingsaudioPresetValueEnumMap[reader.readByteOrNull(
+                offset,
+              )] ??
+              AudioPreset.flat)
+          as P;
     case 1:
       return (reader.readStringList(offset) ?? []) as P;
     case 2:
       return (reader.readBool(offset)) as P;
     case 3:
-      return (_IsarAppSettingsplayerThemeModeValueEnumMap[
-              reader.readByteOrNull(offset)] ??
-          PlayerThemeMode.standard) as P;
+      return (_IsarAppSettingsplayerThemeModeValueEnumMap[reader.readByteOrNull(
+                offset,
+              )] ??
+              PlayerThemeMode.standard)
+          as P;
     case 4:
       return (reader.readBool(offset)) as P;
     case 5:
@@ -158,9 +170,11 @@ P _isarAppSettingsDeserializeProp<P>(
     case 6:
       return (reader.readBool(offset)) as P;
     case 7:
-      return (_IsarAppSettingsthemeModeValueEnumMap[
-              reader.readByteOrNull(offset)] ??
-          ThemeMode.system) as P;
+      return (_IsarAppSettingsthemeModeValueEnumMap[reader.readByteOrNull(
+                offset,
+              )] ??
+              ThemeMode.system)
+          as P;
     default:
       throw IsarError('Unknown property with id $propertyId');
   }
@@ -206,7 +220,10 @@ List<IsarLinkBase<dynamic>> _isarAppSettingsGetLinks(IsarAppSettings object) {
 }
 
 void _isarAppSettingsAttach(
-    IsarCollection<dynamic> col, Id id, IsarAppSettings object) {
+  IsarCollection<dynamic> col,
+  Id id,
+  IsarAppSettings object,
+) {
   object.id = id;
 }
 
@@ -222,17 +239,15 @@ extension IsarAppSettingsQueryWhereSort
 extension IsarAppSettingsQueryWhere
     on QueryBuilder<IsarAppSettings, IsarAppSettings, QWhereClause> {
   QueryBuilder<IsarAppSettings, IsarAppSettings, QAfterWhereClause> idEqualTo(
-      Id id) {
+    Id id,
+  ) {
     return QueryBuilder.apply(this, (query) {
-      return query.addWhereClause(IdWhereClause.between(
-        lower: id,
-        upper: id,
-      ));
+      return query.addWhereClause(IdWhereClause.between(lower: id, upper: id));
     });
   }
 
   QueryBuilder<IsarAppSettings, IsarAppSettings, QAfterWhereClause>
-      idNotEqualTo(Id id) {
+  idNotEqualTo(Id id) {
     return QueryBuilder.apply(this, (query) {
       if (query.whereSort == Sort.asc) {
         return query
@@ -255,7 +270,7 @@ extension IsarAppSettingsQueryWhere
   }
 
   QueryBuilder<IsarAppSettings, IsarAppSettings, QAfterWhereClause>
-      idGreaterThan(Id id, {bool include = false}) {
+  idGreaterThan(Id id, {bool include = false}) {
     return QueryBuilder.apply(this, (query) {
       return query.addWhereClause(
         IdWhereClause.greaterThan(lower: id, includeLower: include),
@@ -264,8 +279,9 @@ extension IsarAppSettingsQueryWhere
   }
 
   QueryBuilder<IsarAppSettings, IsarAppSettings, QAfterWhereClause> idLessThan(
-      Id id,
-      {bool include = false}) {
+    Id id, {
+    bool include = false,
+  }) {
     return QueryBuilder.apply(this, (query) {
       return query.addWhereClause(
         IdWhereClause.lessThan(upper: id, includeUpper: include),
@@ -280,12 +296,14 @@ extension IsarAppSettingsQueryWhere
     bool includeUpper = true,
   }) {
     return QueryBuilder.apply(this, (query) {
-      return query.addWhereClause(IdWhereClause.between(
-        lower: lowerId,
-        includeLower: includeLower,
-        upper: upperId,
-        includeUpper: includeUpper,
-      ));
+      return query.addWhereClause(
+        IdWhereClause.between(
+          lower: lowerId,
+          includeLower: includeLower,
+          upper: upperId,
+          includeUpper: includeUpper,
+        ),
+      );
     });
   }
 }
@@ -293,165 +311,166 @@ extension IsarAppSettingsQueryWhere
 extension IsarAppSettingsQueryFilter
     on QueryBuilder<IsarAppSettings, IsarAppSettings, QFilterCondition> {
   QueryBuilder<IsarAppSettings, IsarAppSettings, QAfterFilterCondition>
-      audioPresetEqualTo(AudioPreset value) {
+  audioPresetEqualTo(AudioPreset value) {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.equalTo(
-        property: r'audioPreset',
-        value: value,
-      ));
+      return query.addFilterCondition(
+        FilterCondition.equalTo(property: r'audioPreset', value: value),
+      );
     });
   }
 
   QueryBuilder<IsarAppSettings, IsarAppSettings, QAfterFilterCondition>
-      audioPresetGreaterThan(
-    AudioPreset value, {
-    bool include = false,
-  }) {
+  audioPresetGreaterThan(AudioPreset value, {bool include = false}) {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.greaterThan(
-        include: include,
-        property: r'audioPreset',
-        value: value,
-      ));
+      return query.addFilterCondition(
+        FilterCondition.greaterThan(
+          include: include,
+          property: r'audioPreset',
+          value: value,
+        ),
+      );
     });
   }
 
   QueryBuilder<IsarAppSettings, IsarAppSettings, QAfterFilterCondition>
-      audioPresetLessThan(
-    AudioPreset value, {
-    bool include = false,
-  }) {
+  audioPresetLessThan(AudioPreset value, {bool include = false}) {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.lessThan(
-        include: include,
-        property: r'audioPreset',
-        value: value,
-      ));
+      return query.addFilterCondition(
+        FilterCondition.lessThan(
+          include: include,
+          property: r'audioPreset',
+          value: value,
+        ),
+      );
     });
   }
 
   QueryBuilder<IsarAppSettings, IsarAppSettings, QAfterFilterCondition>
-      audioPresetBetween(
+  audioPresetBetween(
     AudioPreset lower,
     AudioPreset upper, {
     bool includeLower = true,
     bool includeUpper = true,
   }) {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.between(
-        property: r'audioPreset',
-        lower: lower,
-        includeLower: includeLower,
-        upper: upper,
-        includeUpper: includeUpper,
-      ));
+      return query.addFilterCondition(
+        FilterCondition.between(
+          property: r'audioPreset',
+          lower: lower,
+          includeLower: includeLower,
+          upper: upper,
+          includeUpper: includeUpper,
+        ),
+      );
     });
   }
 
   QueryBuilder<IsarAppSettings, IsarAppSettings, QAfterFilterCondition>
-      idEqualTo(Id value) {
+  idEqualTo(Id value) {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.equalTo(
-        property: r'id',
-        value: value,
-      ));
+      return query.addFilterCondition(
+        FilterCondition.equalTo(property: r'id', value: value),
+      );
     });
   }
 
   QueryBuilder<IsarAppSettings, IsarAppSettings, QAfterFilterCondition>
-      idGreaterThan(
-    Id value, {
-    bool include = false,
-  }) {
+  idGreaterThan(Id value, {bool include = false}) {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.greaterThan(
-        include: include,
-        property: r'id',
-        value: value,
-      ));
+      return query.addFilterCondition(
+        FilterCondition.greaterThan(
+          include: include,
+          property: r'id',
+          value: value,
+        ),
+      );
     });
   }
 
   QueryBuilder<IsarAppSettings, IsarAppSettings, QAfterFilterCondition>
-      idLessThan(
-    Id value, {
-    bool include = false,
-  }) {
+  idLessThan(Id value, {bool include = false}) {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.lessThan(
-        include: include,
-        property: r'id',
-        value: value,
-      ));
+      return query.addFilterCondition(
+        FilterCondition.lessThan(
+          include: include,
+          property: r'id',
+          value: value,
+        ),
+      );
     });
   }
 
   QueryBuilder<IsarAppSettings, IsarAppSettings, QAfterFilterCondition>
-      idBetween(
+  idBetween(
     Id lower,
     Id upper, {
     bool includeLower = true,
     bool includeUpper = true,
   }) {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.between(
-        property: r'id',
-        lower: lower,
-        includeLower: includeLower,
-        upper: upper,
-        includeUpper: includeUpper,
-      ));
+      return query.addFilterCondition(
+        FilterCondition.between(
+          property: r'id',
+          lower: lower,
+          includeLower: includeLower,
+          upper: upper,
+          includeUpper: includeUpper,
+        ),
+      );
     });
   }
 
   QueryBuilder<IsarAppSettings, IsarAppSettings, QAfterFilterCondition>
-      libraryPathsElementEqualTo(
-    String value, {
-    bool caseSensitive = true,
-  }) {
+  libraryPathsElementEqualTo(String value, {bool caseSensitive = true}) {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.equalTo(
-        property: r'libraryPaths',
-        value: value,
-        caseSensitive: caseSensitive,
-      ));
+      return query.addFilterCondition(
+        FilterCondition.equalTo(
+          property: r'libraryPaths',
+          value: value,
+          caseSensitive: caseSensitive,
+        ),
+      );
     });
   }
 
   QueryBuilder<IsarAppSettings, IsarAppSettings, QAfterFilterCondition>
-      libraryPathsElementGreaterThan(
-    String value, {
-    bool include = false,
-    bool caseSensitive = true,
-  }) {
-    return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.greaterThan(
-        include: include,
-        property: r'libraryPaths',
-        value: value,
-        caseSensitive: caseSensitive,
-      ));
-    });
-  }
-
-  QueryBuilder<IsarAppSettings, IsarAppSettings, QAfterFilterCondition>
-      libraryPathsElementLessThan(
+  libraryPathsElementGreaterThan(
     String value, {
     bool include = false,
     bool caseSensitive = true,
   }) {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.lessThan(
-        include: include,
-        property: r'libraryPaths',
-        value: value,
-        caseSensitive: caseSensitive,
-      ));
+      return query.addFilterCondition(
+        FilterCondition.greaterThan(
+          include: include,
+          property: r'libraryPaths',
+          value: value,
+          caseSensitive: caseSensitive,
+        ),
+      );
     });
   }
 
   QueryBuilder<IsarAppSettings, IsarAppSettings, QAfterFilterCondition>
-      libraryPathsElementBetween(
+  libraryPathsElementLessThan(
+    String value, {
+    bool include = false,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.lessThan(
+          include: include,
+          property: r'libraryPaths',
+          value: value,
+          caseSensitive: caseSensitive,
+        ),
+      );
+    });
+  }
+
+  QueryBuilder<IsarAppSettings, IsarAppSettings, QAfterFilterCondition>
+  libraryPathsElementBetween(
     String lower,
     String upper, {
     bool includeLower = true,
@@ -459,160 +478,126 @@ extension IsarAppSettingsQueryFilter
     bool caseSensitive = true,
   }) {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.between(
-        property: r'libraryPaths',
-        lower: lower,
-        includeLower: includeLower,
-        upper: upper,
-        includeUpper: includeUpper,
-        caseSensitive: caseSensitive,
-      ));
-    });
-  }
-
-  QueryBuilder<IsarAppSettings, IsarAppSettings, QAfterFilterCondition>
-      libraryPathsElementStartsWith(
-    String value, {
-    bool caseSensitive = true,
-  }) {
-    return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.startsWith(
-        property: r'libraryPaths',
-        value: value,
-        caseSensitive: caseSensitive,
-      ));
-    });
-  }
-
-  QueryBuilder<IsarAppSettings, IsarAppSettings, QAfterFilterCondition>
-      libraryPathsElementEndsWith(
-    String value, {
-    bool caseSensitive = true,
-  }) {
-    return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.endsWith(
-        property: r'libraryPaths',
-        value: value,
-        caseSensitive: caseSensitive,
-      ));
-    });
-  }
-
-  QueryBuilder<IsarAppSettings, IsarAppSettings, QAfterFilterCondition>
-      libraryPathsElementContains(String value, {bool caseSensitive = true}) {
-    return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.contains(
-        property: r'libraryPaths',
-        value: value,
-        caseSensitive: caseSensitive,
-      ));
-    });
-  }
-
-  QueryBuilder<IsarAppSettings, IsarAppSettings, QAfterFilterCondition>
-      libraryPathsElementMatches(String pattern, {bool caseSensitive = true}) {
-    return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.matches(
-        property: r'libraryPaths',
-        wildcard: pattern,
-        caseSensitive: caseSensitive,
-      ));
-    });
-  }
-
-  QueryBuilder<IsarAppSettings, IsarAppSettings, QAfterFilterCondition>
-      libraryPathsElementIsEmpty() {
-    return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.equalTo(
-        property: r'libraryPaths',
-        value: '',
-      ));
-    });
-  }
-
-  QueryBuilder<IsarAppSettings, IsarAppSettings, QAfterFilterCondition>
-      libraryPathsElementIsNotEmpty() {
-    return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.greaterThan(
-        property: r'libraryPaths',
-        value: '',
-      ));
-    });
-  }
-
-  QueryBuilder<IsarAppSettings, IsarAppSettings, QAfterFilterCondition>
-      libraryPathsLengthEqualTo(int length) {
-    return QueryBuilder.apply(this, (query) {
-      return query.listLength(
-        r'libraryPaths',
-        length,
-        true,
-        length,
-        true,
+      return query.addFilterCondition(
+        FilterCondition.between(
+          property: r'libraryPaths',
+          lower: lower,
+          includeLower: includeLower,
+          upper: upper,
+          includeUpper: includeUpper,
+          caseSensitive: caseSensitive,
+        ),
       );
     });
   }
 
   QueryBuilder<IsarAppSettings, IsarAppSettings, QAfterFilterCondition>
-      libraryPathsIsEmpty() {
+  libraryPathsElementStartsWith(String value, {bool caseSensitive = true}) {
     return QueryBuilder.apply(this, (query) {
-      return query.listLength(
-        r'libraryPaths',
-        0,
-        true,
-        0,
-        true,
+      return query.addFilterCondition(
+        FilterCondition.startsWith(
+          property: r'libraryPaths',
+          value: value,
+          caseSensitive: caseSensitive,
+        ),
       );
     });
   }
 
   QueryBuilder<IsarAppSettings, IsarAppSettings, QAfterFilterCondition>
-      libraryPathsIsNotEmpty() {
+  libraryPathsElementEndsWith(String value, {bool caseSensitive = true}) {
     return QueryBuilder.apply(this, (query) {
-      return query.listLength(
-        r'libraryPaths',
-        0,
-        false,
-        999999,
-        true,
+      return query.addFilterCondition(
+        FilterCondition.endsWith(
+          property: r'libraryPaths',
+          value: value,
+          caseSensitive: caseSensitive,
+        ),
       );
     });
   }
 
   QueryBuilder<IsarAppSettings, IsarAppSettings, QAfterFilterCondition>
-      libraryPathsLengthLessThan(
-    int length, {
-    bool include = false,
-  }) {
+  libraryPathsElementContains(String value, {bool caseSensitive = true}) {
     return QueryBuilder.apply(this, (query) {
-      return query.listLength(
-        r'libraryPaths',
-        0,
-        true,
-        length,
-        include,
+      return query.addFilterCondition(
+        FilterCondition.contains(
+          property: r'libraryPaths',
+          value: value,
+          caseSensitive: caseSensitive,
+        ),
       );
     });
   }
 
   QueryBuilder<IsarAppSettings, IsarAppSettings, QAfterFilterCondition>
-      libraryPathsLengthGreaterThan(
-    int length, {
-    bool include = false,
-  }) {
+  libraryPathsElementMatches(String pattern, {bool caseSensitive = true}) {
     return QueryBuilder.apply(this, (query) {
-      return query.listLength(
-        r'libraryPaths',
-        length,
-        include,
-        999999,
-        true,
+      return query.addFilterCondition(
+        FilterCondition.matches(
+          property: r'libraryPaths',
+          wildcard: pattern,
+          caseSensitive: caseSensitive,
+        ),
       );
     });
   }
 
   QueryBuilder<IsarAppSettings, IsarAppSettings, QAfterFilterCondition>
-      libraryPathsLengthBetween(
+  libraryPathsElementIsEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.equalTo(property: r'libraryPaths', value: ''),
+      );
+    });
+  }
+
+  QueryBuilder<IsarAppSettings, IsarAppSettings, QAfterFilterCondition>
+  libraryPathsElementIsNotEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.greaterThan(property: r'libraryPaths', value: ''),
+      );
+    });
+  }
+
+  QueryBuilder<IsarAppSettings, IsarAppSettings, QAfterFilterCondition>
+  libraryPathsLengthEqualTo(int length) {
+    return QueryBuilder.apply(this, (query) {
+      return query.listLength(r'libraryPaths', length, true, length, true);
+    });
+  }
+
+  QueryBuilder<IsarAppSettings, IsarAppSettings, QAfterFilterCondition>
+  libraryPathsIsEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.listLength(r'libraryPaths', 0, true, 0, true);
+    });
+  }
+
+  QueryBuilder<IsarAppSettings, IsarAppSettings, QAfterFilterCondition>
+  libraryPathsIsNotEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.listLength(r'libraryPaths', 0, false, 999999, true);
+    });
+  }
+
+  QueryBuilder<IsarAppSettings, IsarAppSettings, QAfterFilterCondition>
+  libraryPathsLengthLessThan(int length, {bool include = false}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.listLength(r'libraryPaths', 0, true, length, include);
+    });
+  }
+
+  QueryBuilder<IsarAppSettings, IsarAppSettings, QAfterFilterCondition>
+  libraryPathsLengthGreaterThan(int length, {bool include = false}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.listLength(r'libraryPaths', length, include, 999999, true);
+    });
+  }
+
+  QueryBuilder<IsarAppSettings, IsarAppSettings, QAfterFilterCondition>
+  libraryPathsLengthBetween(
     int lower,
     int upper, {
     bool includeLower = true,
@@ -630,154 +615,151 @@ extension IsarAppSettingsQueryFilter
   }
 
   QueryBuilder<IsarAppSettings, IsarAppSettings, QAfterFilterCondition>
-      loudnessNormalizationEqualTo(bool value) {
+  loudnessNormalizationEqualTo(bool value) {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.equalTo(
-        property: r'loudnessNormalization',
-        value: value,
-      ));
+      return query.addFilterCondition(
+        FilterCondition.equalTo(
+          property: r'loudnessNormalization',
+          value: value,
+        ),
+      );
     });
   }
 
   QueryBuilder<IsarAppSettings, IsarAppSettings, QAfterFilterCondition>
-      playerThemeModeEqualTo(PlayerThemeMode value) {
+  playerThemeModeEqualTo(PlayerThemeMode value) {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.equalTo(
-        property: r'playerThemeMode',
-        value: value,
-      ));
+      return query.addFilterCondition(
+        FilterCondition.equalTo(property: r'playerThemeMode', value: value),
+      );
     });
   }
 
   QueryBuilder<IsarAppSettings, IsarAppSettings, QAfterFilterCondition>
-      playerThemeModeGreaterThan(
-    PlayerThemeMode value, {
-    bool include = false,
-  }) {
+  playerThemeModeGreaterThan(PlayerThemeMode value, {bool include = false}) {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.greaterThan(
-        include: include,
-        property: r'playerThemeMode',
-        value: value,
-      ));
+      return query.addFilterCondition(
+        FilterCondition.greaterThan(
+          include: include,
+          property: r'playerThemeMode',
+          value: value,
+        ),
+      );
     });
   }
 
   QueryBuilder<IsarAppSettings, IsarAppSettings, QAfterFilterCondition>
-      playerThemeModeLessThan(
-    PlayerThemeMode value, {
-    bool include = false,
-  }) {
+  playerThemeModeLessThan(PlayerThemeMode value, {bool include = false}) {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.lessThan(
-        include: include,
-        property: r'playerThemeMode',
-        value: value,
-      ));
+      return query.addFilterCondition(
+        FilterCondition.lessThan(
+          include: include,
+          property: r'playerThemeMode',
+          value: value,
+        ),
+      );
     });
   }
 
   QueryBuilder<IsarAppSettings, IsarAppSettings, QAfterFilterCondition>
-      playerThemeModeBetween(
+  playerThemeModeBetween(
     PlayerThemeMode lower,
     PlayerThemeMode upper, {
     bool includeLower = true,
     bool includeUpper = true,
   }) {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.between(
-        property: r'playerThemeMode',
-        lower: lower,
-        includeLower: includeLower,
-        upper: upper,
-        includeUpper: includeUpper,
-      ));
+      return query.addFilterCondition(
+        FilterCondition.between(
+          property: r'playerThemeMode',
+          lower: lower,
+          includeLower: includeLower,
+          upper: upper,
+          includeUpper: includeUpper,
+        ),
+      );
     });
   }
 
   QueryBuilder<IsarAppSettings, IsarAppSettings, QAfterFilterCondition>
-      showCoverReflectionEqualTo(bool value) {
+  showCoverReflectionEqualTo(bool value) {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.equalTo(
-        property: r'showCoverReflection',
-        value: value,
-      ));
+      return query.addFilterCondition(
+        FilterCondition.equalTo(property: r'showCoverReflection', value: value),
+      );
     });
   }
 
   QueryBuilder<IsarAppSettings, IsarAppSettings, QAfterFilterCondition>
-      showWaveformEqualTo(bool value) {
+  showWaveformEqualTo(bool value) {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.equalTo(
-        property: r'showWaveform',
-        value: value,
-      ));
+      return query.addFilterCondition(
+        FilterCondition.equalTo(property: r'showWaveform', value: value),
+      );
     });
   }
 
   QueryBuilder<IsarAppSettings, IsarAppSettings, QAfterFilterCondition>
-      skipSilenceEqualTo(bool value) {
+  skipSilenceEqualTo(bool value) {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.equalTo(
-        property: r'skipSilence',
-        value: value,
-      ));
+      return query.addFilterCondition(
+        FilterCondition.equalTo(property: r'skipSilence', value: value),
+      );
     });
   }
 
   QueryBuilder<IsarAppSettings, IsarAppSettings, QAfterFilterCondition>
-      themeModeEqualTo(ThemeMode value) {
+  themeModeEqualTo(ThemeMode value) {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.equalTo(
-        property: r'themeMode',
-        value: value,
-      ));
+      return query.addFilterCondition(
+        FilterCondition.equalTo(property: r'themeMode', value: value),
+      );
     });
   }
 
   QueryBuilder<IsarAppSettings, IsarAppSettings, QAfterFilterCondition>
-      themeModeGreaterThan(
-    ThemeMode value, {
-    bool include = false,
-  }) {
+  themeModeGreaterThan(ThemeMode value, {bool include = false}) {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.greaterThan(
-        include: include,
-        property: r'themeMode',
-        value: value,
-      ));
+      return query.addFilterCondition(
+        FilterCondition.greaterThan(
+          include: include,
+          property: r'themeMode',
+          value: value,
+        ),
+      );
     });
   }
 
   QueryBuilder<IsarAppSettings, IsarAppSettings, QAfterFilterCondition>
-      themeModeLessThan(
-    ThemeMode value, {
-    bool include = false,
-  }) {
+  themeModeLessThan(ThemeMode value, {bool include = false}) {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.lessThan(
-        include: include,
-        property: r'themeMode',
-        value: value,
-      ));
+      return query.addFilterCondition(
+        FilterCondition.lessThan(
+          include: include,
+          property: r'themeMode',
+          value: value,
+        ),
+      );
     });
   }
 
   QueryBuilder<IsarAppSettings, IsarAppSettings, QAfterFilterCondition>
-      themeModeBetween(
+  themeModeBetween(
     ThemeMode lower,
     ThemeMode upper, {
     bool includeLower = true,
     bool includeUpper = true,
   }) {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.between(
-        property: r'themeMode',
-        lower: lower,
-        includeLower: includeLower,
-        upper: upper,
-        includeUpper: includeUpper,
-      ));
+      return query.addFilterCondition(
+        FilterCondition.between(
+          property: r'themeMode',
+          lower: lower,
+          includeLower: includeLower,
+          upper: upper,
+          includeUpper: includeUpper,
+        ),
+      );
     });
   }
 }
@@ -791,98 +773,98 @@ extension IsarAppSettingsQueryLinks
 extension IsarAppSettingsQuerySortBy
     on QueryBuilder<IsarAppSettings, IsarAppSettings, QSortBy> {
   QueryBuilder<IsarAppSettings, IsarAppSettings, QAfterSortBy>
-      sortByAudioPreset() {
+  sortByAudioPreset() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'audioPreset', Sort.asc);
     });
   }
 
   QueryBuilder<IsarAppSettings, IsarAppSettings, QAfterSortBy>
-      sortByAudioPresetDesc() {
+  sortByAudioPresetDesc() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'audioPreset', Sort.desc);
     });
   }
 
   QueryBuilder<IsarAppSettings, IsarAppSettings, QAfterSortBy>
-      sortByLoudnessNormalization() {
+  sortByLoudnessNormalization() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'loudnessNormalization', Sort.asc);
     });
   }
 
   QueryBuilder<IsarAppSettings, IsarAppSettings, QAfterSortBy>
-      sortByLoudnessNormalizationDesc() {
+  sortByLoudnessNormalizationDesc() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'loudnessNormalization', Sort.desc);
     });
   }
 
   QueryBuilder<IsarAppSettings, IsarAppSettings, QAfterSortBy>
-      sortByPlayerThemeMode() {
+  sortByPlayerThemeMode() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'playerThemeMode', Sort.asc);
     });
   }
 
   QueryBuilder<IsarAppSettings, IsarAppSettings, QAfterSortBy>
-      sortByPlayerThemeModeDesc() {
+  sortByPlayerThemeModeDesc() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'playerThemeMode', Sort.desc);
     });
   }
 
   QueryBuilder<IsarAppSettings, IsarAppSettings, QAfterSortBy>
-      sortByShowCoverReflection() {
+  sortByShowCoverReflection() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'showCoverReflection', Sort.asc);
     });
   }
 
   QueryBuilder<IsarAppSettings, IsarAppSettings, QAfterSortBy>
-      sortByShowCoverReflectionDesc() {
+  sortByShowCoverReflectionDesc() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'showCoverReflection', Sort.desc);
     });
   }
 
   QueryBuilder<IsarAppSettings, IsarAppSettings, QAfterSortBy>
-      sortByShowWaveform() {
+  sortByShowWaveform() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'showWaveform', Sort.asc);
     });
   }
 
   QueryBuilder<IsarAppSettings, IsarAppSettings, QAfterSortBy>
-      sortByShowWaveformDesc() {
+  sortByShowWaveformDesc() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'showWaveform', Sort.desc);
     });
   }
 
   QueryBuilder<IsarAppSettings, IsarAppSettings, QAfterSortBy>
-      sortBySkipSilence() {
+  sortBySkipSilence() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'skipSilence', Sort.asc);
     });
   }
 
   QueryBuilder<IsarAppSettings, IsarAppSettings, QAfterSortBy>
-      sortBySkipSilenceDesc() {
+  sortBySkipSilenceDesc() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'skipSilence', Sort.desc);
     });
   }
 
   QueryBuilder<IsarAppSettings, IsarAppSettings, QAfterSortBy>
-      sortByThemeMode() {
+  sortByThemeMode() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'themeMode', Sort.asc);
     });
   }
 
   QueryBuilder<IsarAppSettings, IsarAppSettings, QAfterSortBy>
-      sortByThemeModeDesc() {
+  sortByThemeModeDesc() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'themeMode', Sort.desc);
     });
@@ -892,14 +874,14 @@ extension IsarAppSettingsQuerySortBy
 extension IsarAppSettingsQuerySortThenBy
     on QueryBuilder<IsarAppSettings, IsarAppSettings, QSortThenBy> {
   QueryBuilder<IsarAppSettings, IsarAppSettings, QAfterSortBy>
-      thenByAudioPreset() {
+  thenByAudioPreset() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'audioPreset', Sort.asc);
     });
   }
 
   QueryBuilder<IsarAppSettings, IsarAppSettings, QAfterSortBy>
-      thenByAudioPresetDesc() {
+  thenByAudioPresetDesc() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'audioPreset', Sort.desc);
     });
@@ -918,84 +900,84 @@ extension IsarAppSettingsQuerySortThenBy
   }
 
   QueryBuilder<IsarAppSettings, IsarAppSettings, QAfterSortBy>
-      thenByLoudnessNormalization() {
+  thenByLoudnessNormalization() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'loudnessNormalization', Sort.asc);
     });
   }
 
   QueryBuilder<IsarAppSettings, IsarAppSettings, QAfterSortBy>
-      thenByLoudnessNormalizationDesc() {
+  thenByLoudnessNormalizationDesc() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'loudnessNormalization', Sort.desc);
     });
   }
 
   QueryBuilder<IsarAppSettings, IsarAppSettings, QAfterSortBy>
-      thenByPlayerThemeMode() {
+  thenByPlayerThemeMode() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'playerThemeMode', Sort.asc);
     });
   }
 
   QueryBuilder<IsarAppSettings, IsarAppSettings, QAfterSortBy>
-      thenByPlayerThemeModeDesc() {
+  thenByPlayerThemeModeDesc() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'playerThemeMode', Sort.desc);
     });
   }
 
   QueryBuilder<IsarAppSettings, IsarAppSettings, QAfterSortBy>
-      thenByShowCoverReflection() {
+  thenByShowCoverReflection() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'showCoverReflection', Sort.asc);
     });
   }
 
   QueryBuilder<IsarAppSettings, IsarAppSettings, QAfterSortBy>
-      thenByShowCoverReflectionDesc() {
+  thenByShowCoverReflectionDesc() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'showCoverReflection', Sort.desc);
     });
   }
 
   QueryBuilder<IsarAppSettings, IsarAppSettings, QAfterSortBy>
-      thenByShowWaveform() {
+  thenByShowWaveform() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'showWaveform', Sort.asc);
     });
   }
 
   QueryBuilder<IsarAppSettings, IsarAppSettings, QAfterSortBy>
-      thenByShowWaveformDesc() {
+  thenByShowWaveformDesc() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'showWaveform', Sort.desc);
     });
   }
 
   QueryBuilder<IsarAppSettings, IsarAppSettings, QAfterSortBy>
-      thenBySkipSilence() {
+  thenBySkipSilence() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'skipSilence', Sort.asc);
     });
   }
 
   QueryBuilder<IsarAppSettings, IsarAppSettings, QAfterSortBy>
-      thenBySkipSilenceDesc() {
+  thenBySkipSilenceDesc() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'skipSilence', Sort.desc);
     });
   }
 
   QueryBuilder<IsarAppSettings, IsarAppSettings, QAfterSortBy>
-      thenByThemeMode() {
+  thenByThemeMode() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'themeMode', Sort.asc);
     });
   }
 
   QueryBuilder<IsarAppSettings, IsarAppSettings, QAfterSortBy>
-      thenByThemeModeDesc() {
+  thenByThemeModeDesc() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'themeMode', Sort.desc);
     });
@@ -1005,56 +987,56 @@ extension IsarAppSettingsQuerySortThenBy
 extension IsarAppSettingsQueryWhereDistinct
     on QueryBuilder<IsarAppSettings, IsarAppSettings, QDistinct> {
   QueryBuilder<IsarAppSettings, IsarAppSettings, QDistinct>
-      distinctByAudioPreset() {
+  distinctByAudioPreset() {
     return QueryBuilder.apply(this, (query) {
       return query.addDistinctBy(r'audioPreset');
     });
   }
 
   QueryBuilder<IsarAppSettings, IsarAppSettings, QDistinct>
-      distinctByLibraryPaths() {
+  distinctByLibraryPaths() {
     return QueryBuilder.apply(this, (query) {
       return query.addDistinctBy(r'libraryPaths');
     });
   }
 
   QueryBuilder<IsarAppSettings, IsarAppSettings, QDistinct>
-      distinctByLoudnessNormalization() {
+  distinctByLoudnessNormalization() {
     return QueryBuilder.apply(this, (query) {
       return query.addDistinctBy(r'loudnessNormalization');
     });
   }
 
   QueryBuilder<IsarAppSettings, IsarAppSettings, QDistinct>
-      distinctByPlayerThemeMode() {
+  distinctByPlayerThemeMode() {
     return QueryBuilder.apply(this, (query) {
       return query.addDistinctBy(r'playerThemeMode');
     });
   }
 
   QueryBuilder<IsarAppSettings, IsarAppSettings, QDistinct>
-      distinctByShowCoverReflection() {
+  distinctByShowCoverReflection() {
     return QueryBuilder.apply(this, (query) {
       return query.addDistinctBy(r'showCoverReflection');
     });
   }
 
   QueryBuilder<IsarAppSettings, IsarAppSettings, QDistinct>
-      distinctByShowWaveform() {
+  distinctByShowWaveform() {
     return QueryBuilder.apply(this, (query) {
       return query.addDistinctBy(r'showWaveform');
     });
   }
 
   QueryBuilder<IsarAppSettings, IsarAppSettings, QDistinct>
-      distinctBySkipSilence() {
+  distinctBySkipSilence() {
     return QueryBuilder.apply(this, (query) {
       return query.addDistinctBy(r'skipSilence');
     });
   }
 
   QueryBuilder<IsarAppSettings, IsarAppSettings, QDistinct>
-      distinctByThemeMode() {
+  distinctByThemeMode() {
     return QueryBuilder.apply(this, (query) {
       return query.addDistinctBy(r'themeMode');
     });
@@ -1070,35 +1052,35 @@ extension IsarAppSettingsQueryProperty
   }
 
   QueryBuilder<IsarAppSettings, AudioPreset, QQueryOperations>
-      audioPresetProperty() {
+  audioPresetProperty() {
     return QueryBuilder.apply(this, (query) {
       return query.addPropertyName(r'audioPreset');
     });
   }
 
   QueryBuilder<IsarAppSettings, List<String>, QQueryOperations>
-      libraryPathsProperty() {
+  libraryPathsProperty() {
     return QueryBuilder.apply(this, (query) {
       return query.addPropertyName(r'libraryPaths');
     });
   }
 
   QueryBuilder<IsarAppSettings, bool, QQueryOperations>
-      loudnessNormalizationProperty() {
+  loudnessNormalizationProperty() {
     return QueryBuilder.apply(this, (query) {
       return query.addPropertyName(r'loudnessNormalization');
     });
   }
 
   QueryBuilder<IsarAppSettings, PlayerThemeMode, QQueryOperations>
-      playerThemeModeProperty() {
+  playerThemeModeProperty() {
     return QueryBuilder.apply(this, (query) {
       return query.addPropertyName(r'playerThemeMode');
     });
   }
 
   QueryBuilder<IsarAppSettings, bool, QQueryOperations>
-      showCoverReflectionProperty() {
+  showCoverReflectionProperty() {
     return QueryBuilder.apply(this, (query) {
       return query.addPropertyName(r'showCoverReflection');
     });
@@ -1117,7 +1099,7 @@ extension IsarAppSettingsQueryProperty
   }
 
   QueryBuilder<IsarAppSettings, ThemeMode, QQueryOperations>
-      themeModeProperty() {
+  themeModeProperty() {
     return QueryBuilder.apply(this, (query) {
       return query.addPropertyName(r'themeMode');
     });
@@ -1128,22 +1110,58 @@ extension IsarAppSettingsQueryProperty
 // RiverpodGenerator
 // **************************************************************************
 
+// GENERATED CODE - DO NOT MODIFY BY HAND
+// ignore_for_file: type=lint, type=warning
+
+@ProviderFor(AppSettingsNotifier)
+final appSettingsProvider = AppSettingsNotifierProvider._();
+
+final class AppSettingsNotifierProvider
+    extends $NotifierProvider<AppSettingsNotifier, AppSettings> {
+  AppSettingsNotifierProvider._()
+    : super(
+        from: null,
+        argument: null,
+        retry: null,
+        name: r'appSettingsProvider',
+        isAutoDispose: true,
+        dependencies: null,
+        $allTransitiveDependencies: null,
+      );
+
+  @override
+  String debugGetCreateSourceHash() => _$appSettingsNotifierHash();
+
+  @$internal
+  @override
+  AppSettingsNotifier create() => AppSettingsNotifier();
+
+  /// {@macro riverpod.override_with_value}
+  Override overrideWithValue(AppSettings value) {
+    return $ProviderOverride(
+      origin: this,
+      providerOverride: $SyncValueProvider<AppSettings>(value),
+    );
+  }
+}
+
 String _$appSettingsNotifierHash() =>
     r'cd5b28cdf28a1335eb2009851059c6274b1b99f3';
 
-/// See also [AppSettingsNotifier].
-@ProviderFor(AppSettingsNotifier)
-final appSettingsNotifierProvider =
-    AutoDisposeNotifierProvider<AppSettingsNotifier, AppSettings>.internal(
-  AppSettingsNotifier.new,
-  name: r'appSettingsNotifierProvider',
-  debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
-      ? null
-      : _$appSettingsNotifierHash,
-  dependencies: null,
-  allTransitiveDependencies: null,
-);
-
-typedef _$AppSettingsNotifier = AutoDisposeNotifier<AppSettings>;
-// ignore_for_file: type=lint
-// ignore_for_file: subtype_of_sealed_class, invalid_use_of_internal_member, invalid_use_of_visible_for_testing_member
+abstract class _$AppSettingsNotifier extends $Notifier<AppSettings> {
+  AppSettings build();
+  @$mustCallSuper
+  @override
+  void runBuild() {
+    final ref = this.ref as $Ref<AppSettings, AppSettings>;
+    final element =
+        ref.element
+            as $ClassProviderElement<
+              AnyNotifier<AppSettings, AppSettings>,
+              AppSettings,
+              Object?,
+              Object?
+            >;
+    element.handleCreate(ref, build);
+  }
+}

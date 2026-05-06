@@ -5,7 +5,6 @@ part 'keyboard_shortcuts.g.dart';
 
 @collection
 class KeyboardShortcut {
-
   KeyboardShortcut({
     required this.action,
     required this.keyValue,
@@ -265,4 +264,3 @@ List<KeyboardShortcut> getDefaultShortcuts() {
     ),
   ];
 }
-

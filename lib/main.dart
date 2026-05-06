@@ -46,24 +46,19 @@ void main() async {
   });
 
   final dir = await getApplicationSupportDirectory();
-  final isar = await Isar.open(
-    [
-      BookSchema,
-      IsarAppSettingsSchema,
-      DailyListeningStatsSchema,
-      AuthorStatsSchema,
-      BookCompletionStatsSchema,
-      ListeningSpeedPreferenceSchema,
-      KeyboardShortcutSchema,
-    ],
-    directory: dir.path,
-  );
+  final isar = await Isar.open([
+    BookSchema,
+    IsarAppSettingsSchema,
+    DailyListeningStatsSchema,
+    AuthorStatsSchema,
+    BookCompletionStatsSchema,
+    ListeningSpeedPreferenceSchema,
+    KeyboardShortcutSchema,
+  ], directory: dir.path);
 
   runApp(
     ProviderScope(
-      overrides: [
-        isarProvider.overrideWithValue(isar),
-      ],
+      overrides: [isarProvider.overrideWithValue(isar)],
       child: const CantoSyncApp(),
     ),
   );
@@ -76,7 +71,8 @@ class CantoSyncApp extends ConsumerStatefulWidget {
   ConsumerState<CantoSyncApp> createState() => _CantoSyncAppState();
 }
 
-class _CantoSyncAppState extends ConsumerState<CantoSyncApp> with WindowListener {
+class _CantoSyncAppState extends ConsumerState<CantoSyncApp>
+    with WindowListener {
   int _index = 0;
 
   @override
@@ -111,7 +107,13 @@ class _CantoSyncAppState extends ConsumerState<CantoSyncApp> with WindowListener
 
   Future<void> _checkUpdates() async {
     try {
-      await ref.read(updateServiceProvider).checkForUpdates();
+      final updateInfo = await ref
+          .read(updateServiceProvider)
+          .checkForUpdates();
+      if (updateInfo != null) {
+        logger.i('New version available: ${updateInfo.latestVersion}');
+        // In a real app, we'd trigger a global state to show a badge or dialog
+      }
     } catch (e) {
       logger.e('Update check failed', error: e);
     }
@@ -162,7 +164,10 @@ class _CantoSyncAppState extends ConsumerState<CantoSyncApp> with WindowListener
                         alignment: AlignmentDirectional.centerStart,
                         child: Padding(
                           padding: EdgeInsets.only(left: 12),
-                          child: Text('CantoSync', style: TextStyle(fontSize: 12)),
+                          child: Text(
+                            'CantoSync',
+                            style: TextStyle(fontSize: 12),
+                          ),
                         ),
                       ),
                     ],
@@ -201,11 +206,7 @@ class _CantoSyncAppState extends ConsumerState<CantoSyncApp> with WindowListener
             ),
             const Align(
               alignment: Alignment.topRight,
-              child: SizedBox(
-                width: 138,
-                height: 32,
-                child: WindowButtons(),
-              ),
+              child: SizedBox(width: 138, height: 32, child: WindowButtons()),
             ),
             if (_index != 1)
               Align(

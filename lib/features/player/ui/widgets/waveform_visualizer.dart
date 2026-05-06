@@ -2,7 +2,6 @@ import 'dart:math' as math;
 import 'package:fluent_ui/fluent_ui.dart';
 
 class WaveformVisualizer extends StatefulWidget {
-
   const WaveformVisualizer({
     super.key,
     required this.isPlaying,
@@ -36,19 +35,15 @@ class _WaveformVisualizerState extends State<WaveformVisualizer>
       widget.barCount,
       (index) => AnimationController(
         vsync: this,
-        duration: Duration(
-          milliseconds: 400 + _random.nextInt(400),
-        ),
+        duration: Duration(milliseconds: 400 + _random.nextInt(400)),
       ),
     );
 
     _animations = _controllers.map((controller) {
-      return Tween<double>(begin: 0.2, end: 1.0).animate(
-        CurvedAnimation(
-          parent: controller,
-          curve: Curves.easeInOut,
-        ),
-      );
+      return Tween<double>(
+        begin: 0.2,
+        end: 1.0,
+      ).animate(CurvedAnimation(parent: controller, curve: Curves.easeInOut));
     }).toList();
 
     if (widget.isPlaying) {
@@ -120,9 +115,7 @@ class _WaveformVisualizerState extends State<WaveformVisualizer>
                   margin: const EdgeInsets.symmetric(horizontal: 2),
                   height: widget.height * animatedHeight,
                   decoration: BoxDecoration(
-                    color: widget.color.withAlpha(
-                      widget.isPlaying ? 200 : 100,
-                    ),
+                    color: widget.color.withAlpha(widget.isPlaying ? 200 : 100),
                     borderRadius: BorderRadius.circular(2),
                   ),
                 );

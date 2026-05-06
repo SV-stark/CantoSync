@@ -59,7 +59,6 @@ class UpdateService {
 }
 
 class UpdateInfo {
-
   UpdateInfo({
     required this.latestVersion,
     required this.downloadUrl,

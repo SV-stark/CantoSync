@@ -1,8 +1,8 @@
 import 'dart:async';
-import 'package:flutter/foundation.dart';
 import 'package:metadata_audio/metadata_audio.dart' hide Chapter;
 import 'package:path/path.dart' as p;
 import 'package:canto_sync/core/services/media_service.dart';
+import 'package:canto_sync/core/utils/logger.dart';
 import 'package:canto_sync/features/library/data/library_service.dart';
 import 'package:canto_sync/features/library/data/book.dart';
 import 'package:canto_sync/features/stats/data/stats_service.dart';
@@ -28,7 +28,6 @@ class CurrentBookPath extends _$CurrentBookPath {
 }
 
 class PlaybackSyncService {
-
   PlaybackSyncService(this._mediaService, this._libraryService, this._ref) {
     _init();
   }
@@ -44,7 +43,6 @@ class PlaybackSyncService {
   bool _pendingSave = false;
   Book? _currentBook;
   int _sessionSeconds = 0;
-  Timer? _statsTimer;
 
   void _init() {
     Duration lastPosition = Duration.zero;
@@ -96,8 +94,8 @@ class PlaybackSyncService {
         seconds,
         playbackSpeed: speed,
       );
-    } catch (e) {
-      debugPrint('Error recording stats: $e');
+    } catch (e, stack) {
+      logger.e('Error recording stats', error: e, stackTrace: stack);
     }
   }
 
@@ -108,8 +106,8 @@ class PlaybackSyncService {
     try {
       final statsService = _ref.read(listeningStatsServiceProvider);
       await statsService.markBookAsCompleted(_currentBook!);
-    } catch (e) {
-      debugPrint('Error marking book as completed: $e');
+    } catch (e, stack) {
+      logger.e('Error marking book as completed', error: e, stackTrace: stack);
     }
   }
 
@@ -172,14 +170,19 @@ class PlaybackSyncService {
                   filePath,
                   options: const ParseOptions(duration: true),
                 );
-                if (meta.common.title != null && meta.common.title!.isNotEmpty) {
+                if (meta.common.title != null &&
+                    meta.common.title!.isNotEmpty) {
                   fileTitle = meta.common.title!;
                 }
                 if (meta.format.duration != null) {
                   fileDuration = meta.format.duration!;
                 }
-              } catch (e) {
-                debugPrint('Error reading metadata for file: $e');
+              } catch (e, stack) {
+                logger.w(
+                  'Error reading metadata for file',
+                  error: e,
+                  stackTrace: stack,
+                );
               }
               return {
                 'title': fileTitle,
@@ -224,8 +227,12 @@ class PlaybackSyncService {
               chapters.add(Chapter(title: title, startTime: currentStartTime));
             }
           }
-        } catch (e) {
-          debugPrint('Error processing multi-file book chapters: $e');
+        } catch (e, stack) {
+          logger.e(
+            'Error processing multi-file book chapters',
+            error: e,
+            stackTrace: stack,
+          );
         }
 
         await _mediaService.open(
@@ -252,11 +259,15 @@ class PlaybackSyncService {
             await _mediaService.seek(
               Duration(milliseconds: (lastPosition * 1000).toInt()),
             );
-          } catch (e) {
-            debugPrint('Error seeking multi-file book during resume: $e');
+          } catch (e, stack) {
+            logger.e(
+              'Error seeking multi-file book during resume',
+              error: e,
+              stackTrace: stack,
+            );
           }
         }
-        return; 
+        return;
       }
     }
 
@@ -266,11 +277,13 @@ class PlaybackSyncService {
       artist: author,
       album: album,
       chapters: book?.internalChapters
-          ?.map((c) => Chapter(
-                title: c.title ?? '',
-                startTime: c.startTime ?? 0,
-                endTime: c.endTime,
-              ))
+          ?.map(
+            (c) => Chapter(
+              title: c.title ?? '',
+              startTime: c.startTime ?? 0,
+              endTime: c.endTime,
+            ),
+          )
           .toList(),
     );
 
@@ -280,8 +293,8 @@ class PlaybackSyncService {
         await _mediaService.seek(
           Duration(milliseconds: (lastPosition * 1000).toInt()),
         );
-      } catch (e) {
-        debugPrint('Error seeking during resume: $e');
+      } catch (e, stack) {
+        logger.e('Error seeking during resume', error: e, stackTrace: stack);
       }
     }
   }
@@ -319,7 +332,6 @@ class PlaybackSyncService {
     _subscription?.cancel();
     _completedSubscription?.cancel();
     _debounceTimer?.cancel();
-    _statsTimer?.cancel();
 
     // Record any pending stats time
     if (_sessionSeconds > 0) {

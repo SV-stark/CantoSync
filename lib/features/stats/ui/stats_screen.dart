@@ -12,9 +12,7 @@ class StatsScreen extends ConsumerWidget {
     final statsAsync = ref.watch(listeningStatsProvider);
 
     return ScaffoldPage(
-      header: const PageHeader(
-        title: Text('Listening Statistics'),
-      ),
+      header: const PageHeader(title: Text('Listening Statistics')),
       content: statsAsync.when(
         data: (stats) => SingleChildScrollView(
           padding: const EdgeInsets.all(16),
@@ -34,9 +32,7 @@ class StatsScreen extends ConsumerWidget {
           ),
         ),
         loading: () => const Center(child: ProgressRing()),
-        error: (err, stack) => Center(
-          child: Text('Error loading stats: $err'),
-        ),
+        error: (err, stack) => Center(child: Text('Error loading stats: $err')),
       ),
     );
   }
@@ -101,26 +97,23 @@ class StatsScreen extends ConsumerWidget {
               children: [
                 Icon(icon, color: color, size: 24),
                 const SizedBox(width: 8),
-                Text(
-                  title,
-                  style: FluentTheme.of(context).typography.caption,
-                ),
+                Text(title, style: FluentTheme.of(context).typography.caption),
               ],
             ),
             const SizedBox(height: 12),
             Text(
               value,
               style: FluentTheme.of(context).typography.titleLarge?.copyWith(
-                    fontWeight: FontWeight.bold,
-                    color: color,
-                  ),
+                fontWeight: FontWeight.bold,
+                color: color,
+              ),
             ),
             const SizedBox(height: 4),
             Text(
               subtitle,
-              style: FluentTheme.of(context).typography.caption?.copyWith(
-                    color: Colors.grey,
-                  ),
+              style: FluentTheme.of(
+                context,
+              ).typography.caption?.copyWith(color: Colors.grey),
             ),
           ],
         ),
@@ -128,7 +121,10 @@ class StatsScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildStreakSection(BuildContext context, ListeningStatsSummary stats) {
+  Widget _buildStreakSection(
+    BuildContext context,
+    ListeningStatsSummary stats,
+  ) {
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(16),
@@ -191,16 +187,16 @@ class StatsScreen extends ConsumerWidget {
             children: [
               Text(
                 label,
-                style: FluentTheme.of(context).typography.caption?.copyWith(
-                      color: Colors.grey,
-                    ),
+                style: FluentTheme.of(
+                  context,
+                ).typography.caption?.copyWith(color: Colors.grey),
               ),
               Text(
                 '$days days',
                 style: FluentTheme.of(context).typography.bodyLarge?.copyWith(
-                      fontWeight: FontWeight.bold,
-                      color: color,
-                    ),
+                  fontWeight: FontWeight.bold,
+                  color: color,
+                ),
               ),
             ],
           ),
@@ -209,7 +205,10 @@ class StatsScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildContributionCalendar(BuildContext context, ListeningStatsSummary stats) {
+  Widget _buildContributionCalendar(
+    BuildContext context,
+    ListeningStatsSummary stats,
+  ) {
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(16),
@@ -225,9 +224,9 @@ class StatsScreen extends ConsumerWidget {
                 ),
                 Text(
                   'Last 30 Days',
-                  style: FluentTheme.of(context).typography.caption?.copyWith(
-                        color: Colors.grey,
-                      ),
+                  style: FluentTheme.of(
+                    context,
+                  ).typography.caption?.copyWith(color: Colors.grey),
                 ),
               ],
             ),
@@ -239,9 +238,9 @@ class StatsScreen extends ConsumerWidget {
               children: [
                 Text(
                   'Less',
-                  style: FluentTheme.of(context).typography.caption?.copyWith(
-                        color: Colors.grey,
-                      ),
+                  style: FluentTheme.of(
+                    context,
+                  ).typography.caption?.copyWith(color: Colors.grey),
                 ),
                 const SizedBox(width: 8),
                 _buildLegendBox(Colors.grey.withValues(alpha: 0.1)),
@@ -256,9 +255,9 @@ class StatsScreen extends ConsumerWidget {
                 const SizedBox(width: 8),
                 Text(
                   'More',
-                  style: FluentTheme.of(context).typography.caption?.copyWith(
-                        color: Colors.grey,
-                      ),
+                  style: FluentTheme.of(
+                    context,
+                  ).typography.caption?.copyWith(color: Colors.grey),
                 ),
               ],
             ),
@@ -279,7 +278,10 @@ class StatsScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildTopAuthorsSection(BuildContext context, ListeningStatsSummary stats) {
+  Widget _buildTopAuthorsSection(
+    BuildContext context,
+    ListeningStatsSummary stats,
+  ) {
     if (stats.topAuthors.isEmpty) {
       return const SizedBox.shrink();
     }
@@ -338,16 +340,16 @@ class StatsScreen extends ConsumerWidget {
               children: [
                 Text(
                   author.authorName,
-                  style: FluentTheme.of(context).typography.body?.copyWith(
-                        fontWeight: FontWeight.w600,
-                      ),
+                  style: FluentTheme.of(
+                    context,
+                  ).typography.body?.copyWith(fontWeight: FontWeight.w600),
                 ),
                 const SizedBox(height: 2),
                 Text(
                   '${author.totalHours.toStringAsFixed(1)} hours • ${author.booksCompleted} completed',
-                  style: FluentTheme.of(context).typography.caption?.copyWith(
-                        color: Colors.grey,
-                      ),
+                  style: FluentTheme.of(
+                    context,
+                  ).typography.caption?.copyWith(color: Colors.grey),
                 ),
               ],
             ),
@@ -370,7 +372,10 @@ class StatsScreen extends ConsumerWidget {
     }
   }
 
-  Widget _buildSpeedPreferenceCard(BuildContext context, ListeningStatsSummary stats) {
+  Widget _buildSpeedPreferenceCard(
+    BuildContext context,
+    ListeningStatsSummary stats,
+  ) {
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(16),
@@ -384,16 +389,16 @@ class StatsScreen extends ConsumerWidget {
                 children: [
                   Text(
                     'Average Listening Speed',
-                    style: FluentTheme.of(context).typography.body?.copyWith(
-                          fontWeight: FontWeight.w600,
-                        ),
+                    style: FluentTheme.of(
+                      context,
+                    ).typography.body?.copyWith(fontWeight: FontWeight.w600),
                   ),
                   const SizedBox(height: 4),
                   Text(
                     'Your preferred playback speed',
-                    style: FluentTheme.of(context).typography.caption?.copyWith(
-                          color: Colors.grey,
-                        ),
+                    style: FluentTheme.of(
+                      context,
+                    ).typography.caption?.copyWith(color: Colors.grey),
                   ),
                 ],
               ),
@@ -421,7 +426,6 @@ class StatsScreen extends ConsumerWidget {
 }
 
 class _ContributionCalendar extends StatelessWidget {
-
   const _ContributionCalendar({required this.dailyStats});
   final List<dynamic> dailyStats;
 
@@ -450,16 +454,18 @@ class _ContributionCalendar extends StatelessWidget {
         Row(
           children: [
             const SizedBox(width: 32),
-            ...['Mon', 'Wed', 'Fri'].map((day) => Expanded(
-                  child: Text(
-                    day,
-                    style: FluentTheme.of(context).typography.caption?.copyWith(
-                          color: Colors.grey,
-                          fontSize: 10,
-                        ),
-                    textAlign: TextAlign.center,
+            ...['Mon', 'Wed', 'Fri'].map(
+              (day) => Expanded(
+                child: Text(
+                  day,
+                  style: FluentTheme.of(context).typography.caption?.copyWith(
+                    color: Colors.grey,
+                    fontSize: 10,
                   ),
-                )),
+                  textAlign: TextAlign.center,
+                ),
+              ),
+            ),
           ],
         ),
         const SizedBox(height: 4),
@@ -483,7 +489,8 @@ class _ContributionCalendar extends StatelessWidget {
     final seconds = day.totalSecondsListened;
     final color = _getActivityColor(seconds);
     final date = DateTime.parse(day.date);
-    final tooltip = '${DateFormat('MMM d').format(date)}: ${_formatDuration(seconds)}';
+    final tooltip =
+        '${DateFormat('MMM d').format(date)}: ${_formatDuration(seconds)}';
 
     return Tooltip(
       message: tooltip,

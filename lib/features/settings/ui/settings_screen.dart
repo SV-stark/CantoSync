@@ -63,9 +63,7 @@ class SettingsScreen extends ConsumerWidget {
     final settings = ref.watch(appSettingsProvider);
 
     return ScaffoldPage.withPadding(
-      header: const PageHeader(
-        title: Text('Settings'),
-      ),
+      header: const PageHeader(title: Text('Settings')),
       content: ListView(
         padding: const EdgeInsets.only(bottom: 40),
         children: [
@@ -91,14 +89,13 @@ class SettingsScreen extends ConsumerWidget {
                         ThemeMode.light => 'Light',
                         ThemeMode.dark => 'Dark',
                       };
-                      return ComboBoxItem(
-                        value: mode,
-                        child: Text(label),
-                      );
+                      return ComboBoxItem(value: mode, child: Text(label));
                     }).toList(),
                     onChanged: (mode) {
                       if (mode != null) {
-                        ref.read(appSettingsProvider.notifier).setThemeMode(mode);
+                        ref
+                            .read(appSettingsProvider.notifier)
+                            .setThemeMode(mode);
                       }
                     },
                   ),
@@ -111,14 +108,13 @@ class SettingsScreen extends ConsumerWidget {
                   child: ComboBox<PlayerThemeMode>(
                     value: settings.playerThemeMode,
                     items: PlayerThemeMode.values.map((mode) {
-                      return ComboBoxItem(
-                        value: mode,
-                        child: Text(mode.label),
-                      );
+                      return ComboBoxItem(value: mode, child: Text(mode.label));
                     }).toList(),
                     onChanged: (mode) {
                       if (mode != null) {
-                        ref.read(appSettingsProvider.notifier).setPlayerThemeMode(mode);
+                        ref
+                            .read(appSettingsProvider.notifier)
+                            .setPlayerThemeMode(mode);
                       }
                     },
                   ),
@@ -152,7 +148,9 @@ class SettingsScreen extends ConsumerWidget {
                     }).toList(),
                     onChanged: (preset) {
                       if (preset != null) {
-                        ref.read(appSettingsProvider.notifier).setAudioPreset(preset);
+                        ref
+                            .read(appSettingsProvider.notifier)
+                            .setAudioPreset(preset);
                       }
                     },
                   ),
@@ -176,7 +174,9 @@ class SettingsScreen extends ConsumerWidget {
                   icon: FluentIcons.volume2,
                   value: settings.loudnessNormalization,
                   onChanged: (v) {
-                    ref.read(appSettingsProvider.notifier).setLoudnessNormalization(v);
+                    ref
+                        .read(appSettingsProvider.notifier)
+                        .setLoudnessNormalization(v);
                   },
                 ),
               ],
@@ -212,7 +212,9 @@ class SettingsScreen extends ConsumerWidget {
                   icon: FluentIcons.photo2,
                   value: settings.showCoverReflection,
                   onChanged: (v) {
-                    ref.read(appSettingsProvider.notifier).setShowCoverReflection(v);
+                    ref
+                        .read(appSettingsProvider.notifier)
+                        .setShowCoverReflection(v);
                   },
                 ),
               ],
@@ -267,14 +269,18 @@ class SettingsScreen extends ConsumerWidget {
                     ),
                     child: Row(
                       children: [
-                        const Icon(FluentIcons.info, color: Colors.grey, size: 20),
+                        const Icon(
+                          FluentIcons.info,
+                          color: Colors.grey,
+                          size: 20,
+                        ),
                         const SizedBox(width: 12),
                         Expanded(
                           child: Text(
                             'No library folders added. Add a folder to scan for audiobooks.',
-                            style: FluentTheme.of(context).typography.body?.copyWith(
-                              color: Colors.grey,
-                            ),
+                            style: FluentTheme.of(
+                              context,
+                            ).typography.body?.copyWith(color: Colors.grey),
                           ),
                         ),
                       ],
@@ -312,12 +318,16 @@ class SettingsScreen extends ConsumerWidget {
                   padding: const EdgeInsets.all(16),
                   decoration: BoxDecoration(
                     color: states.isHovered
-                        ? FluentTheme.of(context).accentColor.withValues(alpha: 0.1)
+                        ? FluentTheme.of(
+                            context,
+                          ).accentColor.withValues(alpha: 0.1)
                         : Colors.transparent,
                     borderRadius: BorderRadius.circular(8),
                     border: Border.all(
                       color: states.isHovered
-                          ? FluentTheme.of(context).accentColor.withValues(alpha: 0.3)
+                          ? FluentTheme.of(
+                              context,
+                            ).accentColor.withValues(alpha: 0.3)
                           : Colors.grey.withValues(alpha: 0.2),
                     ),
                   ),
@@ -342,16 +352,14 @@ class SettingsScreen extends ConsumerWidget {
                           children: [
                             Text(
                               'Configure Shortcuts',
-                              style: FluentTheme.of(context).typography.body?.copyWith(
-                                fontWeight: FontWeight.w600,
-                              ),
+                              style: FluentTheme.of(context).typography.body
+                                  ?.copyWith(fontWeight: FontWeight.w600),
                             ),
                             const SizedBox(height: 4),
                             Text(
                               'Customize hotkeys for playback and navigation',
-                              style: FluentTheme.of(context).typography.caption?.copyWith(
-                                color: Colors.grey,
-                              ),
+                              style: FluentTheme.of(context).typography.caption
+                                  ?.copyWith(color: Colors.grey),
                             ),
                           ],
                         ),
@@ -382,7 +390,10 @@ class SettingsScreen extends ConsumerWidget {
                 return Row(
                   children: [
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 6,
+                      ),
                       decoration: BoxDecoration(
                         color: Colors.blue.withValues(alpha: 0.1),
                         borderRadius: BorderRadius.circular(16),
@@ -423,7 +434,8 @@ class SettingsScreen extends ConsumerWidget {
                       ),
                       onPressed: () async {
                         final updateService = ref.read(updateServiceProvider);
-                        final updateInfo = await updateService.checkForUpdates();
+                        final updateInfo = await updateService
+                            .checkForUpdates();
 
                         if (context.mounted) {
                           if (updateInfo != null) {
@@ -540,11 +552,7 @@ class SettingsScreen extends ConsumerWidget {
                           color: iconColor.withValues(alpha: 0.3),
                         ),
                       ),
-                      child: Icon(
-                        icon,
-                        color: iconColor,
-                        size: 24,
-                      ),
+                      child: Icon(icon, color: iconColor, size: 24),
                     ),
                     const SizedBox(width: 16),
                     Expanded(
@@ -553,16 +561,15 @@ class SettingsScreen extends ConsumerWidget {
                         children: [
                           Text(
                             title,
-                            style: FluentTheme.of(context).typography.subtitle?.copyWith(
-                              fontWeight: FontWeight.w600,
-                            ),
+                            style: FluentTheme.of(context).typography.subtitle
+                                ?.copyWith(fontWeight: FontWeight.w600),
                           ),
                           const SizedBox(height: 4),
                           Text(
                             subtitle,
-                            style: FluentTheme.of(context).typography.caption?.copyWith(
-                              color: Colors.grey,
-                            ),
+                            style: FluentTheme.of(
+                              context,
+                            ).typography.caption?.copyWith(color: Colors.grey),
                           ),
                         ],
                       ),
@@ -571,10 +578,7 @@ class SettingsScreen extends ConsumerWidget {
                 ),
               ),
               // Content
-              Padding(
-                padding: const EdgeInsets.all(20),
-                child: child,
-              ),
+              Padding(padding: const EdgeInsets.all(20), child: child),
             ],
           ),
         ),
@@ -599,24 +603,21 @@ class SettingsScreen extends ConsumerWidget {
               children: [
                 Text(
                   title,
-                  style: FluentTheme.of(context).typography.body?.copyWith(
-                    fontWeight: FontWeight.w500,
-                  ),
+                  style: FluentTheme.of(
+                    context,
+                  ).typography.body?.copyWith(fontWeight: FontWeight.w500),
                 ),
                 const SizedBox(height: 4),
                 Text(
                   subtitle,
-                  style: FluentTheme.of(context).typography.caption?.copyWith(
-                    color: Colors.grey,
-                  ),
+                  style: FluentTheme.of(
+                    context,
+                  ).typography.caption?.copyWith(color: Colors.grey),
                 ),
               ],
             ),
           ),
-          Expanded(
-            flex: 1,
-            child: child,
-          ),
+          Expanded(flex: 1, child: child),
         ],
       ),
     );
@@ -647,7 +648,9 @@ class SettingsScreen extends ConsumerWidget {
                 padding: const EdgeInsets.all(8),
                 decoration: BoxDecoration(
                   color: value
-                      ? FluentTheme.of(context).accentColor.withValues(alpha: 0.15)
+                      ? FluentTheme.of(
+                          context,
+                        ).accentColor.withValues(alpha: 0.15)
                       : Colors.grey.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(8),
                 ),
@@ -666,24 +669,21 @@ class SettingsScreen extends ConsumerWidget {
                   children: [
                     Text(
                       title,
-                      style: FluentTheme.of(context).typography.body?.copyWith(
-                        fontWeight: FontWeight.w500,
-                      ),
+                      style: FluentTheme.of(
+                        context,
+                      ).typography.body?.copyWith(fontWeight: FontWeight.w500),
                     ),
                     const SizedBox(height: 4),
                     Text(
                       subtitle,
-                      style: FluentTheme.of(context).typography.caption?.copyWith(
-                        color: Colors.grey,
-                      ),
+                      style: FluentTheme.of(
+                        context,
+                      ).typography.caption?.copyWith(color: Colors.grey),
                     ),
                   ],
                 ),
               ),
-              ToggleSwitch(
-                checked: value,
-                onChanged: onChanged,
-              ),
+              ToggleSwitch(checked: value, onChanged: onChanged),
             ],
           ),
         );
@@ -691,16 +691,18 @@ class SettingsScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildLibraryPathItem(BuildContext context, WidgetRef ref, String path) {
+  Widget _buildLibraryPathItem(
+    BuildContext context,
+    WidgetRef ref,
+    String path,
+  ) {
     return Container(
       margin: const EdgeInsets.only(bottom: 8),
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
         color: Colors.white.withValues(alpha: 0.03),
         borderRadius: BorderRadius.circular(8),
-        border: Border.all(
-          color: Colors.white.withValues(alpha: 0.1),
-        ),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
       ),
       child: Row(
         children: [
@@ -710,19 +712,15 @@ class SettingsScreen extends ConsumerWidget {
               color: Colors.green.withValues(alpha: 0.1),
               borderRadius: BorderRadius.circular(6),
             ),
-            child: Icon(
-              FluentIcons.folder_open,
-              color: Colors.green,
-              size: 18,
-            ),
+            child: Icon(FluentIcons.folder_open, color: Colors.green, size: 18),
           ),
           const SizedBox(width: 12),
           Expanded(
             child: Text(
               path,
-              style: FluentTheme.of(context).typography.body?.copyWith(
-                fontSize: 13,
-              ),
+              style: FluentTheme.of(
+                context,
+              ).typography.body?.copyWith(fontSize: 13),
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
             ),
@@ -765,7 +763,9 @@ class SettingsScreen extends ConsumerWidget {
                 ),
                 borderRadius: BorderRadius.circular(16),
                 border: Border.all(
-                  color: FluentTheme.of(context).accentColor.withValues(alpha: 0.3),
+                  color: FluentTheme.of(
+                    context,
+                  ).accentColor.withValues(alpha: 0.3),
                   width: 1,
                 ),
                 boxShadow: [
@@ -784,7 +784,9 @@ class SettingsScreen extends ConsumerWidget {
                     decoration: BoxDecoration(
                       border: Border(
                         bottom: BorderSide(
-                          color: FluentTheme.of(context).accentColor.withValues(alpha: 0.2),
+                          color: FluentTheme.of(
+                            context,
+                          ).accentColor.withValues(alpha: 0.2),
                         ),
                       ),
                     ),
@@ -800,13 +802,17 @@ class SettingsScreen extends ConsumerWidget {
                               end: Alignment.bottomRight,
                               colors: [
                                 FluentTheme.of(context).accentColor,
-                                FluentTheme.of(context).accentColor.withValues(alpha: 0.7),
+                                FluentTheme.of(
+                                  context,
+                                ).accentColor.withValues(alpha: 0.7),
                               ],
                             ),
                             borderRadius: BorderRadius.circular(20),
                             boxShadow: [
                               BoxShadow(
-                                color: FluentTheme.of(context).accentColor.withValues(alpha: 0.4),
+                                color: FluentTheme.of(
+                                  context,
+                                ).accentColor.withValues(alpha: 0.4),
                                 blurRadius: 20,
                                 offset: const Offset(0, 8),
                               ),
@@ -823,19 +829,25 @@ class SettingsScreen extends ConsumerWidget {
                         const SizedBox(height: 20),
                         Text(
                           'CantoSync',
-                          style: FluentTheme.of(context).typography.titleLarge?.copyWith(
-                            fontWeight: FontWeight.bold,
-                          ),
+                          style: FluentTheme.of(context).typography.titleLarge
+                              ?.copyWith(fontWeight: FontWeight.bold),
                         ),
                         const SizedBox(height: 8),
                         appVersionAsync.when(
                           data: (version) => Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 12,
+                              vertical: 4,
+                            ),
                             decoration: BoxDecoration(
-                              color: FluentTheme.of(context).accentColor.withValues(alpha: 0.15),
+                              color: FluentTheme.of(
+                                context,
+                              ).accentColor.withValues(alpha: 0.15),
                               borderRadius: BorderRadius.circular(12),
                               border: Border.all(
-                                color: FluentTheme.of(context).accentColor.withValues(alpha: 0.3),
+                                color: FluentTheme.of(
+                                  context,
+                                ).accentColor.withValues(alpha: 0.3),
                               ),
                             ),
                             child: Text(
@@ -849,9 +861,14 @@ class SettingsScreen extends ConsumerWidget {
                           ),
                           loading: () => const ProgressRing(strokeWidth: 2),
                           error: (error, stackTrace) => Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 12,
+                              vertical: 4,
+                            ),
                             decoration: BoxDecoration(
-                              color: FluentTheme.of(context).accentColor.withValues(alpha: 0.15),
+                              color: FluentTheme.of(
+                                context,
+                              ).accentColor.withValues(alpha: 0.15),
                               borderRadius: BorderRadius.circular(12),
                             ),
                             child: Text(
@@ -866,9 +883,9 @@ class SettingsScreen extends ConsumerWidget {
                         const SizedBox(height: 12),
                         Text(
                           'A production-grade audiobook player built with Flutter & Fluent UI',
-                          style: FluentTheme.of(context).typography.body?.copyWith(
-                            color: Colors.grey,
-                          ),
+                          style: FluentTheme.of(
+                            context,
+                          ).typography.body?.copyWith(color: Colors.grey),
                           textAlign: TextAlign.center,
                         ),
                       ],
@@ -910,9 +927,21 @@ class SettingsScreen extends ConsumerWidget {
                             runSpacing: 8,
                             alignment: WrapAlignment.center,
                             children: [
-                              _buildBuildInfoItem(context, 'Build', info.buildNumber),
-                              _buildBuildInfoItem(context, 'Package', info.packageName.split('.').last),
-                              _buildBuildInfoItem(context, 'Framework', 'Flutter'),
+                              _buildBuildInfoItem(
+                                context,
+                                'Build',
+                                info.buildNumber,
+                              ),
+                              _buildBuildInfoItem(
+                                context,
+                                'Package',
+                                info.packageName.split('.').last,
+                              ),
+                              _buildBuildInfoItem(
+                                context,
+                                'Framework',
+                                'Flutter',
+                              ),
                             ],
                           ),
                           loading: () => const ProgressRing(strokeWidth: 2),
@@ -922,16 +951,21 @@ class SettingsScreen extends ConsumerWidget {
                             alignment: WrapAlignment.center,
                             children: [
                               _buildBuildInfoItem(context, 'Build', 'Unknown'),
-                              _buildBuildInfoItem(context, 'Framework', 'Flutter'),
+                              _buildBuildInfoItem(
+                                context,
+                                'Framework',
+                                'Flutter',
+                              ),
                             ],
                           ),
                         ),
                         const SizedBox(height: 20),
                         Text(
                           '© 2026 CantoSync. All rights reserved.',
-                          style: FluentTheme.of(context).typography.caption?.copyWith(
-                            color: Colors.grey.withValues(alpha: 0.7),
-                          ),
+                          style: FluentTheme.of(context).typography.caption
+                              ?.copyWith(
+                                color: Colors.grey.withValues(alpha: 0.7),
+                              ),
                         ),
                       ],
                     ),
@@ -978,7 +1012,9 @@ class SettingsScreen extends ConsumerWidget {
               Container(
                 padding: const EdgeInsets.all(8),
                 decoration: BoxDecoration(
-                  color: FluentTheme.of(context).accentColor.withValues(alpha: 0.1),
+                  color: FluentTheme.of(
+                    context,
+                  ).accentColor.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(6),
                 ),
                 child: Icon(
@@ -994,16 +1030,16 @@ class SettingsScreen extends ConsumerWidget {
                   children: [
                     Text(
                       title,
-                      style: FluentTheme.of(context).typography.body?.copyWith(
-                        fontWeight: FontWeight.w500,
-                      ),
+                      style: FluentTheme.of(
+                        context,
+                      ).typography.body?.copyWith(fontWeight: FontWeight.w500),
                     ),
                     const SizedBox(height: 2),
                     Text(
                       subtitle,
-                      style: FluentTheme.of(context).typography.caption?.copyWith(
-                        color: Colors.grey,
-                      ),
+                      style: FluentTheme.of(
+                        context,
+                      ).typography.caption?.copyWith(color: Colors.grey),
                     ),
                   ],
                 ),
@@ -1026,24 +1062,22 @@ class SettingsScreen extends ConsumerWidget {
       decoration: BoxDecoration(
         color: Colors.white.withValues(alpha: 0.05),
         borderRadius: BorderRadius.circular(6),
-        border: Border.all(
-          color: Colors.white.withValues(alpha: 0.1),
-        ),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
           Text(
             '$label: ',
-            style: FluentTheme.of(context).typography.caption?.copyWith(
-              color: Colors.grey,
-            ),
+            style: FluentTheme.of(
+              context,
+            ).typography.caption?.copyWith(color: Colors.grey),
           ),
           Text(
             value,
-            style: FluentTheme.of(context).typography.caption?.copyWith(
-              fontWeight: FontWeight.w600,
-            ),
+            style: FluentTheme.of(
+              context,
+            ).typography.caption?.copyWith(fontWeight: FontWeight.w600),
           ),
         ],
       ),

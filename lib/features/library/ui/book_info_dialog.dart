@@ -7,7 +7,6 @@ import 'package:canto_sync/features/library/data/library_service.dart';
 import 'package:canto_sync/core/utils/format_duration.dart';
 
 class BookInfoDialog extends ConsumerStatefulWidget {
-
   const BookInfoDialog({super.key, required this.book});
   final Book book;
 
@@ -19,9 +18,7 @@ class _BookInfoDialogState extends ConsumerState<BookInfoDialog> {
   String _formatDuration(double? seconds) => formatDurationVerbose(seconds);
 
   Future<void> _pickNewCover() async {
-    FilePickerResult? result = await FilePicker.pickFiles(
-      type: FileType.image,
-    );
+    FilePickerResult? result = await FilePicker.pickFiles(type: FileType.image);
 
     if (result != null && result.files.single.path != null) {
       await ref
@@ -148,7 +145,6 @@ class _BookInfoDialogState extends ConsumerState<BookInfoDialog> {
 }
 
 class _InfoRow extends StatelessWidget {
-
   const _InfoRow({
     required this.label,
     required this.value,

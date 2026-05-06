@@ -39,7 +39,6 @@ class _MiniPlayerState extends ConsumerState<MiniPlayer> {
     final chapters = ref.watch(playerChaptersProvider).value ?? [];
     final currentIndex = mediaService.currentIndex;
 
-    // Detect multi-file vs. single-file (same logic as PlayerScreen)
     final isMultiFile =
         totalDuration.inSeconds > (duration.inSeconds + 10) || currentIndex > 0;
 
@@ -47,13 +46,11 @@ class _MiniPlayerState extends ConsumerState<MiniPlayer> {
     String? chapterTitle;
     if (chapters.isNotEmpty) {
       if (isMultiFile) {
-        // Multi-file: each chapter corresponds to a playlist file
         if (currentIndex < chapters.length) {
           currentChapter = chapters[currentIndex];
           chapterTitle = currentChapter.title;
         }
       } else {
-        // Single-file (e.g. M4B): use position-based lookup
         final posSeconds = position.inMilliseconds / 1000.0;
         currentChapter = chapters.lastWhere(
           (c) => c.startTime <= posSeconds + 1.0,
@@ -63,7 +60,6 @@ class _MiniPlayerState extends ConsumerState<MiniPlayer> {
       }
     }
 
-    // Chapter Progress (Local) - needed for correct slider mapping in single-file books
     Duration chapterPosition = position;
     Duration chapterDuration = duration;
 
@@ -93,7 +89,9 @@ class _MiniPlayerState extends ConsumerState<MiniPlayer> {
         height: 80,
         margin: const EdgeInsets.all(8),
         decoration: BoxDecoration(
-          color: FluentTheme.of(context).micaBackgroundColor.withValues(alpha: 0.95),
+          color: FluentTheme.of(
+            context,
+          ).micaBackgroundColor.withValues(alpha: 0.95),
           borderRadius: BorderRadius.circular(8),
           border: Border.all(
             color: FluentTheme.of(context).resources.dividerStrokeColorDefault,
@@ -110,163 +108,166 @@ class _MiniPlayerState extends ConsumerState<MiniPlayer> {
           borderRadius: BorderRadius.circular(8),
           child: Column(
             children: [
-            if (sliderMax > 0)
-              SizedBox(
-                height: 3,
-                child: Slider(
-                  value: sliderValue,
-                  min: 0,
-                  max: sliderMax,
-                  style: SliderThemeData(
-                    thumbColor: WidgetStateProperty.all(
-                      FluentTheme.of(context).accentColor,
-                    ),
-                    activeColor: WidgetStateProperty.all(
-                      FluentTheme.of(context).accentColor,
-                    ),
-                    inactiveColor: WidgetStateProperty.all(
-                      Colors.grey.withAlpha(77),
-                    ),
-                  ),
-                  onChangeStart: (val) {
-                    setState(() {
-                      _isDragging = true;
-                      _dragValue = val;
-                    });
-                  },
-                  onChanged: (val) {
-                    setState(() => _dragValue = val);
-                  },
-                  onChangeEnd: (val) async {
-                    if (currentChapter != null && !isMultiFile) {
-                      final startMs = (currentChapter.startTime * 1000).toInt();
-                      await mediaService.seek(
-                        Duration(milliseconds: startMs + val.toInt()),
-                      );
-                    } else {
-                      await mediaService.seek(
-                        Duration(milliseconds: val.toInt()),
-                      );
-                    }
-                    await Future.delayed(const Duration(milliseconds: 200));
-                    if (mounted) {
-                      setState(() => _isDragging = false);
-                    }
-                  },
-                ),
-              ),
-            Expanded(
-              child: Padding(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 12,
-                  vertical: 8,
-                ),
-                child: Row(
-                  children: [
-                    ClipRRect(
-                      borderRadius: BorderRadius.circular(4),
-                      child: AspectRatio(
-                        aspectRatio: 1,
-                        child:
-                            currentBook.coverPath != null &&
-                                currentBook.coverPath!.isNotEmpty
-                            ? Image.file(
-                                File(currentBook.coverPath!),
-                                fit: BoxFit.cover,
-                                errorBuilder: (context, error, stackTrace) =>
-                                    const Icon(
-                                      FluentIcons.music_note,
-                                      size: 24,
-                                    ),
-                              )
-                            : const Icon(FluentIcons.music_note, size: 24),
+              if (sliderMax > 0)
+                SizedBox(
+                  height: 3,
+                  child: Slider(
+                    value: sliderValue,
+                    min: 0,
+                    max: sliderMax,
+                    style: SliderThemeData(
+                      thumbColor: WidgetStateProperty.all(
+                        FluentTheme.of(context).accentColor,
+                      ),
+                      activeColor: WidgetStateProperty.all(
+                        FluentTheme.of(context).accentColor,
+                      ),
+                      inactiveColor: WidgetStateProperty.all(
+                        Colors.grey.withAlpha(77),
                       ),
                     ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Text(
-                            currentBook.title ?? 'Unknown',
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: const TextStyle(fontWeight: FontWeight.bold),
-                          ),
-                          if (chapterTitle != null)
-                            SizedBox(
-                              height: 16,
-                              child: _MarqueeText(
-                                text: chapterTitle,
-                                style: TextStyle(
-                                  fontSize: 12,
-                                  color: FluentTheme.of(context).accentColor,
-                                  fontWeight: FontWeight.w500,
-                                ),
-                              ),
-                            )
-                          else if (currentBook.author != null)
+                    onChangeStart: (val) {
+                      setState(() {
+                        _isDragging = true;
+                        _dragValue = val;
+                      });
+                    },
+                    onChanged: (val) {
+                      setState(() => _dragValue = val);
+                    },
+                    onChangeEnd: (val) async {
+                      if (currentChapter != null && !isMultiFile) {
+                        final startMs = (currentChapter.startTime * 1000)
+                            .toInt();
+                        await mediaService.seek(
+                          Duration(milliseconds: startMs + val.toInt()),
+                        );
+                      } else {
+                        await mediaService.seek(
+                          Duration(milliseconds: val.toInt()),
+                        );
+                      }
+                      await Future.delayed(const Duration(milliseconds: 200));
+                      if (mounted) {
+                        setState(() => _isDragging = false);
+                      }
+                    },
+                  ),
+                ),
+              Expanded(
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 8,
+                  ),
+                  child: Row(
+                    children: [
+                      ClipRRect(
+                        borderRadius: BorderRadius.circular(4),
+                        child: AspectRatio(
+                          aspectRatio: 1,
+                          child:
+                              currentBook.coverPath != null &&
+                                  currentBook.coverPath!.isNotEmpty
+                              ? Image.file(
+                                  File(currentBook.coverPath!),
+                                  fit: BoxFit.cover,
+                                  errorBuilder: (context, error, stackTrace) =>
+                                      const Icon(
+                                        FluentIcons.music_note,
+                                        size: 24,
+                                      ),
+                                )
+                              : const Icon(FluentIcons.music_note, size: 24),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
                             Text(
-                              currentBook.author!,
+                              currentBook.title ?? 'Unknown',
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                            if (chapterTitle != null)
+                              SizedBox(
+                                height: 16,
+                                child: _MarqueeText(
+                                  text: chapterTitle,
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    color: FluentTheme.of(context).accentColor,
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                ),
+                              )
+                            else if (currentBook.author != null)
+                              Text(
+                                currentBook.author!,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  color: FluentTheme.of(
+                                    context,
+                                  ).typography.caption?.color,
+                                ),
+                              ),
+                            Text(
+                              '${_formatDuration(position)} / ${_formatDuration(duration)}',
                               style: TextStyle(
-                                fontSize: 12,
+                                fontSize: 11,
                                 color: FluentTheme.of(
                                   context,
                                 ).typography.caption?.color,
                               ),
                             ),
-                          Text(
-                            '${_formatDuration(position)} / ${_formatDuration(duration)}',
-                            style: TextStyle(
-                              fontSize: 11,
-                              color: FluentTheme.of(
-                                context,
-                              ).typography.caption?.color,
-                            ),
-                          ),
-                        ],
+                          ],
+                        ),
                       ),
-                    ),
-                    const SizedBox(width: 8),
-                    IconButton(
-                      icon: const Icon(FluentIcons.rewind, size: 18),
-                      onPressed: () {
-                        final newPos = position - const Duration(seconds: 15);
-                        mediaService.seek(
-                          newPos.isNegative ? Duration.zero : newPos,
-                        );
-                      },
-                    ),
-                    StreamBuilder<bool>(
-                      stream: mediaService.playingStream,
-                      initialData: mediaService.isPlaying,
-                      builder: (context, snapshot) {
-                        final isPlaying = snapshot.data ?? false;
-                        return IconButton(
-                          icon: Icon(
-                            isPlaying ? FluentIcons.pause : FluentIcons.play,
-                            size: 22,
-                          ),
-                          onPressed: () => mediaService.playOrPause(),
-                        );
-                      },
-                    ),
-                    IconButton(
-                      icon: const Icon(FluentIcons.fast_forward, size: 18),
-                      onPressed: () {
-                        final newPos = position + const Duration(seconds: 15);
-                        mediaService.seek(
-                          newPos > duration ? duration : newPos,
-                        );
-                      },
-                    ),
-                  ],
+                      const SizedBox(width: 8),
+                      IconButton(
+                        icon: const Icon(FluentIcons.rewind, size: 18),
+                        onPressed: () {
+                          final newPos = position - const Duration(seconds: 15);
+                          mediaService.seek(
+                            newPos.isNegative ? Duration.zero : newPos,
+                          );
+                        },
+                      ),
+                      StreamBuilder<bool>(
+                        stream: mediaService.playingStream,
+                        initialData: mediaService.isPlaying,
+                        builder: (context, snapshot) {
+                          final isPlaying = snapshot.data ?? false;
+                          return IconButton(
+                            icon: Icon(
+                              isPlaying ? FluentIcons.pause : FluentIcons.play,
+                              size: 22,
+                            ),
+                            onPressed: () => mediaService.playOrPause(),
+                          );
+                        },
+                      ),
+                      IconButton(
+                        icon: const Icon(FluentIcons.fast_forward, size: 18),
+                        onPressed: () {
+                          final newPos = position + const Duration(seconds: 15);
+                          mediaService.seek(
+                            newPos > duration ? duration : newPos,
+                          );
+                        },
+                      ),
+                    ],
+                  ),
                 ),
               ),
-            ),
             ],
           ),
         ),
@@ -278,7 +279,6 @@ class _MiniPlayerState extends ConsumerState<MiniPlayer> {
 }
 
 class _MarqueeText extends StatefulWidget {
-
   const _MarqueeText({required this.text, this.style});
   final String text;
   final TextStyle? style;

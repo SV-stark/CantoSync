@@ -4,7 +4,6 @@ import 'package:canto_sync/features/library/data/book.dart';
 import 'package:canto_sync/core/utils/format_duration.dart';
 
 class BookmarkFlyout extends StatelessWidget {
-
   const BookmarkFlyout({
     super.key,
     required this.book,
@@ -44,7 +43,9 @@ class BookmarkFlyout extends StatelessWidget {
   Widget build(BuildContext context) {
     final accentColor = FluentTheme.of(context).accentColor;
     final sortedBookmarks = List<Bookmark>.from(bookmarks)
-      ..sort((a, b) => (a.timestampSeconds ?? 0).compareTo(b.timestampSeconds ?? 0));
+      ..sort(
+        (a, b) => (a.timestampSeconds ?? 0).compareTo(b.timestampSeconds ?? 0),
+      );
 
     return ClipRRect(
       borderRadius: BorderRadius.circular(12),
@@ -142,7 +143,9 @@ class BookmarkFlyout extends StatelessWidget {
                             formattedTime: _formatDuration(
                               (bookmark.timestampSeconds ?? 0).toDouble(),
                             ),
-                            formattedDate: _formatDate(bookmark.createdAt ?? DateTime.now()),
+                            formattedDate: _formatDate(
+                              bookmark.createdAt ?? DateTime.now(),
+                            ),
                             accentColor: accentColor,
                             onJump: () => onJumpToBookmark(bookmark),
                             onDelete: () =>
@@ -236,7 +239,9 @@ class BookmarkFlyout extends StatelessWidget {
       context: context,
       builder: (context) => ContentDialog(
         title: const Text('Delete Bookmark'),
-        content: Text('Are you sure you want to delete "${bookmark.label ?? ""}"?'),
+        content: Text(
+          'Are you sure you want to delete "${bookmark.label ?? ""}"?',
+        ),
         actions: [
           Button(
             child: const Text('Cancel'),
@@ -259,7 +264,6 @@ class BookmarkFlyout extends StatelessWidget {
 }
 
 class _BookmarkListItem extends StatefulWidget {
-
   const _BookmarkListItem({
     required this.bookmark,
     required this.isActive,
@@ -385,7 +389,6 @@ class _BookmarkListItemState extends State<_BookmarkListItem> {
 
 // Convenience widget to show bookmark flyout as an overlay
 class BookmarkFlyoutButton extends StatefulWidget {
-
   const BookmarkFlyoutButton({
     super.key,
     required this.book,

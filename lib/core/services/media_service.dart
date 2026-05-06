@@ -1,8 +1,9 @@
 import 'dart:async';
 import 'dart:convert';
-import 'package:flutter/foundation.dart';
 import 'package:media_kit/media_kit.dart';
 import 'package:canto_sync/core/services/app_settings_service.dart';
+import 'package:canto_sync/core/utils/logger.dart';
+import 'package:canto_sync/features/library/data/library_service.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
 part 'media_service.g.dart';
@@ -15,26 +16,43 @@ MediaService mediaService(Ref ref) {
 }
 
 class MediaService {
-
   MediaService(this._ref) {
-    try {
-      _player = Player();
-      _initFilters();
-    } catch (e) {
-      debugPrint('Error creating Player in MediaService: $e');
-    }
+    _init();
   }
-  late final Player _player;
+  Player? _player;
   final Ref _ref;
   bool _isFetchingChapters = false;
 
+  Player get _p {
+    if (_player == null) {
+      _init();
+    }
+    return _player!;
+  }
+
+  void _init() {
+    try {
+      _player = Player();
+      _initFilters();
+    } catch (e, stack) {
+      _ref.read(isarProvider).writeTxnSync(() {
+        // Log to Isar or something if needed, but for now use logger
+      });
+      logger.e(
+        'Error creating Player in MediaService',
+        error: e,
+        stackTrace: stack,
+      );
+    }
+  }
+
   // State Streams
-  Stream<bool> get playingStream => _player.stream.playing;
-  Stream<Duration> get positionStream => _player.stream.position;
-  Stream<Duration> get durationStream => _player.stream.duration;
-  Stream<double> get volumeStream => _player.stream.volume;
-  Stream<Playlist> get playlistStream => _player.stream.playlist;
-  Stream<bool> get completedStream => _player.stream.completed;
+  Stream<bool> get playingStream => _p.stream.playing;
+  Stream<Duration> get positionStream => _p.stream.position;
+  Stream<Duration> get durationStream => _p.stream.duration;
+  Stream<double> get volumeStream => _p.stream.volume;
+  Stream<Playlist> get playlistStream => _p.stream.playlist;
+  Stream<bool> get completedStream => _p.stream.completed;
 
   void _initFilters() {
     try {
@@ -44,16 +62,21 @@ class MediaService {
       _loudnessNormalization = settings.loudnessNormalization;
       _activePresetFilter = settings.audioPreset.filter;
       _applyFilters();
-    } catch (e) {
-      debugPrint('Error initializing filters in MediaService: $e');
+    } catch (e, stack) {
+      logger.e(
+        'Error initializing filters in MediaService',
+        error: e,
+        stackTrace: stack,
+      );
     }
   }
 
   List<Chapter>? _customChapters;
+  List<Chapter>? get customChapters => _customChapters;
   Duration? _customTotalDuration;
 
   Future<void> open(
-    dynamic mediaSource, {
+    Object mediaSource, {
     String? title,
     String? artist,
     String? album,
@@ -63,14 +86,15 @@ class MediaService {
   }) async {
     _customChapters = chapters;
     _customTotalDuration = totalDuration;
+    _totalDurationController.add(totalDuration ?? Duration.zero);
 
     if (mediaSource is String) {
-      await _player.open(Media(mediaSource), play: autoPlay);
+      await _p.open(Media(mediaSource), play: autoPlay);
     } else if (mediaSource is List<String>) {
       final playlist = Playlist(
         mediaSource.map((path) => Media(path)).toList(),
       );
-      await _player.open(playlist, play: autoPlay);
+      await _p.open(playlist, play: autoPlay);
     }
 
     // Ensure filters are applied to the new media
@@ -78,25 +102,25 @@ class MediaService {
   }
 
   Future<void> play() async {
-    await _player.play();
+    await _p.play();
   }
 
   Future<void> pause() async {
-    await _player.pause();
+    await _p.pause();
   }
 
   Future<void> playOrPause() async {
-    await _player.playOrPause();
+    await _p.playOrPause();
   }
 
   Future<void> seek(Duration position) async {
-    await _player.seek(position);
+    await _p.seek(position);
   }
 
   Future<void> setVolume(double volume) async {
     // Clamp to reasonable max (200)
     // Note: media_kit volume is 0.0 to 100.0 normally, but can go higher.
-    await _player.setVolume(volume);
+    await _p.setVolume(volume);
   }
 
   Future<void> setSkipSilence(bool enabled) async {
@@ -120,7 +144,7 @@ class MediaService {
 
   Future<void> _applyFilters() async {
     try {
-      final platform = _player.platform;
+      final platform = _p.platform;
       if (platform is NativePlayer) {
         final List<String> filters = [];
 
@@ -140,22 +164,26 @@ class MediaService {
         }
 
         final filterString = filters.join(',');
-        debugPrint('Applying audio filters: "$filterString"');
+        logger.d('Applying audio filters: "$filterString"');
 
         // We use 'af' property to set audio filters in mpv
         await platform.setProperty('af', filterString);
       }
-    } catch (e) {
-      debugPrint('Error applying filters in MediaService: $e');
+    } catch (e, stack) {
+      logger.e(
+        'Error applying filters in MediaService',
+        error: e,
+        stackTrace: stack,
+      );
     }
   }
 
   Future<void> setRate(double rate) async {
-    await _player.setRate(rate);
+    await _p.setRate(rate);
   }
 
-  Stream<Tracks> get tracksStream => _player.stream.tracks;
-  Stream<Track> get trackStream => _player.stream.track;
+  Stream<Tracks> get tracksStream => _p.stream.tracks;
+  Stream<Track> get trackStream => _p.stream.track;
 
   // ... (constructor) ...
 
@@ -170,7 +198,7 @@ class MediaService {
     _isFetchingChapters = true;
 
     try {
-      final platform = _player.platform;
+      final platform = _p.platform;
       if (platform is NativePlayer) {
         final native = platform;
         try {
@@ -180,11 +208,11 @@ class MediaService {
             final countStr = await native.getProperty('chapters');
             final count = int.tryParse(countStr) ?? 0;
 
-            debugPrint('Chapter check attempt $i: count = $count');
+            logger.d('Chapter check attempt $i: count = $count');
 
             if (count > 0) {
               final resultString = await native.getProperty('chapter-list');
-              debugPrint('Chapter list raw string: $resultString');
+              logger.d('Chapter list raw string: $resultString');
 
               if (resultString.isNotEmpty) {
                 final result = jsonDecode(resultString);
@@ -204,7 +232,7 @@ class MediaService {
                         endTime = (next['time'] as num?)?.toDouble();
                       }
                     } else {
-                      final d = _player.state.duration.inMilliseconds / 1000.0;
+                      final d = _p.state.duration.inMilliseconds / 1000.0;
                       if (d > 0) endTime = d;
                     }
 
@@ -216,15 +244,15 @@ class MediaService {
                       ),
                     );
                   }
-                  debugPrint('Found ${chapters.length} chapters internally.');
+                  logger.d('Found ${chapters.length} chapters internally.');
                   return chapters;
                 }
               }
             }
 
-            final currentDuration = _player.state.duration.inMilliseconds;
+            final currentDuration = _p.state.duration.inMilliseconds;
             if (currentDuration > 0 && i > 8) {
-              debugPrint(
+              logger.d(
                 'Duration loaded but no chapters found after $i attempts. Likely no internal chapters.',
               );
               return [];
@@ -233,10 +261,14 @@ class MediaService {
             await Future.delayed(const Duration(milliseconds: 500));
           }
         } catch (e, stack) {
-          debugPrint('Error fetching/parsing chapters: $e\n$stack');
+          logger.e(
+            'Error fetching/parsing chapters',
+            error: e,
+            stackTrace: stack,
+          );
         }
       } else {
-        debugPrint(
+        logger.d(
           'Player platform is not NativePlayer, cannot fetch internal chapters via mpv properties.',
         );
       }
@@ -246,81 +278,84 @@ class MediaService {
     return [];
   }
 
+  final StreamController<Duration> _totalDurationController =
+      StreamController<Duration>.broadcast();
+
   /// Returns the total duration of the book.
   /// If it's a multi-file book, this is the sum of all files.
   /// Otherwise, it's the duration of the current file/stream.
   Stream<Duration> get totalDurationStream {
     if (_customTotalDuration != null) {
-      return Stream.value(_customTotalDuration!);
+      return _totalDurationController.stream;
     }
-    return _player.stream.duration;
+    return _p.stream.duration;
   }
 
   Future<void> jumpToChapter(int index) async {
     // If custom chapters exist, it means we are in multi-file mode where
     // each chapter corresponds to a playlist item.
     if (_customChapters != null) {
-      await _player.jump(index);
+      await _p.jump(index);
       return;
     }
 
-    if (_player.platform is NativePlayer) {
-      final native = _player.platform as NativePlayer;
+    if (_p.platform is NativePlayer) {
+      final native = _p.platform as NativePlayer;
       await native.setProperty('chapter', index.toString());
     }
   }
 
   Future<void> jump(int index) async {
-    await _player.jump(index);
+    await _p.jump(index);
   }
 
   Future<void> nextChapter() async {
     // If we have a playlist with multiple files (e.g. folder of MP3s),
     // next/prev usually means next file.
-    if (_player.state.playlist.medias.length > 1) {
-      await _player.next();
+    if (_p.state.playlist.medias.length > 1) {
+      await _p.next();
       return;
     }
 
     // Otherwise, for single files (M4B), we want to navigate internal chapters.
-    if (_player.platform is NativePlayer) {
-      final native = _player.platform as NativePlayer;
+    if (_p.platform is NativePlayer) {
+      final native = _p.platform as NativePlayer;
       await native.command(['add', 'chapter', '1']);
     } else {
-      await _player.next();
+      await _p.next();
     }
   }
 
   Future<void> previousChapter() async {
-    if (_player.state.playlist.medias.length > 1) {
-      await _player.previous();
+    if (_p.state.playlist.medias.length > 1) {
+      await _p.previous();
       return;
     }
 
-    if (_player.platform is NativePlayer) {
-      final native = _player.platform as NativePlayer;
+    if (_p.platform is NativePlayer) {
+      final native = _p.platform as NativePlayer;
       await native.command(['add', 'chapter', '-1']);
     } else {
-      await _player.previous();
+      await _p.previous();
     }
   }
 
-  Duration get position => _player.state.position;
-  Duration get duration => _player.state.duration;
-  bool get isPlaying => _player.state.playing;
-  double get volume => _player.state.volume;
-  double get playRate => _player.state.rate;
-  int get currentIndex => _player.state.playlist.index;
-  Tracks get tracks => _player.state.tracks;
-  Track get track => _player.state.track;
+  Duration get position => _p.state.position;
+  Duration get duration => _p.state.duration;
+  bool get isPlaying => _p.state.playing;
+  double get volume => _p.state.volume;
+  double get playRate => _p.state.rate;
+  int get currentIndex => _p.state.playlist.index;
+  Tracks get tracks => _p.state.tracks;
+  Track get track => _p.state.track;
 
   void dispose() {
-    _player.dispose();
+    _player?.dispose();
+    _totalDurationController.close();
   }
 }
 
 class Chapter {
-
   Chapter({required this.title, required this.startTime, this.endTime});
   final String title;
   final double startTime;

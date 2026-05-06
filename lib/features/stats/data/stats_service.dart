@@ -21,7 +21,6 @@ Stream<ListeningStatsSummary> listeningStats(Ref ref) {
 }
 
 class ListeningStatsSummary {
-
   ListeningStatsSummary({
     required this.totalHoursListened,
     required this.totalBooksCompleted,
@@ -47,15 +46,20 @@ class ListeningStatsSummary {
 }
 
 class ListeningStatsService {
-
   ListeningStatsService(this._isar);
   final Isar _isar;
 
   Stream<ListeningStatsSummary> watchStats() {
-    final dailyStream = _isar.dailyListeningStats.where().watch(fireImmediately: true);
+    final dailyStream = _isar.dailyListeningStats.where().watch(
+      fireImmediately: true,
+    );
     final authorStream = _isar.authorStats.where().watch(fireImmediately: true);
-    final bookStream = _isar.bookCompletionStats.where().watch(fireImmediately: true);
-    final speedStream = _isar.listeningSpeedPreferences.where().watch(fireImmediately: true);
+    final bookStream = _isar.bookCompletionStats.where().watch(
+      fireImmediately: true,
+    );
+    final speedStream = _isar.listeningSpeedPreferences.where().watch(
+      fireImmediately: true,
+    );
 
     return Rx.combineLatest4(
       dailyStream,
@@ -70,7 +74,9 @@ class ListeningStatsService {
     final dailyStats = await _isar.dailyListeningStats.where().findAll();
     final authorStats = await _isar.authorStats.where().findAll();
     final bookStats = await _isar.bookCompletionStats.where().findAll();
-    final speedPref = await _isar.listeningSpeedPreferences.get(0) ?? ListeningSpeedPreference();
+    final speedPref =
+        await _isar.listeningSpeedPreferences.get(0) ??
+        ListeningSpeedPreference();
 
     // Calculate totals
     double totalHours = 0;
@@ -219,7 +225,10 @@ class ListeningStatsService {
 
     await _isar.writeTxn(() async {
       // Update daily stats
-      var dailyStats = await _isar.dailyListeningStats.filter().dateEqualTo(today).findFirst();
+      var dailyStats = await _isar.dailyListeningStats
+          .filter()
+          .dateEqualTo(today)
+          .findFirst();
       dailyStats ??= DailyListeningStats(date: today);
       dailyStats.totalSecondsListened += secondsListened;
       if (!dailyStats.booksListened.contains(bookPath)) {
@@ -229,7 +238,10 @@ class ListeningStatsService {
       await _isar.dailyListeningStats.put(dailyStats);
 
       // Update author stats
-      var authorStats = await _isar.authorStats.filter().authorNameEqualTo(authorName).findFirst();
+      var authorStats = await _isar.authorStats
+          .filter()
+          .authorNameEqualTo(authorName)
+          .findFirst();
       authorStats ??= AuthorStats(authorName: authorName);
       authorStats.totalSecondsListened += secondsListened;
       if (!authorStats.bookTitles.contains(book.title ?? 'Unknown')) {
@@ -239,27 +251,36 @@ class ListeningStatsService {
       await _isar.authorStats.put(authorStats);
 
       // Update book stats
-      var bookStats = await _isar.bookCompletionStats.filter().bookPathEqualTo(bookPath).findFirst();
+      var bookStats = await _isar.bookCompletionStats
+          .filter()
+          .bookPathEqualTo(bookPath)
+          .findFirst();
       bookStats ??= BookCompletionStats(
-          bookPath: bookPath,
-          bookTitle: book.title ?? 'Unknown',
-          author: authorName,
-          startedDate: DateTime.now(),
-        );
+        bookPath: bookPath,
+        bookTitle: book.title ?? 'Unknown',
+        author: authorName,
+        startedDate: DateTime.now(),
+      );
       bookStats.totalSecondsListened += secondsListened;
       await _isar.bookCompletionStats.put(bookStats);
 
       // Update speed preference if provided
       if (playbackSpeed != null) {
-        var speedPref = await _isar.listeningSpeedPreferences.get(0) ?? ListeningSpeedPreference();
+        var speedPref =
+            await _isar.listeningSpeedPreferences.get(0) ??
+            ListeningSpeedPreference();
         Map<double, int> speedUsage = {};
         if (speedPref.speedUsageCountJson != null) {
           try {
-            final Map<String, dynamic> decoded = json.decode(speedPref.speedUsageCountJson!);
-            speedUsage = decoded.map((key, value) => MapEntry(double.parse(key), value as int));
+            final Map<String, dynamic> decoded = json.decode(
+              speedPref.speedUsageCountJson!,
+            );
+            speedUsage = decoded.map(
+              (key, value) => MapEntry(double.parse(key), value as int),
+            );
           } catch (_) {}
         }
-        
+
         speedUsage[playbackSpeed] = (speedUsage[playbackSpeed] ?? 0) + 1;
         speedPref.totalSessionsAtSpeed++;
 
@@ -274,8 +295,10 @@ class ListeningStatsService {
         if (totalWeight > 0) {
           speedPref.averageSpeed = weightedSum / totalWeight;
         }
-        
-        speedPref.speedUsageCountJson = json.encode(speedUsage.map((k, v) => MapEntry(k.toString(), v)));
+
+        speedPref.speedUsageCountJson = json.encode(
+          speedUsage.map((k, v) => MapEntry(k.toString(), v)),
+        );
         speedPref.id = 0;
         await _isar.listeningSpeedPreferences.put(speedPref);
       }
@@ -287,20 +310,26 @@ class ListeningStatsService {
     final authorName = book.author ?? 'Unknown Author';
 
     await _isar.writeTxn(() async {
-      var bookStats = await _isar.bookCompletionStats.filter().bookPathEqualTo(bookPath).findFirst();
+      var bookStats = await _isar.bookCompletionStats
+          .filter()
+          .bookPathEqualTo(bookPath)
+          .findFirst();
       bookStats ??= BookCompletionStats(
-          bookPath: bookPath,
-          bookTitle: book.title ?? 'Unknown',
-          author: authorName,
-          startedDate: DateTime.now(),
-        );
+        bookPath: bookPath,
+        bookTitle: book.title ?? 'Unknown',
+        author: authorName,
+        startedDate: DateTime.now(),
+      );
 
       bookStats.isCompleted = true;
       bookStats.completedDate = DateTime.now();
       await _isar.bookCompletionStats.put(bookStats);
 
       // Update author completed count
-      var authorStats = await _isar.authorStats.filter().authorNameEqualTo(authorName).findFirst();
+      var authorStats = await _isar.authorStats
+          .filter()
+          .authorNameEqualTo(authorName)
+          .findFirst();
       if (authorStats != null) {
         authorStats.booksCompleted++;
         await _isar.authorStats.put(authorStats);

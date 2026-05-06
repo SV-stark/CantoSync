@@ -5,7 +5,6 @@ import 'package:canto_sync/features/library/data/book.dart';
 import 'package:canto_sync/features/library/data/library_service.dart';
 
 class MetadataEditor extends ConsumerStatefulWidget {
-
   const MetadataEditor({super.key, required this.book});
   final Book book;
 
@@ -55,10 +54,12 @@ class _MetadataEditorState extends ConsumerState<MetadataEditor> {
     widget.book.title = _titleController.text;
     widget.book.author = _authorController.text;
     widget.book.album = _albumController.text;
-    widget.book.series = _seriesController.text.isNotEmpty ? _seriesController.text : null;
+    widget.book.series = _seriesController.text.isNotEmpty
+        ? _seriesController.text
+        : null;
     widget.book.narrator = _narratorController.text;
     widget.book.description = _descriptionController.text;
-    
+
     // Parse series index if provided
     final seriesIndexText = _seriesIndexController.text.trim();
     if (seriesIndexText.isNotEmpty) {
@@ -70,7 +71,7 @@ class _MetadataEditorState extends ConsumerState<MetadataEditor> {
       // Reset series index if series changed and no manual index set (will be recalculated on next grouping)
       widget.book.seriesIndex = null;
     }
-    
+
     await ref.read(libraryServiceProvider).saveBook(widget.book);
     if (mounted) Navigator.pop(context);
   }

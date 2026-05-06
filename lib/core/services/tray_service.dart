@@ -12,7 +12,6 @@ TrayService trayService(Ref ref) {
 }
 
 class TrayService extends TrayListener {
-
   TrayService(this._ref);
   final Ref _ref;
 

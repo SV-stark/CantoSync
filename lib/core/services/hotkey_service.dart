@@ -14,7 +14,6 @@ HotkeyService hotkeyService(Ref ref) {
 }
 
 class HotkeyService {
-
   HotkeyService(this._ref);
   final Ref _ref;
 
@@ -26,10 +25,10 @@ class HotkeyService {
     }
 
     final shortcuts = _ref.read(keyboardShortcutsProvider);
-    
+
     for (final shortcut in shortcuts) {
       VoidCallback? callback;
-      
+
       switch (shortcut.action) {
         case ShortcutAction.playPause:
           callback = () => _ref.read(mediaServiceProvider).playOrPause();
@@ -117,5 +116,4 @@ class HotkeyService {
       debugPrint('Failed to register hotkey ${shortcut.shortcutString}: $e');
     }
   }
-
 }

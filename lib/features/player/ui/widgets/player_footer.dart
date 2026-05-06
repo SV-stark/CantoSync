@@ -7,7 +7,6 @@ import 'package:canto_sync/features/player/ui/widgets/waveform_visualizer.dart';
 import 'package:canto_sync/core/utils/format_duration.dart';
 
 class PlayerFooterSection extends ConsumerWidget {
-
   const PlayerFooterSection({
     super.key,
     required this.chapterDuration,
@@ -75,7 +74,6 @@ class PlayerFooterSection extends ConsumerWidget {
 }
 
 class _FooterButton extends StatelessWidget {
-
   const _FooterButton({
     required this.icon,
     required this.label,
@@ -106,7 +104,6 @@ class _FooterButton extends StatelessWidget {
 }
 
 class SpeedControlDialog extends StatefulWidget {
-
   const SpeedControlDialog({
     super.key,
     required this.initialRate,
@@ -225,7 +222,6 @@ void showEQMenu(BuildContext context, MediaService mediaService) {
 }
 
 class EQOption extends StatelessWidget {
-
   const EQOption({super.key, required this.label, required this.onTap});
   final String label;
   final VoidCallback onTap;
@@ -243,7 +239,6 @@ class EQOption extends StatelessWidget {
 }
 
 class TimerOption extends StatelessWidget {
-
   const TimerOption({super.key, required this.label, required this.onTap});
   final String label;
   final VoidCallback onTap;
@@ -348,7 +343,6 @@ void showSleepTimerMenu(
 }
 
 class WaveformSection extends ConsumerWidget {
-
   const WaveformSection({super.key, required this.isPlaying});
   final bool isPlaying;
 
@@ -371,7 +365,6 @@ class WaveformSection extends ConsumerWidget {
 }
 
 class GlobalProgressBar extends StatelessWidget {
-
   const GlobalProgressBar({
     super.key,
     required this.globalPositionSeconds,

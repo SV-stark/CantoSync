@@ -2,7 +2,6 @@ import 'package:flutter/material.dart' as material;
 import 'package:fluent_ui/fluent_ui.dart';
 
 class PulsingPlayButton extends StatefulWidget {
-
   const PulsingPlayButton({
     super.key,
     required this.isPlaying,
@@ -31,10 +30,7 @@ class _PulsingPlayButtonState extends State<PulsingPlayButton>
     );
 
     _pulseAnimation = Tween<double>(begin: 1.0, end: 1.15).animate(
-      CurvedAnimation(
-        parent: _pulseController,
-        curve: Curves.easeInOut,
-      ),
+      CurvedAnimation(parent: _pulseController, curve: Curves.easeInOut),
     );
 
     if (widget.isPlaying) {

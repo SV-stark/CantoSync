@@ -188,7 +188,9 @@ class KeyboardShortcuts extends _$KeyboardShortcuts {
 
   void _executeCallbacks(String action) {
     try {
-      final Map<String, List<ShortcutActionCallback>> callbacks = ref.read(shortcutActionCallbacksProvider);
+      final Map<String, List<ShortcutActionCallback>> callbacks = ref.read(
+        shortcutActionCallbacksProvider,
+      );
       final List<ShortcutActionCallback>? actionCallbacks = callbacks[action];
       if (actionCallbacks != null) {
         for (final callback in actionCallbacks) {
@@ -241,4 +243,5 @@ class KeyboardShortcuts extends _$KeyboardShortcuts {
 }
 
 @Riverpod(keepAlive: true)
-Map<String, List<ShortcutActionCallback>> shortcutActionCallbacks(Ref ref) => {};
+Map<String, List<ShortcutActionCallback>> shortcutActionCallbacks(Ref ref) =>
+    {};

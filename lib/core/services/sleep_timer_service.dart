@@ -5,7 +5,6 @@ import 'package:riverpod_annotation/riverpod_annotation.dart';
 part 'sleep_timer_service.g.dart';
 
 class SleepTimerState {
-
   SleepTimerState({this.remainingTime, this.isEndOfChapter = false});
   final Duration? remainingTime;
   final bool isEndOfChapter;
@@ -54,9 +53,26 @@ class SleepTimer extends _$SleepTimer {
     _posSub = ref.read(mediaServiceProvider).positionStream.listen((position) {
       if (state.isEndOfChapter) {
         final mediaService = ref.read(mediaServiceProvider);
-        final duration = mediaService.duration;
-        final remaining = duration - position;
-        if (duration > Duration.zero &&
+
+        // Use custom chapters end time if available (single-file M4B),
+        // otherwise fallback to file duration (multi-file)
+        Duration chapterEndTime = mediaService.duration;
+
+        // If we can determine the current chapter's end time, use it
+        // This is a bit simplified; in a full implementation we'd check internal chapters
+        final chapters = mediaService.customChapters;
+        if (chapters != null && chapters.isNotEmpty) {
+          final currentIndex = mediaService.currentIndex;
+          if (currentIndex < chapters.length) {
+            final endTime = chapters[currentIndex].endTime;
+            if (endTime != null) {
+              chapterEndTime = Duration(milliseconds: (endTime * 1000).toInt());
+            }
+          }
+        }
+
+        final remaining = chapterEndTime - position;
+        if (chapterEndTime > Duration.zero &&
             remaining <= const Duration(seconds: 1) &&
             remaining >= Duration.zero) {
           mediaService.pause();

@@ -74,9 +74,9 @@ class AppSettingsNotifier extends _$AppSettingsNotifier {
   @override
   AppSettings build() {
     _isar = ref.watch(isarProvider);
-    
+
     final isarSettings = _isar.isarAppSettings.getSync(0);
-    
+
     if (isarSettings == null) {
       return const AppSettings();
     }
@@ -155,4 +155,3 @@ class AppSettingsNotifier extends _$AppSettingsNotifier {
     _updateIsar((s) => s.showCoverReflection = enabled);
   }
 }
-

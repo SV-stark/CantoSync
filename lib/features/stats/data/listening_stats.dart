@@ -4,7 +4,6 @@ part 'listening_stats.g.dart';
 
 @collection
 class DailyListeningStats {
-
   DailyListeningStats({
     required this.date,
     this.totalSecondsListened = 0,
@@ -27,7 +26,6 @@ class DailyListeningStats {
 
 @collection
 class AuthorStats {
-
   AuthorStats({
     required this.authorName,
     this.totalSecondsListened = 0,
@@ -53,7 +51,6 @@ class AuthorStats {
 
 @collection
 class BookCompletionStats {
-
   BookCompletionStats({
     required this.bookPath,
     required this.bookTitle,
@@ -85,7 +82,6 @@ class BookCompletionStats {
 
 @collection
 class ListeningSpeedPreference {
-
   ListeningSpeedPreference({
     this.averageSpeed = 1.0,
     this.totalSessionsAtSpeed = 0,

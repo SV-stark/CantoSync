@@ -2,7 +2,6 @@ import 'dart:math' as math;
 import 'package:fluent_ui/fluent_ui.dart';
 
 class CelebrationAnimation extends StatefulWidget {
-
   const CelebrationAnimation({super.key, this.onComplete});
   final VoidCallback? onComplete;
 
@@ -182,7 +181,6 @@ class _CelebrationAnimationState extends State<CelebrationAnimation>
 }
 
 class Particle {
-
   Particle({
     required this.color,
     required this.startX,

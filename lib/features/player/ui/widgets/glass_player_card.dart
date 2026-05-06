@@ -2,7 +2,6 @@ import 'dart:ui';
 import 'package:fluent_ui/fluent_ui.dart';
 
 class GlassPlayerCard extends StatelessWidget {
-
   const GlassPlayerCard({super.key, required this.child});
   final Widget child;
 

@@ -16,7 +16,9 @@ part 'library_service.g.dart';
 
 @Riverpod(keepAlive: true)
 Isar isar(Ref ref) {
-  throw UnimplementedError('Isar must be initialized in main.dart and overridden in ProviderScope');
+  throw UnimplementedError(
+    'Isar must be initialized in main.dart and overridden in ProviderScope',
+  );
 }
 
 @Riverpod(keepAlive: true)
@@ -68,10 +70,11 @@ Stream<List<Book>> libraryBooks(Ref ref) {
     return filteredBooks.where((book) {
       final title = book.title?.toLowerCase() ?? '';
       final author = book.author?.toLowerCase() ?? '';
+      final narrator = book.narrator?.toLowerCase() ?? '';
       final album = book.album?.toLowerCase() ?? '';
       return title.contains(searchQuery) ||
           author.contains(searchQuery) ||
-          author.contains(searchQuery) ||
+          narrator.contains(searchQuery) ||
           album.contains(searchQuery);
     }).toList();
   });
@@ -83,7 +86,11 @@ List<Book> libraryRecentBooks(Ref ref) {
   return booksAsync.maybeWhen(
     data: (books) {
       final sorted = List<Book>.from(books);
-      sorted.sort((a, b) => (b.lastPlayed ?? DateTime(0)).compareTo(a.lastPlayed ?? DateTime(0)));
+      sorted.sort(
+        (a, b) => (b.lastPlayed ?? DateTime(0)).compareTo(
+          a.lastPlayed ?? DateTime(0),
+        ),
+      );
       return sorted.take(5).toList();
     },
     orElse: () => [],
@@ -111,7 +118,6 @@ Future<Map<String, List<Book>>> libraryGroupedBooks(Ref ref) async {
 }
 
 class LibraryService {
-
   LibraryService(this._isar, this._ref);
   final Isar _isar;
   final Ref _ref;
@@ -171,7 +177,8 @@ class LibraryService {
         bool isManaged = false;
         for (final libPath in libraryPaths) {
           final bookPath = book.path;
-          if (bookPath != null && (p.isWithin(libPath, bookPath) || p.equals(libPath, bookPath))) {
+          if (bookPath != null &&
+              (p.isWithin(libPath, bookPath) || p.equals(libPath, bookPath))) {
             isManaged = true;
             break;
           }
@@ -187,7 +194,7 @@ class LibraryService {
           await _isar.books.deleteAll(idsToRemove);
         });
       }
-      
+
       // After scanning all, update series indices if needed
       await _updateSeriesIndices();
     } finally {
@@ -233,7 +240,9 @@ class LibraryService {
     try {
       final bookPath = book.path;
       if (bookPath == null) return;
-      final bookDir = (book.isDirectory ?? false) ? bookPath : p.dirname(bookPath);
+      final bookDir = (book.isDirectory ?? false)
+          ? bookPath
+          : p.dirname(bookPath);
       final ext = p.extension(newCoverFile);
       final targetPath = p.join(bookDir, 'CoverSC$ext');
 
@@ -284,7 +293,7 @@ class LibraryService {
 
       files.sort((a, b) => a.path.compareTo(b.path));
       final filePaths = files.map((f) => f.path).toList();
-      
+
       await _addBookIfNotExists(
         parentPath,
         isDirectory: true,
@@ -304,7 +313,10 @@ class LibraryService {
     required Player probePlayer,
     bool forceUpdate = false,
   }) async {
-    final existingBook = await _isar.books.where().pathEqualTo(path).findFirst();
+    final existingBook = await _isar.books
+        .where()
+        .pathEqualTo(path)
+        .findFirst();
     if (existingBook != null && !forceUpdate) return;
 
     String? title;
@@ -348,16 +360,14 @@ class LibraryService {
         logger.i(
           'Found cover art in metadata for $metadataSourcePath. Size: ${cover.data.length} bytes',
         );
-        coverPath = await _extractAndCacheCover(
-          cover,
-          metadataSourcePath,
-        );
+        coverPath = await _extractAndCacheCover(cover, metadataSourcePath);
         logger.i('Extracted cover to: $coverPath');
       } else {
         logger.w('No cover art found in metadata for $metadataSourcePath');
       }
 
-      if (metadata.format.chapters != null && metadata.format.chapters!.isNotEmpty) {
+      if (metadata.format.chapters != null &&
+          metadata.format.chapters!.isNotEmpty) {
         for (final chapter in metadata.format.chapters!) {
           String? chapterCoverPath;
           if (chapter.image != null) {
@@ -377,10 +387,14 @@ class LibraryService {
             ),
           );
         }
-        logger.i('Extracted ${internalChapters.length} internal chapters for $metadataSourcePath');
+        logger.i(
+          'Extracted ${internalChapters.length} internal chapters for $metadataSourcePath',
+        );
       }
 
-      description = (metadata.common.longDescription ?? metadata.common.description) as String?;
+      description =
+          (metadata.common.longDescription ?? metadata.common.description)
+              as String?;
 
       if (audioFiles != null) {
         for (final filePath in audioFiles) {
@@ -429,8 +443,12 @@ class LibraryService {
       existingBook.audioFiles = audioFiles;
       existingBook.isDirectory = isDirectory;
       existingBook.description = description;
-      existingBook.filesMetadata = fileMetaList.isNotEmpty ? fileMetaList : null;
-      existingBook.internalChapters = internalChapters.isNotEmpty ? internalChapters : null;
+      existingBook.filesMetadata = fileMetaList.isNotEmpty
+          ? fileMetaList
+          : null;
+      existingBook.internalChapters = internalChapters.isNotEmpty
+          ? internalChapters
+          : null;
       await saveBook(existingBook);
     } else {
       final book = Book(
@@ -440,7 +458,7 @@ class LibraryService {
         album: album,
         durationSeconds: duration > 0 ? duration : null,
         coverPath: coverPath,
-        lastPlayed: DateTime.now(),
+        lastPlayed: null, // Don't set lastPlayed until actually played
         audioFiles: audioFiles,
         isDirectory: isDirectory,
         description: description,
@@ -513,7 +531,9 @@ class LibraryService {
   Future<void> removeBookmark(String path, int index) async {
     try {
       final book = await _isar.books.where().pathEqualTo(path).findFirst();
-      if (book != null && book.bookmarks != null && index < book.bookmarks!.length) {
+      if (book != null &&
+          book.bookmarks != null &&
+          index < book.bookmarks!.length) {
         book.bookmarks!.removeAt(index);
         await saveBook(book);
       }

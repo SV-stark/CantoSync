@@ -209,12 +209,11 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        // Left: Cover Art
                         _buildCoverArt(
                           currentBook,
                           size: 450,
                           showReflection: ref
-                              .read(appSettingsProvider)
+                              .watch(appSettingsProvider)
                               .showCoverReflection,
                         ),
                         const SizedBox(width: 60),
@@ -261,7 +260,7 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
                         currentBook,
                         size: 300,
                         showReflection: ref
-                            .read(appSettingsProvider)
+                            .watch(appSettingsProvider)
                             .showCoverReflection,
                       ),
                       const SizedBox(height: 30),
@@ -385,8 +384,7 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
                   : () {
                       showDialog(
                         context: context,
-                        builder: (context) =>
-                            MetadataEditor(book: currentBook),
+                        builder: (context) => MetadataEditor(book: currentBook),
                       );
                     },
             ),
@@ -652,22 +650,25 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
             Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                const Icon(
-                  FluentIcons.ringer,
-                  size: 16,
-                  color: Colors.white,
-                ),
+                const Icon(FluentIcons.ringer, size: 16, color: Colors.white),
                 const SizedBox(width: 8),
                 SizedBox(
                   width: 100,
-                  child: Slider(
-                    value: mediaService.volume,
-                    min: 0,
-                    max: 100,
-                    onChanged: (v) => mediaService.setVolume(v),
-                    style: SliderThemeData(
-                      thumbRadius: WidgetStateProperty.all(6),
-                    ),
+                  child: StreamBuilder<double>(
+                    stream: mediaService.volumeStream,
+                    initialData: mediaService.volume,
+                    builder: (context, snapshot) {
+                      final vol = snapshot.data ?? 100.0;
+                      return Slider(
+                        value: vol,
+                        min: 0,
+                        max: 100,
+                        onChanged: (v) => mediaService.setVolume(v),
+                        style: SliderThemeData(
+                          thumbRadius: WidgetStateProperty.all(6),
+                        ),
+                      );
+                    },
                   ),
                 ),
               ],
@@ -782,8 +783,8 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
     bool isMultiFile,
   ) {
     double seconds = pos.inMilliseconds / 1000.0;
-    // For multi-file books, add the chapter start time to get global position
-    if (isMultiFile && currentChapter != null) {
+    // Always add the chapter start time to get global position from local slider value
+    if (currentChapter != null) {
       seconds += currentChapter.startTime;
     }
     return seconds;
@@ -807,8 +808,8 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
             itemCount: chapters.length,
             itemBuilder: (context, index) {
               final c = chapters[index];
-              final isCurrent = currentChapter != null &&
-                  c.title == currentChapter.title &&
+              final isCurrent =
+                  currentChapter != null &&
                   c.startTime == currentChapter.startTime;
               return ListTile(
                 leading: isCurrent
@@ -947,7 +948,6 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
 }
 
 class _EQOption extends StatelessWidget {
-
   const _EQOption({required this.label, required this.onTap});
   final String label;
   final VoidCallback onTap;
@@ -965,7 +965,6 @@ class _EQOption extends StatelessWidget {
 }
 
 class _TimerOption extends StatelessWidget {
-
   const _TimerOption({required this.label, required this.onTap});
   final String label;
   final VoidCallback onTap;
@@ -986,7 +985,6 @@ class _TimerOption extends StatelessWidget {
 }
 
 class _FooterButton extends StatelessWidget {
-
   const _FooterButton({
     required this.icon,
     required this.label,
@@ -1017,7 +1015,6 @@ class _FooterButton extends StatelessWidget {
 }
 
 class _SpeedControlDialog extends StatefulWidget {
-
   const _SpeedControlDialog({
     required this.initialRate,
     required this.onRateChanged,

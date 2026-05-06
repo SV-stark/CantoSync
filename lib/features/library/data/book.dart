@@ -4,7 +4,6 @@ part 'book.g.dart';
 
 @collection
 class Book {
-
   Book({
     this.path,
     this.title,
@@ -74,12 +73,7 @@ class Book {
 
 @embedded
 class Bookmark {
-
-  Bookmark({
-    this.label,
-    this.timestampSeconds,
-    this.createdAt,
-  }) {
+  Bookmark({this.label, this.timestampSeconds, this.createdAt}) {
     label ??= '';
     timestampSeconds ??= 0;
     createdAt ??= DateTime.now();
@@ -91,12 +85,7 @@ class Bookmark {
 
 @embedded
 class FileMetadata {
-
-  FileMetadata({
-    this.title,
-    this.duration,
-    this.path,
-  }) {
+  FileMetadata({this.title, this.duration, this.path}) {
     title ??= '';
     path ??= '';
   }
@@ -104,15 +93,10 @@ class FileMetadata {
   double? duration;
   String? path;
 }
+
 @embedded
 class ChapterMetadata {
-
-  ChapterMetadata({
-    this.title,
-    this.startTime,
-    this.endTime,
-    this.coverPath,
-  }) {
+  ChapterMetadata({this.title, this.startTime, this.endTime, this.coverPath}) {
     title ??= '';
     startTime ??= 0;
   }

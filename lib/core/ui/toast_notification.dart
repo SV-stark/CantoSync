@@ -1,7 +1,6 @@
 import 'package:fluent_ui/fluent_ui.dart';
 
 class ToastNotification extends StatefulWidget {
-
   const ToastNotification({
     super.key,
     required this.message,

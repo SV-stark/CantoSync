@@ -185,7 +185,6 @@ class _KeyboardShortcutsScreenState
 }
 
 class _EditShortcutDialog extends StatefulWidget {
-
   const _EditShortcutDialog({
     required this.shortcut,
     required this.onSave,

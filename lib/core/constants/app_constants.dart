@@ -1,5 +1,4 @@
 class AppConstants {
-
   // Private constructor to prevent instantiation
   AppConstants._();
   // Player layout thresholds

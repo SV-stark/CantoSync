@@ -109,11 +109,27 @@ class HotkeyService {
       final hotKey = HotKey(
         key: mainKey,
         modifiers: modifiers,
-        scope: HotKeyScope.system,
+        scope: (modifiers.isNotEmpty || _isMediaKey(mainKey))
+            ? HotKeyScope.system
+            : HotKeyScope.inapp,
       );
       await hotKeyManager.register(hotKey, keyDownHandler: (_) => onDown());
     } catch (e) {
       debugPrint('Failed to register hotkey ${shortcut.shortcutString}: $e');
     }
+  }
+
+  bool _isMediaKey(LogicalKeyboardKey key) {
+    return key == LogicalKeyboardKey.mediaPlay ||
+        key == LogicalKeyboardKey.mediaPause ||
+        key == LogicalKeyboardKey.mediaPlayPause ||
+        key == LogicalKeyboardKey.mediaTrackNext ||
+        key == LogicalKeyboardKey.mediaTrackPrevious ||
+        key == LogicalKeyboardKey.mediaStop ||
+        key == LogicalKeyboardKey.mediaRewind ||
+        key == LogicalKeyboardKey.mediaFastForward ||
+        key == LogicalKeyboardKey.audioVolumeUp ||
+        key == LogicalKeyboardKey.audioVolumeDown ||
+        key == LogicalKeyboardKey.audioVolumeMute;
   }
 }

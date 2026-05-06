@@ -317,7 +317,13 @@ class LibraryService {
         .where()
         .pathEqualTo(path)
         .findFirst();
-    if (existingBook != null && !forceUpdate) return;
+    if (existingBook != null && !forceUpdate) {
+      // Even on non-forced scan, update cover if it's missing
+      if (existingBook.coverPath == null) {
+        await _updateCoverForBook(existingBook, path, audioFiles);
+      }
+      return;
+    }
 
     String? title;
     String? author;
@@ -393,8 +399,8 @@ class LibraryService {
       }
 
       description =
-          (metadata.common.longDescription ?? metadata.common.description)
-              as String?;
+          metadata.common.longDescription?.toString() ??
+          metadata.common.description?.toString();
 
       if (audioFiles != null) {
         for (final filePath in audioFiles) {
@@ -481,7 +487,9 @@ class LibraryService {
       }
 
       final imageHash = md5.convert(picture.data).toString();
-      final ext = picture.format == 'image/png' ? '.png' : '.jpg';
+      // Determine extension robustly from format string
+      final fmt = picture.format.toLowerCase();
+      final ext = fmt.contains('png') ? '.png' : '.jpg';
       final coverFile = File(p.join(coversDir.path, '$imageHash$ext'));
 
       if (!await coverFile.exists()) {
@@ -492,6 +500,45 @@ class LibraryService {
     } catch (e) {
       logger.e('Error saving cover art', error: e);
       return null;
+    }
+  }
+
+  /// Attempts to find and save cover art for an existing book that has none.
+  /// Called during non-forced rescans to backfill missing covers.
+  Future<void> _updateCoverForBook(
+    Book book,
+    String path,
+    List<String>? audioFiles,
+  ) async {
+    try {
+      final sourcePath = (audioFiles != null && audioFiles.isNotEmpty)
+          ? audioFiles.first
+          : path;
+
+      final metadata = await parseFile(
+        sourcePath,
+        options: const ParseOptions(duration: false, includeChapters: false),
+      );
+
+      final pictures = metadata.common.picture;
+      if (pictures == null || pictures.isEmpty) return;
+
+      Picture? cover;
+      try {
+        cover = selectCover(pictures);
+      } catch (_) {
+        cover = pictures.first;
+      }
+      cover ??= pictures.first;
+
+      final coverPath = await _extractAndCacheCover(cover, sourcePath);
+      if (coverPath != null) {
+        book.coverPath = coverPath;
+        await saveBook(book);
+        logger.i('Backfilled cover for "${book.title}": $coverPath');
+      }
+    } catch (e) {
+      logger.w('Could not backfill cover for ${book.path}: $e');
     }
   }
 

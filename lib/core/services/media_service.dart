@@ -57,9 +57,8 @@ class MediaService {
       _player != null ? _p.stream.duration : Stream.value(Duration.zero);
   Stream<double> get volumeStream =>
       _player != null ? _p.stream.volume : Stream.value(100.0);
-  Stream<Playlist> get playlistStream => _player != null
-      ? _p.stream.playlist
-      : Stream.value(const Playlist([]));
+  Stream<Playlist> get playlistStream =>
+      _player != null ? _p.stream.playlist : Stream.value(const Playlist([]));
   Stream<bool> get completedStream =>
       _player != null ? _p.stream.completed : Stream.value(false);
 

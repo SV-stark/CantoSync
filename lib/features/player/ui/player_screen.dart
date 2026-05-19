@@ -51,9 +51,7 @@ final playlistProvider = StreamProvider.autoDispose<Playlist>((ref) {
   return service.playlistStream;
 });
 
-final playerChaptersProvider = StreamProvider.autoDispose<List<Chapter>>((
-  ref,
-) {
+final playerChaptersProvider = StreamProvider.autoDispose<List<Chapter>>((ref) {
   final service = ref.watch(mediaServiceProvider);
   return service.chaptersStream;
 });
@@ -68,6 +66,8 @@ class PlayerScreen extends ConsumerStatefulWidget {
 class _PlayerScreenState extends ConsumerState<PlayerScreen> {
   bool _isDragging = false;
   double _dragValue = 0.0;
+  Chapter? _cachedChapter;
+  int? _lastChapterHash;
 
   String _formatDuration(Duration d) => formatDuration(d);
 
@@ -105,27 +105,42 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
 
     final chapters = ref.watch(playerChaptersProvider).value ?? [];
 
-    // Determine current chapter
+    // Determine current chapter (cached)
     final currentIndex = mediaService.currentIndex;
     final isMultiFile =
         totalDuration.inSeconds > (duration.inSeconds + 10) || currentIndex > 0;
 
-    Chapter? currentChapter;
-    if (chapters.isNotEmpty) {
-      if (isMultiFile) {
-        if (currentIndex < chapters.length) {
-          currentChapter = chapters[currentIndex];
+    final chapterHash = Object.hash(
+      currentBook?.path,
+      position.inSeconds,
+      duration.inSeconds,
+      chapters.length,
+      currentIndex,
+      isMultiFile,
+    );
+
+    if (chapterHash != _lastChapterHash) {
+      _lastChapterHash = chapterHash;
+      _cachedChapter = null;
+
+      if (chapters.isNotEmpty) {
+        if (isMultiFile) {
+          if (currentIndex < chapters.length) {
+            _cachedChapter = chapters[currentIndex];
+          }
+        } else {
+          final posSeconds = position.inMilliseconds / 1000.0;
+          _cachedChapter = chapters.lastWhere(
+            (c) =>
+                c.startTime <=
+                posSeconds + AppConstants.chapterMatchingToleranceSeconds,
+            orElse: () => chapters.first,
+          );
         }
-      } else {
-        final posSeconds = position.inMilliseconds / 1000.0;
-        currentChapter = chapters.lastWhere(
-          (c) =>
-              c.startTime <=
-              posSeconds + AppConstants.chapterMatchingToleranceSeconds,
-          orElse: () => chapters.first,
-        );
       }
     }
+
+    final currentChapter = _cachedChapter;
 
     // --- Calculations ---
 

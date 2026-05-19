@@ -67,8 +67,9 @@ class ListeningStatsService {
       bookStream,
       speedStream,
       (daily, authors, books, speeds) {
-        final speedPref =
-            speeds.isNotEmpty ? speeds.first : ListeningSpeedPreference();
+        final speedPref = speeds.isNotEmpty
+            ? speeds.first
+            : ListeningSpeedPreference();
         return _calculateStatsFromLists(daily, authors, books, speedPref);
       },
     );

@@ -317,10 +317,7 @@ class _MarqueeTextState extends State<_MarqueeText>
     if (renderBox != null) {
       final width = renderBox.size.width;
 
-      final textSpan = TextSpan(
-        text: widget.text,
-        style: widget.style,
-      );
+      final textSpan = TextSpan(text: widget.text, style: widget.style);
       final textPainter = TextPainter(
         text: textSpan,
         textDirection: TextDirection.ltr,

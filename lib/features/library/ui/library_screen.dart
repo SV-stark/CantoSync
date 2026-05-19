@@ -44,13 +44,15 @@ class LibraryScreen extends HookConsumerWidget {
       orElse: () => <Book>[],
     );
 
-    final collections = <String>{};
-    for (final book in allBooks) {
-      if (book.collections != null) {
-        collections.addAll(book.collections!);
+    final sortedCollections = useMemoized(() {
+      final collections = <String>{};
+      for (final book in allBooks) {
+        if (book.collections != null) {
+          collections.addAll(book.collections!);
+        }
       }
-    }
-    final sortedCollections = collections.toList()..sort();
+      return collections.toList()..sort();
+    }, [allBooks]);
 
     Future<void> pickFolder() async {
       String? selectedDirectory = await FilePicker.getDirectoryPath();
@@ -569,7 +571,9 @@ class BookCard extends ConsumerWidget {
                                   ),
                                 ),
                                 progressColor: Colors.white,
-                                backgroundColor: Colors.white.withValues(alpha: 0.2),
+                                backgroundColor: Colors.white.withValues(
+                                  alpha: 0.2,
+                                ),
                                 circularStrokeCap: CircularStrokeCap.round,
                                 fillColor: Colors.black.withValues(alpha: 0.7),
                               ),

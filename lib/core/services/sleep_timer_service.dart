@@ -7,7 +7,7 @@ part 'sleep_timer_service.freezed.dart';
 part 'sleep_timer_service.g.dart';
 
 @freezed
-class SleepTimerState with _$SleepTimerState {
+abstract class SleepTimerState with _$SleepTimerState {
   const factory SleepTimerState({
     Duration? remainingTime,
     @Default(false) bool isEndOfChapter,

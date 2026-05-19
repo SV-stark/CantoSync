@@ -120,6 +120,26 @@ Future<Map<String, List<Book>>> libraryGroupedBooks(Ref ref) async {
   return groups;
 }
 
+Future<Map<String, List<String>>> _performFileScan(String path) async {
+  final dir = Directory(path);
+  if (!await dir.exists()) return {};
+
+  final entities = await dir.list(recursive: true, followLinks: false).toList();
+  final audioExtensions = {'.mp3', '.m4b', '.m4a', '.flac', '.ogg', '.wav'};
+  final Map<String, List<String>> groups = {};
+
+  for (final entity in entities) {
+    if (entity is File) {
+      final ext = p.extension(entity.path).toLowerCase();
+      if (audioExtensions.contains(ext)) {
+        final parent = p.dirname(entity.path);
+        groups.putIfAbsent(parent, () => []).add(entity.path);
+      }
+    }
+  }
+  return groups;
+}
+
 class LibraryService {
   LibraryService(this._isar, this._ref);
   final Isar _isar;
@@ -260,11 +280,7 @@ class LibraryService {
       book.coverPath = targetPath;
       await saveBook(book);
     } catch (e, stack) {
-      logger.e(
-        'Error updating book cover',
-        error: e,
-        stackTrace: stack,
-      );
+      logger.e('Error updating book cover', error: e, stackTrace: stack);
     }
   }
 
@@ -272,34 +288,15 @@ class LibraryService {
     String path,
     Player probePlayer, {
     bool forceUpdate = false,
-  }) async {    final dir = Directory(path);
-    if (!await dir.exists()) return [];
-
-    final List<FileSystemEntity> entities = await dir
-        .list(recursive: true, followLinks: false)
-        .toList();
-
-    final audioExtensions = {'.mp3', '.m4b', '.m4a', '.flac', '.ogg', '.wav'};
-    final Map<String, List<File>> dirBasedGroups = {};
-
-    for (final entity in entities) {
-      if (entity is File) {
-        final ext = p.extension(entity.path).toLowerCase();
-        if (audioExtensions.contains(ext)) {
-          final parent = p.dirname(entity.path);
-          dirBasedGroups.putIfAbsent(parent, () => []).add(entity);
-        }
-      }
-    }
-
+  }) async {
+    final groups = await Isolate.run(() => _performFileScan(path));
     final List<String> foundBookPaths = [];
 
-    for (final entry in dirBasedGroups.entries) {
+    for (final entry in groups.entries) {
       final parentPath = entry.key;
-      final files = entry.value;
+      final filePaths = entry.value;
 
-      files.sort((a, b) => a.path.compareTo(b.path));
-      final filePaths = files.map((f) => f.path).toList();
+      filePaths.sort();
 
       await _addBookIfNotExists(
         parentPath,
@@ -349,10 +346,12 @@ class LibraryService {
         metadataSourcePath = audioFiles.first;
       }
 
-      final metadata = await Isolate.run(() => parseFile(
-            metadataSourcePath,
-            options: const ParseOptions(duration: true, includeChapters: true),
-          ));
+      final metadata = await Isolate.run(
+        () => parseFile(
+          metadataSourcePath,
+          options: const ParseOptions(duration: true, includeChapters: true),
+        ),
+      );
       title = metadata.common.title;
       author = metadata.common.artist;
       album = metadata.common.album;
@@ -410,7 +409,9 @@ class LibraryService {
           metadata.common.description?.toString();
 
       if (audioFiles != null) {
-        final results = await Future.wait(audioFiles.map((filePath) => Isolate.run(() async {
+        final results = await Future.wait(
+          audioFiles.map(
+            (filePath) => Isolate.run(() async {
               try {
                 final fileMeta = await parseFile(
                   filePath,
@@ -428,7 +429,9 @@ class LibraryService {
                   duration: null,
                 );
               }
-            })));
+            }),
+          ),
+        );
 
         for (final m in results) {
           if (m.duration != null) {

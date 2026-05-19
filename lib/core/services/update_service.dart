@@ -3,12 +3,13 @@ import 'package:freezed_annotation/freezed_annotation.dart';
 import 'package:http/http.dart' as http;
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
+import 'package:canto_sync/core/utils/logger.dart';
 
 part 'update_service.freezed.dart';
 part 'update_service.g.dart';
 
 @freezed
-class UpdateInfo with _$UpdateInfo {
+abstract class UpdateInfo with _$UpdateInfo {
   const factory UpdateInfo({
     required String latestVersion,
     required String downloadUrl,
@@ -48,7 +49,7 @@ class UpdateService {
         }
       }
     } catch (e) {
-      debugPrint('Error checking for updates: $e');
+      logger.e('Error checking for updates', error: e);
     }
     return null;
   }

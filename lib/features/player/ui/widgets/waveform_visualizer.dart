@@ -19,52 +19,19 @@ class WaveformVisualizer extends StatefulWidget {
 }
 
 class _WaveformVisualizerState extends State<WaveformVisualizer>
-    with TickerProviderStateMixin {
-  late List<AnimationController> _controllers;
-  late List<Animation<double>> _animations;
-  final _random = math.Random();
+    with SingleTickerProviderStateMixin {
+  late AnimationController _controller;
 
   @override
   void initState() {
     super.initState();
-    _initializeAnimations();
-  }
-
-  void _initializeAnimations() {
-    _controllers = List.generate(
-      widget.barCount,
-      (index) => AnimationController(
-        vsync: this,
-        duration: Duration(milliseconds: 400 + _random.nextInt(400)),
-      ),
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(seconds: 2),
     );
 
-    _animations = _controllers.map((controller) {
-      return Tween<double>(
-        begin: 0.2,
-        end: 1.0,
-      ).animate(CurvedAnimation(parent: controller, curve: Curves.easeInOut));
-    }).toList();
-
     if (widget.isPlaying) {
-      _startAnimation();
-    }
-  }
-
-  void _startAnimation() {
-    for (var i = 0; i < _controllers.length; i++) {
-      Future.delayed(Duration(milliseconds: i * 30), () {
-        if (mounted && widget.isPlaying) {
-          _controllers[i].repeat(reverse: true);
-        }
-      });
-    }
-  }
-
-  void _stopAnimation() {
-    for (var controller in _controllers) {
-      controller.stop();
-      controller.value = 0.2;
+      _controller.repeat();
     }
   }
 
@@ -73,59 +40,102 @@ class _WaveformVisualizerState extends State<WaveformVisualizer>
     super.didUpdateWidget(oldWidget);
     if (widget.isPlaying != oldWidget.isPlaying) {
       if (widget.isPlaying) {
-        _startAnimation();
+        _controller.repeat();
       } else {
-        _stopAnimation();
+        _controller.stop();
       }
     }
   }
 
   @override
   void dispose() {
-    for (var controller in _controllers) {
-      controller.dispose();
-    }
+    _controller.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      height: widget.height,
-      padding: const EdgeInsets.symmetric(horizontal: 16),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.center,
-        crossAxisAlignment: CrossAxisAlignment.center,
-        children: List.generate(widget.barCount, (index) {
-          // Create a bell curve distribution for bar heights
-          final centerIndex = widget.barCount / 2;
-          final distanceFromCenter = (index - centerIndex).abs();
-          final normalizedDistance = distanceFromCenter / centerIndex;
-          final baseHeight = 1.0 - (normalizedDistance * 0.5);
-
-          return Expanded(
-            child: AnimatedBuilder(
-              animation: _animations[index],
-              builder: (context, child) {
-                final animatedHeight = widget.isPlaying
-                    ? baseHeight * _animations[index].value
-                    : baseHeight * 0.3;
-
-                return Container(
-                  margin: const EdgeInsets.symmetric(horizontal: 2),
-                  height: widget.height * animatedHeight,
-                  decoration: BoxDecoration(
-                    color: widget.color.withValues(
-                      alpha: widget.isPlaying ? 0.78 : 0.39,
-                    ),
-                    borderRadius: BorderRadius.circular(2),
-                  ),
-                );
-              },
+    return RepaintBoundary(
+      child: AnimatedBuilder(
+        animation: _controller,
+        builder: (context, child) {
+          return CustomPaint(
+            size: Size(double.infinity, widget.height),
+            painter: _WaveformPainter(
+              animationValue: _controller.value,
+              isPlaying: widget.isPlaying,
+              color: widget.color,
+              barCount: widget.barCount,
             ),
           );
-        }),
+        },
       ),
     );
+  }
+}
+
+class _WaveformPainter extends CustomPainter {
+  _WaveformPainter({
+    required this.animationValue,
+    required this.isPlaying,
+    required this.color,
+    required this.barCount,
+  });
+
+  final double animationValue;
+  final bool isPlaying;
+  final Color color;
+  final int barCount;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..color = color
+      ..style = PaintingStyle.fill
+      ..strokeCap = StrokeCap.round;
+
+    final spacing = size.width / barCount;
+    final barWidth = spacing * 0.6;
+    final centerIndex = barCount / 2;
+
+    for (int i = 0; i < barCount; i++) {
+      // Bell curve distribution
+      final distanceFromCenter = (i - centerIndex).abs();
+      final normalizedDistance = distanceFromCenter / centerIndex;
+      final baseHeightFactor = 1.0 - (normalizedDistance * 0.6);
+
+      double animatedFactor;
+      if (isPlaying) {
+        // Create a rippling wave effect using sine
+        // Offset each bar's phase based on its index
+        final phase = i * (math.pi / 4);
+        animatedFactor =
+            0.3 +
+            (0.7 *
+                (0.5 + 0.5 * math.sin(animationValue * 2 * math.pi + phase)));
+      } else {
+        animatedFactor = 0.2;
+      }
+
+      final barHeight = size.height * baseHeightFactor * animatedFactor;
+      final x = i * spacing + (spacing - barWidth) / 2;
+      final y = (size.height - barHeight) / 2;
+
+      canvas.drawRRect(
+        RRect.fromRectAndRadius(
+          Rect.fromLTWH(x, y, barWidth, barHeight),
+          const Radius.circular(2),
+        ),
+        paint,
+      );
+    }
+  }
+
+  @override
+  bool shouldRepaint(_WaveformPainter oldDelegate) {
+    return animationValue != oldDelegate.animationValue ||
+        isPlaying != oldDelegate.isPlaying ||
+        color != oldDelegate.color ||
+        barCount != oldDelegate.barCount;
   }
 }

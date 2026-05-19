@@ -72,8 +72,9 @@ class NavigationIndex extends Notifier<int> {
   set state(int i) => super.state = i;
 }
 
-final navigationIndexProvider =
-    NotifierProvider<NavigationIndex, int>(NavigationIndex.new);
+final navigationIndexProvider = NotifierProvider<NavigationIndex, int>(
+  NavigationIndex.new,
+);
 
 class CantoSyncApp extends ConsumerStatefulWidget {
   const CantoSyncApp({super.key});

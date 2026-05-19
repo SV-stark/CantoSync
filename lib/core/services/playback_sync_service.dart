@@ -337,11 +337,13 @@ class PlaybackSyncService {
 
     if (_pendingSave && _currentPath != null) {
       // Best effort save on dispose
-      unawaited(_libraryService.updateProgress(
-        _currentPath!,
-        _lastPosition,
-        trackIndex: _lastTrackIndex,
-      ));
+      unawaited(
+        _libraryService.updateProgress(
+          _currentPath!,
+          _lastPosition,
+          trackIndex: _lastTrackIndex,
+        ),
+      );
     }
   }
 }

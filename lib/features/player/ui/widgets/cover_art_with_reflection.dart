@@ -16,6 +16,10 @@ class CoverArtWithReflection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final imageProvider = book?.coverPath != null
+        ? FileImage(File(book!.coverPath!))
+        : null;
+
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
@@ -38,8 +42,8 @@ class CoverArtWithReflection extends StatelessWidget {
             ),
             child: ClipRRect(
               borderRadius: BorderRadius.circular(20),
-              child: book?.coverPath != null
-                  ? Image.file(File(book!.coverPath!), fit: BoxFit.cover)
+              child: imageProvider != null
+                  ? Image(image: imageProvider, fit: BoxFit.cover)
                   : const Icon(
                       FluentIcons.music_in_collection,
                       size: 80,
@@ -62,7 +66,7 @@ class CoverArtWithReflection extends StatelessWidget {
               borderRadius: const BorderRadius.vertical(
                 bottom: Radius.circular(20),
               ),
-              child: book?.coverPath != null
+              child: imageProvider != null
                   ? Transform(
                       alignment: Alignment.topCenter,
                       transform: Matrix4.identity()
@@ -80,10 +84,7 @@ class CoverArtWithReflection extends StatelessWidget {
                           ).createShader(bounds);
                         },
                         blendMode: material.BlendMode.dstIn,
-                        child: Image.file(
-                          File(book!.coverPath!),
-                          fit: BoxFit.cover,
-                        ),
+                        child: Image(image: imageProvider, fit: BoxFit.cover),
                       ),
                     )
                   : const SizedBox.shrink(),

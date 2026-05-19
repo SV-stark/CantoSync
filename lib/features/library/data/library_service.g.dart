@@ -249,8 +249,14 @@ abstract class _$LibraryCollectionFilter extends $Notifier<String?> {
   }
 }
 
+/// Returns a stream of books filtered by search query and collection.
+/// Note: Riverpod automatically wraps this Stream in an [AsyncValue].
+
 @ProviderFor(libraryBooks)
 final libraryBooksProvider = LibraryBooksProvider._();
+
+/// Returns a stream of books filtered by search query and collection.
+/// Note: Riverpod automatically wraps this Stream in an [AsyncValue].
 
 final class LibraryBooksProvider
     extends
@@ -260,6 +266,8 @@ final class LibraryBooksProvider
           Stream<List<Book>>
         >
     with $FutureModifier<List<Book>>, $StreamProvider<List<Book>> {
+  /// Returns a stream of books filtered by search query and collection.
+  /// Note: Riverpod automatically wraps this Stream in an [AsyncValue].
   LibraryBooksProvider._()
     : super(
         from: null,
@@ -285,7 +293,7 @@ final class LibraryBooksProvider
   }
 }
 
-String _$libraryBooksHash() => r'abfb842ac8f98e788f39254ea76059d9ce35e06e';
+String _$libraryBooksHash() => r'649cdb61fdaf79d428a3983fdfeadd9fdff059ab';
 
 @ProviderFor(libraryRecentBooks)
 final libraryRecentBooksProvider = LibraryRecentBooksProvider._();

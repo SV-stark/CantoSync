@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:io';
+import 'dart:isolate';
 import 'package:isar_community/isar.dart';
 import 'package:media_kit/media_kit.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
@@ -158,6 +159,7 @@ class LibraryService {
     final settings = _ref.read(appSettingsProvider);
     final libraryPaths = settings.libraryPaths;
 
+    MediaKit.ensureInitialized();
     final probePlayer = Player(
       configuration: const PlayerConfiguration(vo: 'null'),
     );
@@ -342,10 +344,10 @@ class LibraryService {
         metadataSourcePath = audioFiles.first;
       }
 
-      final metadata = await parseFile(
-        metadataSourcePath,
-        options: const ParseOptions(duration: true, includeChapters: true),
-      );
+      final metadata = await Isolate.run(() => parseFile(
+            metadataSourcePath,
+            options: const ParseOptions(duration: true, includeChapters: true),
+          ));
       title = metadata.common.title;
       author = metadata.common.artist;
       album = metadata.common.album;
@@ -403,33 +405,31 @@ class LibraryService {
           metadata.common.description?.toString();
 
       if (audioFiles != null) {
-        for (final filePath in audioFiles) {
-          try {
-            final fileMeta = await parseFile(
-              filePath,
-              options: const ParseOptions(duration: true),
-            );
-            final fDuration = fileMeta.format.duration;
-            if (fDuration != null) {
-              duration += fDuration;
-            }
-            fileMetaList.add(
-              FileMetadata(
-                path: filePath,
-                title: fileMeta.common.title ?? p.basename(filePath),
-                duration: fDuration,
-              ),
-            );
-          } catch (e) {
-            logger.w('Error reading duration for $filePath: $e');
-            fileMetaList.add(
-              FileMetadata(
-                path: filePath,
-                title: p.basename(filePath),
-                duration: null,
-              ),
-            );
+        final results = await Future.wait(audioFiles.map((filePath) => Isolate.run(() async {
+              try {
+                final fileMeta = await parseFile(
+                  filePath,
+                  options: const ParseOptions(duration: true),
+                );
+                return FileMetadata(
+                  path: filePath,
+                  title: fileMeta.common.title ?? p.basename(filePath),
+                  duration: fileMeta.format.duration,
+                );
+              } catch (e) {
+                return FileMetadata(
+                  path: filePath,
+                  title: p.basename(filePath),
+                  duration: null,
+                );
+              }
+            })));
+
+        for (final m in results) {
+          if (m.duration != null) {
+            duration += m.duration!;
           }
+          fileMetaList.add(m);
         }
       } else {
         if (metadata.format.duration != null) {

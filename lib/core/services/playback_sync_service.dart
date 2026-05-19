@@ -38,6 +38,7 @@ class PlaybackSyncService {
   StreamSubscription? _completedSubscription;
   String? _currentPath;
   Timer? _debounceTimer;
+  Timer? _statsTimer;
   double _lastPosition = 0;
   int _lastTrackIndex = 0;
   bool _pendingSave = false;
@@ -45,8 +46,6 @@ class PlaybackSyncService {
   int _sessionSeconds = 0;
 
   void _init() {
-    Duration lastPosition = Duration.zero;
-
     _subscription = _mediaService.positionStream.listen((position) {
       if (_currentPath != null && _mediaService.isPlaying) {
         _debounceSave(
@@ -54,26 +53,23 @@ class PlaybackSyncService {
           position.inMilliseconds / 1000.0,
           _mediaService.currentIndex,
         );
+      }
+    });
 
-        // Track stats - calculate time delta
-        // Fix: Use milliseconds to avoid losing fractional seconds during calculation
-        final delta = position - lastPosition;
-        if (delta.inMilliseconds > 0 && delta.inMilliseconds < 10000) {
-          // Add delta to session, capping at 10s to avoid jump-related spikes
-          _sessionSeconds += delta.inMilliseconds;
-          // Batch stats recording every 30 seconds
-          if (_sessionSeconds >= 30000) {
-            _recordStatsSession(_sessionSeconds ~/ 1000);
-            _sessionSeconds = 0;
-          }
+    // Stats sampling timer: ticks every 10s, records every 30s of playback
+    _statsTimer = Timer.periodic(const Duration(seconds: 10), (timer) {
+      if (_currentPath != null && _mediaService.isPlaying) {
+        _sessionSeconds += 10;
+        if (_sessionSeconds >= 30) {
+          unawaited(_recordStatsSession(_sessionSeconds));
+          _sessionSeconds = 0;
         }
-        lastPosition = position;
       }
     });
 
     _completedSubscription = _mediaService.completedStream.listen((completed) {
       if (completed) {
-        onPlaybackCompleted();
+        unawaited(onPlaybackCompleted());
       }
     });
   }
@@ -83,7 +79,7 @@ class PlaybackSyncService {
     _ref.read(currentBookPathProvider.notifier).update(path);
   }
 
-  void _recordStatsSession(int seconds) async {
+  Future<void> _recordStatsSession(int seconds) async {
     if (_currentBook == null) return;
 
     try {
@@ -100,7 +96,7 @@ class PlaybackSyncService {
   }
 
   /// Marks current book as completed in stats
-  void onPlaybackCompleted() async {
+  Future<void> onPlaybackCompleted() async {
     if (_currentBook == null) return;
 
     try {
@@ -332,19 +328,20 @@ class PlaybackSyncService {
     _subscription?.cancel();
     _completedSubscription?.cancel();
     _debounceTimer?.cancel();
+    _statsTimer?.cancel();
 
     // Record any pending stats time
     if (_sessionSeconds > 0) {
-      _recordStatsSession(_sessionSeconds);
+      unawaited(_recordStatsSession(_sessionSeconds));
     }
 
     if (_pendingSave && _currentPath != null) {
       // Best effort save on dispose
-      _libraryService.updateProgress(
+      unawaited(_libraryService.updateProgress(
         _currentPath!,
         _lastPosition,
         trackIndex: _lastTrackIndex,
-      );
+      ));
     }
   }
 }

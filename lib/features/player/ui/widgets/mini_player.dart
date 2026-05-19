@@ -1,6 +1,5 @@
 import 'dart:async';
 import 'dart:io';
-import 'package:flutter/material.dart' as material;
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:canto_sync/core/services/media_service.dart';
@@ -314,15 +313,15 @@ class _MarqueeTextState extends State<_MarqueeText>
   void _checkIfNeedsScroll() {
     if (!mounted) return;
 
-    final renderBox = context.findRenderObject() as material.RenderBox?;
+    final renderBox = context.findRenderObject() as RenderBox?;
     if (renderBox != null) {
       final width = renderBox.size.width;
 
-      final textSpan = material.TextSpan(
+      final textSpan = TextSpan(
         text: widget.text,
         style: widget.style,
       );
-      final textPainter = material.TextPainter(
+      final textPainter = TextPainter(
         text: textSpan,
         textDirection: TextDirection.ltr,
       );

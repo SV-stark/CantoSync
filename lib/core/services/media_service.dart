@@ -3,7 +3,6 @@ import 'dart:convert';
 import 'package:media_kit/media_kit.dart';
 import 'package:canto_sync/core/services/app_settings_service.dart';
 import 'package:canto_sync/core/utils/logger.dart';
-import 'package:canto_sync/features/library/data/library_service.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
 part 'media_service.g.dart';
@@ -22,8 +21,12 @@ class MediaService {
   Player? _player;
   final Ref _ref;
   bool _isFetchingChapters = false;
+  bool _initFailed = false;
 
   Player get _p {
+    if (_initFailed) {
+      throw StateError('MediaKit Player failed to initialize');
+    }
     if (_player == null) {
       _init();
     }
@@ -34,10 +37,9 @@ class MediaService {
     try {
       _player = Player();
       _initFilters();
+      _initFailed = false;
     } catch (e, stack) {
-      _ref.read(isarProvider).writeTxnSync(() {
-        // Log to Isar or something if needed, but for now use logger
-      });
+      _initFailed = true;
       logger.e(
         'Error creating Player in MediaService',
         error: e,
@@ -47,12 +49,19 @@ class MediaService {
   }
 
   // State Streams
-  Stream<bool> get playingStream => _p.stream.playing;
-  Stream<Duration> get positionStream => _p.stream.position;
-  Stream<Duration> get durationStream => _p.stream.duration;
-  Stream<double> get volumeStream => _p.stream.volume;
-  Stream<Playlist> get playlistStream => _p.stream.playlist;
-  Stream<bool> get completedStream => _p.stream.completed;
+  Stream<bool> get playingStream =>
+      _player != null ? _p.stream.playing : Stream.value(false);
+  Stream<Duration> get positionStream =>
+      _player != null ? _p.stream.position : Stream.value(Duration.zero);
+  Stream<Duration> get durationStream =>
+      _player != null ? _p.stream.duration : Stream.value(Duration.zero);
+  Stream<double> get volumeStream =>
+      _player != null ? _p.stream.volume : Stream.value(100.0);
+  Stream<Playlist> get playlistStream => _player != null
+      ? _p.stream.playlist
+      : Stream.value(const Playlist([]));
+  Stream<bool> get completedStream =>
+      _player != null ? _p.stream.completed : Stream.value(false);
 
   void _initFilters() {
     try {
@@ -182,8 +191,10 @@ class MediaService {
     await _p.setRate(rate);
   }
 
-  Stream<Tracks> get tracksStream => _p.stream.tracks;
-  Stream<Track> get trackStream => _p.stream.track;
+  Stream<Tracks> get tracksStream =>
+      _player != null ? _p.stream.tracks : Stream.value(const Tracks());
+  Stream<Track> get trackStream =>
+      _player != null ? _p.stream.track : Stream.value(const Track());
 
   // ... (constructor) ...
 
@@ -340,14 +351,14 @@ class MediaService {
     }
   }
 
-  Duration get position => _p.state.position;
-  Duration get duration => _p.state.duration;
-  bool get isPlaying => _p.state.playing;
-  double get volume => _p.state.volume;
-  double get playRate => _p.state.rate;
-  int get currentIndex => _p.state.playlist.index;
-  Tracks get tracks => _p.state.tracks;
-  Track get track => _p.state.track;
+  Duration get position => _player != null ? _p.state.position : Duration.zero;
+  Duration get duration => _player != null ? _p.state.duration : Duration.zero;
+  bool get isPlaying => _player != null ? _p.state.playing : false;
+  double get volume => _player != null ? _p.state.volume : 100.0;
+  double get playRate => _player != null ? _p.state.rate : 1.0;
+  int get currentIndex => _player != null ? _p.state.playlist.index : 0;
+  Tracks get tracks => _player != null ? _p.state.tracks : const Tracks();
+  Track get track => _player != null ? _p.state.track : const Track();
 
   void dispose() {
     _player?.dispose();

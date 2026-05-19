@@ -699,13 +699,11 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
             ),
             _EQOption(
               label: 'Bass Boost',
-              onTap: () =>
-                  mediaService.setAudioFilter('lavfi=[bass=g=10:f=100]'),
+              onTap: () => mediaService.setAudioFilter('bass=g=10:f=100'),
             ),
             _EQOption(
               label: 'Treble Boost',
-              onTap: () =>
-                  mediaService.setAudioFilter('lavfi=[treble=g=10:f=5000]'),
+              onTap: () => mediaService.setAudioFilter('treble=g=10:f=5000'),
             ),
           ],
         ),
@@ -783,8 +781,9 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
     bool isMultiFile,
   ) {
     double seconds = pos.inMilliseconds / 1000.0;
-    // Always add the chapter start time to get global position from local slider value
-    if (currentChapter != null) {
+    // Only add chapter start time for multi-file books where pos is track-local.
+    // For single-file books (M4B), pos is already global.
+    if (currentChapter != null && isMultiFile) {
       seconds += currentChapter.startTime;
     }
     return seconds;

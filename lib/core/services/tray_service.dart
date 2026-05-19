@@ -57,7 +57,7 @@ class TrayService extends TrayListener {
     } else if (menuItem.key == 'play_pause') {
       _ref.read(mediaServiceProvider).playOrPause();
     } else if (menuItem.key == 'exit_app') {
-      exit(0);
+      windowManager.close();
     }
   }
 }

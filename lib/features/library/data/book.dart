@@ -25,7 +25,6 @@ class Book {
     this.collections,
     this.internalChapters,
   }) {
-    lastPlayed ??= DateTime.now();
     bookmarks ??= [];
     audioFiles ??= [];
     collections ??= [];

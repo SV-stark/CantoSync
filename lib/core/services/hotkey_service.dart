@@ -34,7 +34,11 @@ class HotkeyService {
           callback = () => _ref.read(mediaServiceProvider).playOrPause();
           break;
         case ShortcutAction.stop:
-          callback = () => _ref.read(mediaServiceProvider).pause();
+          callback = () {
+            final media = _ref.read(mediaServiceProvider);
+            media.seek(Duration.zero);
+            media.pause();
+          };
           break;
         case ShortcutAction.nextTrack:
           callback = () => _ref.read(mediaServiceProvider).nextChapter();

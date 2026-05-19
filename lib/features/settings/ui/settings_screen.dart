@@ -901,7 +901,7 @@ class SettingsScreen extends ConsumerWidget {
                           icon: FluentIcons.code,
                           title: 'GitHub Repository',
                           subtitle: 'View source code and contribute',
-                          url: 'https://github.com/anomalyco/cantosync',
+                          url: 'https://github.com/SV-stark/CantoSync',
                         ),
                         const SizedBox(height: 12),
                         _buildAboutLink(
@@ -917,7 +917,7 @@ class SettingsScreen extends ConsumerWidget {
                           icon: FluentIcons.issue_tracking,
                           title: 'Report an Issue',
                           subtitle: 'Help us improve by reporting bugs',
-                          url: 'https://github.com/anomalyco/cantosync/issues',
+                          url: 'https://github.com/SV-stark/CantoSync/issues',
                         ),
                         const Divider(),
                         // Build Info

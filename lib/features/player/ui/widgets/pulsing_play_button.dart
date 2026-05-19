@@ -75,13 +75,13 @@ class _PulsingPlayButtonState extends State<PulsingPlayButton>
                 boxShadow: [
                   BoxShadow(
                     color: widget.isPlaying
-                        ? Colors.white.withAlpha(77)
+                        ? Colors.white.withValues(alpha: 0.3)
                         : Colors.transparent,
                     blurRadius: 30,
                     spreadRadius: 5,
                   ),
                   BoxShadow(
-                    color: Colors.black.withAlpha(51),
+                    color: Colors.black.withValues(alpha: 0.2),
                     blurRadius: 20,
                     offset: const Offset(0, 10),
                   ),

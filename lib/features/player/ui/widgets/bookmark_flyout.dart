@@ -1,5 +1,6 @@
 import 'dart:ui';
 import 'package:fluent_ui/fluent_ui.dart';
+import 'package:intl/intl.dart';
 import 'package:canto_sync/features/library/data/book.dart';
 import 'package:canto_sync/core/utils/format_duration.dart';
 
@@ -35,13 +36,14 @@ class BookmarkFlyout extends StatelessWidget {
     } else if (diff.inDays < 30) {
       return '${(diff.inDays / 7).floor()} weeks ago';
     } else {
-      return '${date.month}/${date.day}/${date.year}';
+      return DateFormat.yMd().format(date);
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    final accentColor = FluentTheme.of(context).accentColor;
+    final theme = FluentTheme.of(context);
+    final accentColor = theme.accentColor;
     final sortedBookmarks = List<Bookmark>.from(bookmarks)
       ..sort(
         (a, b) => (a.timestampSeconds ?? 0).compareTo(b.timestampSeconds ?? 0),
@@ -55,7 +57,7 @@ class BookmarkFlyout extends StatelessWidget {
           width: 320,
           constraints: const BoxConstraints(maxHeight: 400),
           decoration: BoxDecoration(
-            color: Colors.white.withValues(alpha: 0.08),
+            color: theme.resources.cardBackgroundFillColorDefault,
             borderRadius: BorderRadius.circular(12),
             border: Border.all(
               color: Colors.white.withValues(alpha: 0.1),
@@ -240,7 +242,7 @@ class BookmarkFlyout extends StatelessWidget {
       builder: (context) => ContentDialog(
         title: const Text('Delete Bookmark'),
         content: Text(
-          'Are you sure you want to delete "${bookmark.label ?? ""}"?',
+          'Are you sure you want to delete "${bookmark.label ?? ''}"?',
         ),
         actions: [
           Button(

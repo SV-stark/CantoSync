@@ -13,7 +13,7 @@ class SleepTimerOverlay extends StatelessWidget {
 
     return material.IgnorePointer(
       child: Container(
-        color: Colors.black.withAlpha((opacity * 255).toInt()),
+        color: Colors.black.withValues(alpha: opacity),
         child: Center(
           child: Column(
             mainAxisSize: MainAxisSize.min,
@@ -21,13 +21,13 @@ class SleepTimerOverlay extends StatelessWidget {
               Icon(
                 FluentIcons.timer,
                 size: 48,
-                color: Colors.white.withAlpha(179),
+                color: Colors.white.withValues(alpha: 0.7),
               ),
               const SizedBox(height: 16),
               Text(
                 'Sleep Timer Active',
                 style: TextStyle(
-                  color: Colors.white.withAlpha(179),
+                  color: Colors.white.withValues(alpha: 0.7),
                   fontSize: 20,
                   fontWeight: FontWeight.bold,
                 ),
@@ -36,7 +36,7 @@ class SleepTimerOverlay extends StatelessWidget {
               Text(
                 'Playback will stop in ${_formatDuration(remainingTime!)}',
                 style: TextStyle(
-                  color: Colors.white.withAlpha(128),
+                  color: Colors.white.withValues(alpha: 0.5),
                   fontSize: 16,
                 ),
               ),
@@ -44,7 +44,7 @@ class SleepTimerOverlay extends StatelessWidget {
               Text(
                 '(Click Timer button to cancel)',
                 style: TextStyle(
-                  color: Colors.white.withAlpha(77),
+                  color: Colors.white.withValues(alpha: 0.3),
                   fontSize: 12,
                   fontStyle: FontStyle.italic,
                 ),

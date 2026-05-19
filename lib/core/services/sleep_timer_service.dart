@@ -1,20 +1,17 @@
 import 'dart:async';
+import 'package:freezed_annotation/freezed_annotation.dart';
 import 'package:canto_sync/core/services/media_service.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
+part 'sleep_timer_service.freezed.dart';
 part 'sleep_timer_service.g.dart';
 
-class SleepTimerState {
-  SleepTimerState({this.remainingTime, this.isEndOfChapter = false});
-  final Duration? remainingTime;
-  final bool isEndOfChapter;
-
-  SleepTimerState copyWith({Duration? remainingTime, bool? isEndOfChapter}) {
-    return SleepTimerState(
-      remainingTime: remainingTime ?? this.remainingTime,
-      isEndOfChapter: isEndOfChapter ?? this.isEndOfChapter,
-    );
-  }
+@freezed
+class SleepTimerState with _$SleepTimerState {
+  const factory SleepTimerState({
+    Duration? remainingTime,
+    @Default(false) bool isEndOfChapter,
+  }) = _SleepTimerState;
 }
 
 @Riverpod(keepAlive: true)
@@ -27,7 +24,7 @@ class SleepTimer extends _$SleepTimer {
     ref.onDispose(() {
       cancelTimer();
     });
-    return SleepTimerState();
+    return const SleepTimerState();
   }
 
   void startTimer(Duration duration) {
@@ -87,6 +84,6 @@ class SleepTimer extends _$SleepTimer {
     _timer = null;
     _posSub?.cancel();
     _posSub = null;
-    state = SleepTimerState();
+    state = const SleepTimerState();
   }
 }

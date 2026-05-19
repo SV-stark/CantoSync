@@ -1,10 +1,20 @@
 import 'dart:convert';
-import 'package:flutter/foundation.dart';
+import 'package:freezed_annotation/freezed_annotation.dart';
 import 'package:http/http.dart' as http;
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
+part 'update_service.freezed.dart';
 part 'update_service.g.dart';
+
+@freezed
+class UpdateInfo with _$UpdateInfo {
+  const factory UpdateInfo({
+    required String latestVersion,
+    required String downloadUrl,
+    String? releaseNotes,
+  }) = _UpdateInfo;
+}
 
 @Riverpod(keepAlive: true)
 UpdateService updateService(Ref ref) {
@@ -56,15 +66,4 @@ class UpdateService {
     } catch (_) {}
     return false;
   }
-}
-
-class UpdateInfo {
-  UpdateInfo({
-    required this.latestVersion,
-    required this.downloadUrl,
-    this.releaseNotes,
-  });
-  final String latestVersion;
-  final String downloadUrl;
-  final String? releaseNotes;
 }

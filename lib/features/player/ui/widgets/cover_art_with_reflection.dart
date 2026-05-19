@@ -30,7 +30,7 @@ class CoverArtWithReflection extends StatelessWidget {
               borderRadius: BorderRadius.circular(20),
               boxShadow: [
                 BoxShadow(
-                  color: Colors.black.withAlpha(102),
+                  color: Colors.black.withValues(alpha: 0.4),
                   blurRadius: 40,
                   offset: const Offset(0, 20),
                 ),
@@ -74,7 +74,7 @@ class CoverArtWithReflection extends StatelessWidget {
                             begin: Alignment.topCenter,
                             end: Alignment.bottomCenter,
                             colors: [
-                              Colors.white.withAlpha(128),
+                              Colors.white.withValues(alpha: 0.5),
                               Colors.transparent,
                             ],
                           ).createShader(bounds);

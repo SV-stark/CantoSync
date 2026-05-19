@@ -427,13 +427,13 @@ class StatsScreen extends ConsumerWidget {
 
 class _ContributionCalendar extends StatelessWidget {
   const _ContributionCalendar({required this.dailyStats});
-  final List<dynamic> dailyStats;
+  final List<DailyListeningStats> dailyStats;
 
   @override
   Widget build(BuildContext context) {
     // Group by weeks
-    final weeks = <List<dynamic>>[];
-    var currentWeek = <dynamic>[];
+    final weeks = <List<DailyListeningStats>>[];
+    var currentWeek = <DailyListeningStats>[];
 
     for (final day in dailyStats) {
       currentWeek.add(day);

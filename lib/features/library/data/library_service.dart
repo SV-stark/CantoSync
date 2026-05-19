@@ -52,6 +52,8 @@ class LibraryCollectionFilter extends _$LibraryCollectionFilter {
   void setFilter(String? collection) => state = collection;
 }
 
+/// Returns a stream of books filtered by search query and collection.
+/// Note: Riverpod automatically wraps this Stream in an [AsyncValue].
 @riverpod
 Stream<List<Book>> libraryBooks(Ref ref) {
   final service = ref.watch(libraryServiceProvider);
@@ -258,7 +260,11 @@ class LibraryService {
       book.coverPath = targetPath;
       await saveBook(book);
     } catch (e, stack) {
-      logger.e('Error updating book cover', error: e, stackTrace: stack);
+      logger.e(
+        'Error updating book cover',
+        error: e,
+        stackTrace: stack,
+      );
     }
   }
 
@@ -266,8 +272,7 @@ class LibraryService {
     String path,
     Player probePlayer, {
     bool forceUpdate = false,
-  }) async {
-    final dir = Directory(path);
+  }) async {    final dir = Directory(path);
     if (!await dir.exists()) return [];
 
     final List<FileSystemEntity> entities = await dir
@@ -436,8 +441,8 @@ class LibraryService {
           duration = metadata.format.duration!;
         }
       }
-    } catch (e) {
-      logger.e('Error reading metadata for $path', error: e);
+    } catch (e, stack) {
+      logger.e('Error reading metadata for $path', error: e, stackTrace: stack);
     }
 
     if (existingBook != null) {
@@ -557,8 +562,8 @@ class LibraryService {
         }
         await saveBook(book);
       }
-    } catch (e) {
-      logger.e('Update progress failed', error: e);
+    } catch (e, stack) {
+      logger.e('Update progress failed', error: e, stackTrace: stack);
     }
   }
 
@@ -570,8 +575,8 @@ class LibraryService {
         book.bookmarks!.add(bookmark);
         await saveBook(book);
       }
-    } catch (e) {
-      logger.e('Error adding bookmark', error: e);
+    } catch (e, stack) {
+      logger.e('Error adding bookmark', error: e, stackTrace: stack);
     }
   }
 
@@ -584,8 +589,8 @@ class LibraryService {
         book.bookmarks!.removeAt(index);
         await saveBook(book);
       }
-    } catch (e) {
-      logger.e('Error removing bookmark', error: e);
+    } catch (e, stack) {
+      logger.e('Error removing bookmark', error: e, stackTrace: stack);
     }
   }
 }

@@ -64,6 +64,17 @@ void main() async {
   );
 }
 
+class NavigationIndex extends Notifier<int> {
+  @override
+  int build() => 0;
+
+  @override
+  set state(int i) => super.state = i;
+}
+
+final navigationIndexProvider =
+    NotifierProvider<NavigationIndex, int>(NavigationIndex.new);
+
 class CantoSyncApp extends ConsumerStatefulWidget {
   const CantoSyncApp({super.key});
 
@@ -73,7 +84,7 @@ class CantoSyncApp extends ConsumerStatefulWidget {
 
 class _CantoSyncAppState extends ConsumerState<CantoSyncApp>
     with WindowListener {
-  int _index = 0;
+  bool _servicesInitialized = false;
 
   @override
   void initState() {
@@ -89,19 +100,42 @@ class _CantoSyncAppState extends ConsumerState<CantoSyncApp>
   }
 
   Future<void> _initServices() async {
+    if (_servicesInitialized) return;
+    _servicesInitialized = true;
+
+    // Hotkeys
     try {
-      // Hotkeys
       await ref.read(hotkeyServiceProvider).init();
-      // Tray
+    } catch (e) {
+      logger.e('Error initializing hotkeys', error: e);
+    }
+
+    // Tray
+    try {
       await ref.read(trayServiceProvider).init();
-      // Playback Sync
+    } catch (e) {
+      logger.e('Error initializing tray', error: e);
+    }
+
+    // Playback Sync
+    try {
       ref.read(playbackSyncProvider);
-      // Library Scan
+    } catch (e) {
+      logger.e('Error initializing playback sync', error: e);
+    }
+
+    // Library Scan
+    try {
       ref.read(libraryServiceProvider).rescanLibraries();
-      // Updates
+    } catch (e) {
+      logger.e('Error starting library rescan', error: e);
+    }
+
+    // Updates
+    try {
       _checkUpdates();
     } catch (e) {
-      logger.e('Error in _initServices', error: e);
+      logger.e('Error checking for updates', error: e);
     }
   }
 
@@ -132,6 +166,7 @@ class _CantoSyncAppState extends ConsumerState<CantoSyncApp>
   Widget build(BuildContext context) {
     try {
       final settings = ref.watch(appSettingsProvider);
+      final index = ref.watch(navigationIndexProvider);
 
       return FluentApp(
         title: 'CantoSync',
@@ -175,8 +210,9 @@ class _CantoSyncAppState extends ConsumerState<CantoSyncApp>
                 ),
               ),
               pane: NavigationPane(
-                selected: _index,
-                onChanged: (i) => setState(() => _index = i),
+                selected: index,
+                onChanged: (i) =>
+                    ref.read(navigationIndexProvider.notifier).state = i,
                 displayMode: PaneDisplayMode.compact,
                 items: [
                   PaneItem(
@@ -208,10 +244,13 @@ class _CantoSyncAppState extends ConsumerState<CantoSyncApp>
               alignment: Alignment.topRight,
               child: SizedBox(width: 138, height: 32, child: WindowButtons()),
             ),
-            if (_index != 1)
+            if (index != 1)
               Align(
                 alignment: Alignment.bottomCenter,
-                child: MiniPlayer(onTap: () => setState(() => _index = 1)),
+                child: MiniPlayer(
+                  onTap: () =>
+                      ref.read(navigationIndexProvider.notifier).state = 1,
+                ),
               ),
           ],
         ),

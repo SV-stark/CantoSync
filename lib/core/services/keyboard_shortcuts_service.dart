@@ -18,12 +18,9 @@ class KeyboardShortcuts extends _$KeyboardShortcuts {
   @override
   List<KeyboardShortcut> build() {
     _isar = ref.watch(isarProvider);
-    _init();
-    return getDefaultShortcuts();
-  }
-
-  Future<void> _init() async {
-    await loadShortcuts();
+    final shortcuts = getDefaultShortcuts();
+    Future.microtask(() => loadShortcuts());
+    return shortcuts;
   }
 
   Future<void> loadShortcuts() async {

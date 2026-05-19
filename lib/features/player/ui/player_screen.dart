@@ -51,14 +51,11 @@ final playlistProvider = StreamProvider.autoDispose<Playlist>((ref) {
   return service.playlistStream;
 });
 
-final playerChaptersProvider = FutureProvider.autoDispose<List<Chapter>>((
+final playerChaptersProvider = StreamProvider.autoDispose<List<Chapter>>((
   ref,
-) async {
+) {
   final service = ref.watch(mediaServiceProvider);
-  // Re-fetch when playlist updates
-  ref.watch(playlistProvider);
-  await Future.delayed(const Duration(milliseconds: 200));
-  return service.getChapters();
+  return service.chaptersStream;
 });
 
 class PlayerScreen extends ConsumerStatefulWidget {

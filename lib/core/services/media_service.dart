@@ -84,6 +84,10 @@ class MediaService {
   List<Chapter>? get customChapters => _customChapters;
   Duration? _customTotalDuration;
 
+  final StreamController<List<Chapter>> _chaptersController =
+      StreamController<List<Chapter>>.broadcast();
+  Stream<List<Chapter>> get chaptersStream => _chaptersController.stream;
+
   Future<void> open(
     Object mediaSource, {
     String? title,
@@ -96,6 +100,14 @@ class MediaService {
     _customChapters = chapters;
     _customTotalDuration = totalDuration;
     _totalDurationController.add(totalDuration ?? Duration.zero);
+
+    if (chapters != null) {
+      _chaptersController.add(chapters);
+    } else {
+      // Clear previous chapters and trigger fetch
+      _chaptersController.add([]);
+      unawaited(getChapters().then((c) => _chaptersController.add(c)));
+    }
 
     if (mediaSource is String) {
       await _p.open(Media(mediaSource), play: autoPlay);

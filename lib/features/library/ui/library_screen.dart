@@ -30,7 +30,9 @@ class LibraryScreen extends HookConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final flyoutController = useMemoized(() => FlyoutController());
-    useEffect(() => flyoutController.dispose, [flyoutController]);
+    useEffect(() {
+      return () => flyoutController.dispose();
+    }, [flyoutController]);
 
     final booksAsync = ref.watch(libraryBooksProvider);
     final viewMode = ref.watch(libraryViewModeProvider);
@@ -567,9 +569,9 @@ class BookCard extends ConsumerWidget {
                                   ),
                                 ),
                                 progressColor: Colors.white,
-                                backgroundColor: Colors.white.withAlpha(51),
+                                backgroundColor: Colors.white.withValues(alpha: 0.2),
                                 circularStrokeCap: CircularStrokeCap.round,
-                                fillColor: Colors.black.withAlpha(179),
+                                fillColor: Colors.black.withValues(alpha: 0.7),
                               ),
                             ),
 
@@ -597,7 +599,7 @@ class BookCard extends ConsumerWidget {
                                   vertical: 4,
                                 ),
                                 decoration: BoxDecoration(
-                                  color: Colors.black.withAlpha(179),
+                                  color: Colors.black.withValues(alpha: 0.7),
                                   borderRadius: BorderRadius.circular(12),
                                 ),
                                 child: Text(

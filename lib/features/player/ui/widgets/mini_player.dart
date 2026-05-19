@@ -122,7 +122,7 @@ class _MiniPlayerState extends ConsumerState<MiniPlayer> {
                         FluentTheme.of(context).accentColor,
                       ),
                       inactiveColor: WidgetStateProperty.all(
-                        Colors.grey.withAlpha(77),
+                        Colors.grey.withValues(alpha: 0.3),
                       ),
                     ),
                     onChangeStart: (val) {

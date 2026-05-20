@@ -18,6 +18,8 @@ abstract class SleepTimerState with _$SleepTimerState {
 class SleepTimer extends _$SleepTimer {
   Timer? _timer;
   StreamSubscription? _posSub;
+  double? _originalVolume;
+  bool _isFadingOut = false;
 
   @override
   SleepTimerState build() {
@@ -27,14 +29,44 @@ class SleepTimer extends _$SleepTimer {
     return const SleepTimerState();
   }
 
+  Future<void> _fadeOutAndPause() async {
+    if (_isFadingOut) return;
+    _isFadingOut = true;
+
+    final mediaService = ref.read(mediaServiceProvider);
+    _originalVolume = mediaService.volume;
+    final startVol = _originalVolume ?? 100.0;
+
+    // Fade out over 3 seconds (12 steps of 250ms)
+    const steps = 12;
+    const interval = Duration(milliseconds: 250);
+    final volumeStep = startVol / steps;
+
+    double currentVol = startVol;
+    for (int i = 0; i < steps; i++) {
+      currentVol = (currentVol - volumeStep).clamp(0.0, startVol);
+      await mediaService.setVolume(currentVol);
+      await Future.delayed(interval);
+    }
+
+    await mediaService.pause();
+    // Restore original volume after pausing
+    if (_originalVolume != null) {
+      await mediaService.setVolume(_originalVolume!);
+      _originalVolume = null;
+    }
+    _isFadingOut = false;
+  }
+
   void startTimer(Duration duration) {
     cancelTimer();
     state = state.copyWith(remainingTime: duration, isEndOfChapter: false);
     _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
-      if (state.remainingTime == null ||
-          state.remainingTime! <= Duration.zero) {
-        ref.read(mediaServiceProvider).pause();
+      if (state.remainingTime == null) {
         cancelTimer();
+      } else if (state.remainingTime! <= Duration.zero) {
+        cancelTimer();
+        _fadeOutAndPause();
       } else {
         state = state.copyWith(
           remainingTime: state.remainingTime! - const Duration(seconds: 1),
@@ -70,10 +102,10 @@ class SleepTimer extends _$SleepTimer {
 
         final remaining = chapterEndTime - position;
         if (chapterEndTime > Duration.zero &&
-            remaining <= const Duration(seconds: 1) &&
+            remaining <= const Duration(seconds: 3) &&
             remaining >= Duration.zero) {
-          mediaService.pause();
           cancelTimer();
+          _fadeOutAndPause();
         }
       }
     });

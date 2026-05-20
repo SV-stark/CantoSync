@@ -62,17 +62,15 @@ abstract class _$KeyboardShortcuts extends $Notifier<List<KeyboardShortcut>> {
   }
 }
 
-@ProviderFor(shortcutActionCallbacks)
+@ProviderFor(ShortcutActionCallbacks)
 final shortcutActionCallbacksProvider = ShortcutActionCallbacksProvider._();
 
 final class ShortcutActionCallbacksProvider
     extends
-        $FunctionalProvider<
-          Map<String, List<ShortcutActionCallback>>,
-          Map<String, List<ShortcutActionCallback>>,
+        $NotifierProvider<
+          ShortcutActionCallbacks,
           Map<String, List<ShortcutActionCallback>>
-        >
-    with $Provider<Map<String, List<ShortcutActionCallback>>> {
+        > {
   ShortcutActionCallbacksProvider._()
     : super(
         from: null,
@@ -89,14 +87,7 @@ final class ShortcutActionCallbacksProvider
 
   @$internal
   @override
-  $ProviderElement<Map<String, List<ShortcutActionCallback>>> $createElement(
-    $ProviderPointer pointer,
-  ) => $ProviderElement(pointer);
-
-  @override
-  Map<String, List<ShortcutActionCallback>> create(Ref ref) {
-    return shortcutActionCallbacks(ref);
-  }
+  ShortcutActionCallbacks create() => ShortcutActionCallbacks();
 
   /// {@macro riverpod.override_with_value}
   Override overrideWithValue(Map<String, List<ShortcutActionCallback>> value) {
@@ -109,4 +100,31 @@ final class ShortcutActionCallbacksProvider
 }
 
 String _$shortcutActionCallbacksHash() =>
-    r'69ca88bee22fa8913f077742e5e3fdafcf0b82ee';
+    r'c1ba98e8c373eb449123041a1962af40779cfdcb';
+
+abstract class _$ShortcutActionCallbacks
+    extends $Notifier<Map<String, List<ShortcutActionCallback>>> {
+  Map<String, List<ShortcutActionCallback>> build();
+  @$mustCallSuper
+  @override
+  void runBuild() {
+    final ref =
+        this.ref
+            as $Ref<
+              Map<String, List<ShortcutActionCallback>>,
+              Map<String, List<ShortcutActionCallback>>
+            >;
+    final element =
+        ref.element
+            as $ClassProviderElement<
+              AnyNotifier<
+                Map<String, List<ShortcutActionCallback>>,
+                Map<String, List<ShortcutActionCallback>>
+              >,
+              Map<String, List<ShortcutActionCallback>>,
+              Object?,
+              Object?
+            >;
+    element.handleCreate(ref, build);
+  }
+}

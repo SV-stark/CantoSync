@@ -41,7 +41,7 @@ final class SleepTimerProvider
   }
 }
 
-String _$sleepTimerHash() => r'735ac0bb5d9980c77b2d0b7f07b109861e1d09e2';
+String _$sleepTimerHash() => r'4e85fd21ab7a3ad7234932baa6a6451deeee2b53';
 
 abstract class _$SleepTimer extends $Notifier<SleepTimerState> {
   SleepTimerState build();

@@ -1,3 +1,4 @@
+import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:hotkey_manager/hotkey_manager.dart';
@@ -18,11 +19,15 @@ class HotkeyService {
   final Ref _ref;
 
   Future<void> init() async {
+    if (kIsWeb) return;
+    if (!Platform.isWindows && !Platform.isLinux) return;
+
     try {
       await hotKeyManager.unregisterAll();
     } catch (e) {
       debugPrint('Error unregistering hotkeys: $e');
     }
+
 
     final shortcuts = _ref.read(keyboardShortcutsProvider);
 
@@ -94,6 +99,9 @@ class HotkeyService {
     KeyboardShortcut shortcut,
     VoidCallback onDown,
   ) async {
+    if (kIsWeb) return;
+    if (!Platform.isWindows && !Platform.isLinux) return;
+
     final logicalKeys = shortcut.logicalKeys;
     if (logicalKeys == null || logicalKeys.isEmpty) return;
 

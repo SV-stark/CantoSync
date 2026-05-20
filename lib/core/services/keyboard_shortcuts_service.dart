@@ -240,5 +240,33 @@ class KeyboardShortcuts extends _$KeyboardShortcuts {
 }
 
 @Riverpod(keepAlive: true)
-Map<String, List<ShortcutActionCallback>> shortcutActionCallbacks(Ref ref) =>
-    {};
+class ShortcutActionCallbacks extends _$ShortcutActionCallbacks {
+  @override
+  Map<String, List<ShortcutActionCallback>> build() => {};
+
+  void register(String action, ShortcutActionCallback callback) {
+    final current = state;
+    final list = List<ShortcutActionCallback>.from(current[action] ?? []);
+    if (!list.contains(callback)) {
+      list.add(callback);
+      state = {
+        ...current,
+        action: list,
+      };
+    }
+  }
+
+  void unregister(String action, ShortcutActionCallback callback) {
+    final current = state;
+    if (current.containsKey(action)) {
+      final list = List<ShortcutActionCallback>.from(current[action]!);
+      if (list.remove(callback)) {
+        state = {
+          ...current,
+          action: list,
+        };
+      }
+    }
+  }
+}
+

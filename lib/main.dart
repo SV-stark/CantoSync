@@ -22,6 +22,8 @@ import 'package:canto_sync/core/ui/window_buttons.dart';
 import 'package:canto_sync/core/utils/logger.dart';
 import 'package:canto_sync/features/stats/data/listening_stats.dart';
 import 'package:canto_sync/core/data/keyboard_shortcuts.dart';
+import 'package:canto_sync/core/services/keyboard_shortcuts_service.dart';
+
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -87,18 +89,47 @@ class _CantoSyncAppState extends ConsumerState<CantoSyncApp>
     with WindowListener {
   bool _servicesInitialized = false;
 
+  void _openLibraryCallback() {
+    ref.read(navigationIndexProvider.notifier).state = 0;
+  }
+
+  void _openPlayerCallback() {
+    ref.read(navigationIndexProvider.notifier).state = 1;
+  }
+
+  void _openSettingsCallback() {
+    ref.read(navigationIndexProvider.notifier).state = 3;
+  }
+
+  void _registerNavigationCallbacks() {
+    final notifier = ref.read(shortcutActionCallbacksProvider.notifier);
+    notifier.register(ShortcutAction.openLibrary, _openLibraryCallback);
+    notifier.register(ShortcutAction.openPlayer, _openPlayerCallback);
+    notifier.register(ShortcutAction.openSettings, _openSettingsCallback);
+  }
+
+  void _unregisterNavigationCallbacks() {
+    final notifier = ref.read(shortcutActionCallbacksProvider.notifier);
+    notifier.unregister(ShortcutAction.openLibrary, _openLibraryCallback);
+    notifier.unregister(ShortcutAction.openPlayer, _openPlayerCallback);
+    notifier.unregister(ShortcutAction.openSettings, _openSettingsCallback);
+  }
+
   @override
   void initState() {
     super.initState();
     windowManager.addListener(this);
     _initServices();
+    _registerNavigationCallbacks();
   }
 
   @override
   void dispose() {
+    _unregisterNavigationCallbacks();
     windowManager.removeListener(this);
     super.dispose();
   }
+
 
   Future<void> _initServices() async {
     if (_servicesInitialized) return;

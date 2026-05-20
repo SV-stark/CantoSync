@@ -3,6 +3,7 @@ import 'package:tray_manager/tray_manager.dart';
 import 'package:window_manager/window_manager.dart';
 import 'package:canto_sync/core/services/media_service.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
+import 'package:canto_sync/core/utils/logger.dart';
 
 part 'tray_service.g.dart';
 
@@ -16,27 +17,33 @@ class TrayService extends TrayListener {
   final Ref _ref;
 
   Future<void> init() async {
-    trayManager.addListener(this);
+    if (!Platform.isWindows && !Platform.isLinux) return;
+    try {
+      trayManager.addListener(this);
 
-    // Set tray icon (using the same logo.png we updated earlier)
-    String iconPath = Platform.isWindows
-        ? 'assets/app_icon.ico'
-        : 'assets/logo.png';
-    // Note: tray_manager on Windows needs an .ico usually or a png in the actual assets folder
-    // But it can load from file system if path is absolute or from assets.
-    // For now we'll use the relative path which tray_manager handles if in pubspec.
+      // Set tray icon (using the same logo.png we updated earlier)
+      String iconPath = Platform.isWindows
+          ? 'assets/app_icon.ico'
+          : 'assets/logo.png';
+      // Note: tray_manager on Windows needs an .ico usually or a png in the actual assets folder
+      // But it can load from file system if path is absolute or from assets.
+      // For now we'll use the relative path which tray_manager handles if in pubspec.
 
-    await trayManager.setIcon(iconPath);
+      await trayManager.setIcon(iconPath);
 
-    List<MenuItem> items = [
-      MenuItem(key: 'show_window', label: 'Show CantoSync'),
-      MenuItem.separator(),
-      MenuItem(key: 'play_pause', label: 'Play / Pause'),
-      MenuItem.separator(),
-      MenuItem(key: 'exit_app', label: 'Exit'),
-    ];
-    await trayManager.setContextMenu(Menu(items: items));
+      List<MenuItem> items = [
+        MenuItem(key: 'show_window', label: 'Show CantoSync'),
+        MenuItem.separator(),
+        MenuItem(key: 'play_pause', label: 'Play / Pause'),
+        MenuItem.separator(),
+        MenuItem(key: 'exit_app', label: 'Exit'),
+      ];
+      await trayManager.setContextMenu(Menu(items: items));
+    } catch (e) {
+      logger.w('Tray initialization failed: $e');
+    }
   }
+
 
   @override
   void onTrayIconMouseDown() {

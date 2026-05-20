@@ -78,6 +78,10 @@ class AppSettingsNotifier extends _$AppSettingsNotifier {
     final isarSettings = _isar.isarAppSettings.getSync(0);
 
     if (isarSettings == null) {
+      final defaults = IsarAppSettings();
+      _isar.writeTxnSync(() {
+        _isar.isarAppSettings.putSync(defaults);
+      });
       return const AppSettings();
     }
 

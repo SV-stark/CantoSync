@@ -14,6 +14,9 @@ import 'package:canto_sync/features/library/ui/metadata_editor.dart';
 import 'package:canto_sync/features/library/ui/book_info_dialog.dart';
 import 'package:canto_sync/core/constants/app_constants.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
+import 'package:canto_sync/core/data/keyboard_shortcuts.dart';
+import 'package:canto_sync/core/services/keyboard_shortcuts_service.dart';
+
 
 part 'library_screen.g.dart';
 
@@ -38,21 +41,44 @@ class LibraryScreen extends HookConsumerWidget {
     final viewMode = ref.watch(libraryViewModeProvider);
     final isGroupingEnabled = ref.watch(libraryGroupingModeProvider);
     final selectedCollection = ref.watch(libraryCollectionFilterProvider);
+    final collectionsAsync = ref.watch(libraryCollectionsProvider);
 
-    final allBooks = booksAsync.maybeWhen(
-      data: (books) => books,
-      orElse: () => <Book>[],
+    final sortedCollections = collectionsAsync.maybeWhen(
+      data: (c) => c,
+      orElse: () => <String>[],
     );
 
-    final sortedCollections = useMemoized(() {
-      final collections = <String>{};
-      for (final book in allBooks) {
-        if (book.collections != null) {
-          collections.addAll(book.collections!);
-        }
+    final searchController = useTextEditingController(
+      text: ref.read(librarySearchQueryProvider),
+    );
+    final searchQuery = ref.watch(librarySearchQueryProvider);
+    useEffect(() {
+      if (searchController.text != searchQuery) {
+        searchController.text = searchQuery;
       }
-      return collections.toList()..sort();
-    }, [allBooks]);
+      return null;
+    }, [searchQuery]);
+
+    final searchFocusNode = useFocusNode();
+    useEffect(() {
+      final callbacks = ref.read(shortcutActionCallbacksProvider.notifier);
+
+      void onFocusSearch() {
+        searchFocusNode.requestFocus();
+      }
+
+      void onToggleViewMode() {
+        ref.read(libraryViewModeProvider.notifier).toggle();
+      }
+
+      callbacks.register(ShortcutAction.focusSearch, onFocusSearch);
+      callbacks.register(ShortcutAction.toggleViewMode, onToggleViewMode);
+
+      return () {
+        callbacks.unregister(ShortcutAction.focusSearch, onFocusSearch);
+        callbacks.unregister(ShortcutAction.toggleViewMode, onToggleViewMode);
+      };
+    }, []);
 
     Future<void> pickFolder() async {
       String? selectedDirectory = await FilePicker.getDirectoryPath();
@@ -103,34 +129,65 @@ class LibraryScreen extends HookConsumerWidget {
     return ScaffoldPage(
       header: PageHeader(
         title: Text(selectedCollection ?? 'Library'),
-        commandBar: CommandBar(
-          mainAxisAlignment: MainAxisAlignment.end,
-          primaryItems: [
-            CommandBarButton(
-              icon: isScanning.value
-                  ? const ProgressRing(strokeWidth: 2)
-                  : const Icon(FluentIcons.refresh),
-              label: Text(isScanning.value ? 'Scanning...' : 'Rescan All'),
-              onPressed: isScanning.value ? null : rescanLibrary,
-            ),
-            CommandBarButton(
-              icon: Icon(viewMode ? FluentIcons.list : FluentIcons.view_all),
-              label: Text(viewMode ? 'List View' : 'Grid View'),
-              onPressed: () =>
-                  ref.read(libraryViewModeProvider.notifier).toggle(),
-            ),
-            CommandBarButton(
-              icon: Icon(
-                isGroupingEnabled ? FluentIcons.group_list : FluentIcons.group,
+        commandBar: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            SizedBox(
+              width: 200,
+              child: TextBox(
+                focusNode: searchFocusNode,
+                controller: searchController,
+                placeholder: 'Search library...',
+                onChanged: (text) =>
+                    ref.read(librarySearchQueryProvider.notifier).updateQuery(text),
+                prefix: const Padding(
+                  padding: EdgeInsets.symmetric(horizontal: 8.0),
+                  child: Icon(FluentIcons.search, size: 14),
+                ),
+                suffix: searchController.text.isNotEmpty
+                    ? IconButton(
+                        icon: const Icon(FluentIcons.clear),
+                        onPressed: () {
+                          searchController.clear();
+                          ref
+                              .read(librarySearchQueryProvider.notifier)
+                              .updateQuery('');
+                        },
+                      )
+                    : null,
               ),
-              label: const Text('Group by Series'),
-              onPressed: () =>
-                  ref.read(libraryGroupingModeProvider.notifier).toggle(),
             ),
-            CommandBarButton(
-              icon: const Icon(FluentIcons.add),
-              label: const Text('Add Folder'),
-              onPressed: pickFolder,
+            const SizedBox(width: 12),
+            CommandBar(
+              mainAxisAlignment: MainAxisAlignment.end,
+              primaryItems: [
+                CommandBarButton(
+                  icon: isScanning.value
+                      ? const ProgressRing(strokeWidth: 2)
+                      : const Icon(FluentIcons.refresh),
+                  label: Text(isScanning.value ? 'Scanning...' : 'Rescan All'),
+                  onPressed: isScanning.value ? null : rescanLibrary,
+                ),
+                CommandBarButton(
+                  icon: Icon(viewMode ? FluentIcons.list : FluentIcons.view_all),
+                  label: Text(viewMode ? 'List View' : 'Grid View'),
+                  onPressed: () =>
+                      ref.read(libraryViewModeProvider.notifier).toggle(),
+                ),
+                CommandBarButton(
+                  icon: Icon(
+                    isGroupingEnabled ? FluentIcons.group_list : FluentIcons.group,
+                  ),
+                  label: const Text('Group by Series'),
+                  onPressed: () =>
+                      ref.read(libraryGroupingModeProvider.notifier).toggle(),
+                ),
+                CommandBarButton(
+                  icon: const Icon(FluentIcons.add),
+                  label: const Text('Add Folder'),
+                  onPressed: pickFolder,
+                ),
+              ],
             ),
           ],
         ),

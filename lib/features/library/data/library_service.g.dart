@@ -337,6 +337,46 @@ final class LibraryRecentBooksProvider
 String _$libraryRecentBooksHash() =>
     r'3ebcfc3c20a7def5647e10cc772f84d34497a213';
 
+@ProviderFor(libraryCollections)
+final libraryCollectionsProvider = LibraryCollectionsProvider._();
+
+final class LibraryCollectionsProvider
+    extends
+        $FunctionalProvider<
+          AsyncValue<List<String>>,
+          List<String>,
+          Stream<List<String>>
+        >
+    with $FutureModifier<List<String>>, $StreamProvider<List<String>> {
+  LibraryCollectionsProvider._()
+    : super(
+        from: null,
+        argument: null,
+        retry: null,
+        name: r'libraryCollectionsProvider',
+        isAutoDispose: true,
+        dependencies: null,
+        $allTransitiveDependencies: null,
+      );
+
+  @override
+  String debugGetCreateSourceHash() => _$libraryCollectionsHash();
+
+  @$internal
+  @override
+  $StreamProviderElement<List<String>> $createElement(
+    $ProviderPointer pointer,
+  ) => $StreamProviderElement(pointer);
+
+  @override
+  Stream<List<String>> create(Ref ref) {
+    return libraryCollections(ref);
+  }
+}
+
+String _$libraryCollectionsHash() =>
+    r'6bcd95789e12a9dd9ef71fc02638db6abdfa783e';
+
 @ProviderFor(libraryGroupedBooks)
 final libraryGroupedBooksProvider = LibraryGroupedBooksProvider._();
 

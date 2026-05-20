@@ -21,6 +21,9 @@ class _MetadataEditorState extends ConsumerState<MetadataEditor> {
   late TextEditingController _narratorController;
   late TextEditingController _descriptionController;
 
+  String? _titleError;
+  String? _seriesIndexError;
+
   @override
   void initState() {
     super.initState();
@@ -50,8 +53,35 @@ class _MetadataEditorState extends ConsumerState<MetadataEditor> {
   }
 
   Future<void> _save() async {
-    final oldSeries = widget.book.series;
-    widget.book.title = _titleController.text;
+    setState(() {
+      _titleError = null;
+      _seriesIndexError = null;
+    });
+
+    final titleText = _titleController.text.trim();
+    final seriesIndexText = _seriesIndexController.text.trim();
+    bool hasError = false;
+
+    if (titleText.isEmpty) {
+      setState(() {
+        _titleError = 'Title is required';
+      });
+      hasError = true;
+    }
+
+    if (seriesIndexText.isNotEmpty) {
+      final index = int.tryParse(seriesIndexText);
+      if (index == null || index < 1) {
+        setState(() {
+          _seriesIndexError = 'Must be positive';
+        });
+        hasError = true;
+      }
+    }
+
+    if (hasError) return;
+
+    widget.book.title = titleText;
     widget.book.author = _authorController.text;
     widget.book.album = _albumController.text;
     widget.book.series = _seriesController.text.isNotEmpty
@@ -61,14 +91,12 @@ class _MetadataEditorState extends ConsumerState<MetadataEditor> {
     widget.book.description = _descriptionController.text;
 
     // Parse series index if provided
-    final seriesIndexText = _seriesIndexController.text.trim();
     if (seriesIndexText.isNotEmpty) {
       final index = int.tryParse(seriesIndexText);
-      if (index != null && index > 0) {
+      if (index != null) {
         widget.book.seriesIndex = index;
       }
-    } else if (oldSeries != widget.book.series) {
-      // Reset series index if series changed and no manual index set (will be recalculated on next grouping)
+    } else {
       widget.book.seriesIndex = null;
     }
 
@@ -106,9 +134,22 @@ class _MetadataEditorState extends ConsumerState<MetadataEditor> {
                     children: [
                       InfoLabel(
                         label: 'Title',
-                        child: TextBox(
-                          controller: _titleController,
-                          placeholder: 'Title',
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            TextBox(
+                              controller: _titleController,
+                              placeholder: 'Title',
+                            ),
+                            if (_titleError != null)
+                              Padding(
+                                padding: const EdgeInsets.only(top: 4.0),
+                                child: Text(
+                                  _titleError!,
+                                  style: TextStyle(color: Colors.red),
+                                ),
+                              ),
+                          ],
                         ),
                       ),
                       const SizedBox(height: 8),
@@ -150,10 +191,23 @@ class _MetadataEditorState extends ConsumerState<MetadataEditor> {
                   flex: 1,
                   child: InfoLabel(
                     label: 'Book #',
-                    child: TextBox(
-                      controller: _seriesIndexController,
-                      placeholder: '#',
-                      keyboardType: TextInputType.number,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        TextBox(
+                          controller: _seriesIndexController,
+                          placeholder: '#',
+                          keyboardType: TextInputType.number,
+                        ),
+                        if (_seriesIndexError != null)
+                          Padding(
+                            padding: const EdgeInsets.only(top: 4.0),
+                            child: Text(
+                              _seriesIndexError!,
+                              style: TextStyle(color: Colors.red, fontSize: 11),
+                            ),
+                          ),
+                      ],
                     ),
                   ),
                 ),

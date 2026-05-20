@@ -101,6 +101,20 @@ List<Book> libraryRecentBooks(Ref ref) {
 }
 
 @riverpod
+Stream<List<String>> libraryCollections(Ref ref) {
+  final service = ref.watch(libraryServiceProvider);
+  return service.listenToBooks().map((books) {
+    final collections = <String>{};
+    for (final book in books) {
+      if (book.collections != null) {
+        collections.addAll(book.collections!);
+      }
+    }
+    return collections.toList()..sort();
+  });
+}
+
+@riverpod
 Future<Map<String, List<Book>>> libraryGroupedBooks(Ref ref) async {
   final books = await ref.watch(libraryBooksProvider.future);
 
@@ -118,6 +132,10 @@ Future<Map<String, List<Book>>> libraryGroupedBooks(Ref ref) async {
   }
 
   return groups;
+}
+
+String _cleanMetadataString(String str) {
+  return str.replaceAll(RegExp(r'[_\\-]'), ' ').replaceAll(RegExp(r'\s+'), ' ').trim();
 }
 
 Future<Map<String, List<String>>> _performFileScan(String path) async {
@@ -156,6 +174,18 @@ class LibraryService {
   }
 
   Future<void> deleteBook(String path) async {
+    final book = await _isar.books.where().pathEqualTo(path).findFirst();
+    if (book != null && book.coverPath != null) {
+      try {
+        final file = File(book.coverPath!);
+        if (await file.exists()) {
+          await file.delete();
+          logger.d('Deleted cached cover file: ${book.coverPath}');
+        }
+      } catch (e) {
+        logger.w('Failed to delete cached cover file: $e');
+      }
+    }
     await _isar.writeTxn(() async {
       await _isar.books.where().pathEqualTo(path).deleteFirst();
     });
@@ -352,9 +382,9 @@ class LibraryService {
           options: const ParseOptions(duration: true, includeChapters: true),
         ),
       );
-      title = metadata.common.title;
-      author = metadata.common.artist;
-      album = metadata.common.album;
+      title = metadata.common.title != null ? _cleanMetadataString(metadata.common.title!) : null;
+      author = metadata.common.artist != null ? _cleanMetadataString(metadata.common.artist!) : null;
+      album = metadata.common.album != null ? _cleanMetadataString(metadata.common.album!) : null;
 
       // Robust cover selection: try selectCover, then fallback to first picture
       final pictures = metadata.common.picture;
@@ -419,13 +449,15 @@ class LibraryService {
                 );
                 return FileMetadata(
                   path: filePath,
-                  title: fileMeta.common.title ?? p.basename(filePath),
+                  title: fileMeta.common.title != null
+                      ? _cleanMetadataString(fileMeta.common.title!)
+                      : _cleanMetadataString(p.basenameWithoutExtension(filePath)),
                   duration: fileMeta.format.duration,
                 );
               } catch (e) {
                 return FileMetadata(
                   path: filePath,
-                  title: p.basename(filePath),
+                  title: _cleanMetadataString(p.basenameWithoutExtension(filePath)),
                   duration: null,
                 );
               }
@@ -449,7 +481,7 @@ class LibraryService {
     }
 
     if (existingBook != null) {
-      existingBook.title = title ?? folderName;
+      existingBook.title = title ?? _cleanMetadataString(folderName);
       existingBook.author = author;
       existingBook.album = album;
       existingBook.durationSeconds = duration > 0 ? duration : null;
@@ -467,7 +499,7 @@ class LibraryService {
     } else {
       final book = Book(
         path: path,
-        title: title ?? folderName,
+        title: title ?? _cleanMetadataString(folderName),
         author: author,
         album: album,
         durationSeconds: duration > 0 ? duration : null,

@@ -5,21 +5,24 @@ import 'package:canto_sync/core/services/sleep_timer_service.dart';
 import 'package:canto_sync/core/services/app_settings_service.dart';
 import 'package:canto_sync/features/player/ui/widgets/waveform_visualizer.dart';
 import 'package:canto_sync/core/utils/format_duration.dart';
+import 'package:canto_sync/features/player/ui/player_screen.dart';
+
 
 class PlayerFooterSection extends ConsumerWidget {
   const PlayerFooterSection({
     super.key,
-    required this.chapterDuration,
-    required this.chapterPosition,
     required this.remainingTimer,
   });
-  final Duration chapterDuration;
-  final Duration chapterPosition;
   final Duration? remainingTimer;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final mediaService = ref.watch(mediaServiceProvider);
+    final volumeAsync = ref.watch(playerVolumeProvider);
+    final volume = volumeAsync.value ?? mediaService.volume;
+    final progress = ref.watch(playerPlaybackProgressProvider);
+    final chapterDuration = progress.chapterDuration;
+    final chapterPosition = progress.chapterPosition;
 
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceEvenly,
@@ -59,7 +62,7 @@ class PlayerFooterSection extends ConsumerWidget {
             SizedBox(
               width: 100,
               child: Slider(
-                value: mediaService.volume,
+                value: volume,
                 min: 0,
                 max: 100,
                 onChanged: (v) => mediaService.setVolume(v),
@@ -154,20 +157,22 @@ class _SpeedControlDialogState extends State<SpeedControlDialog> {
             alignment: WrapAlignment.center,
             children: [
               for (final preset in [1.0, 1.25, 1.5, 1.75, 2.0, 2.5])
-                FilledButton(
-                  onPressed: () {
-                    setState(() => _rate = preset);
-                    widget.onRateChanged(preset);
-                  },
-                  style: ButtonStyle(
-                    backgroundColor: _rate == preset
-                        ? WidgetStateProperty.all(
-                            FluentTheme.of(context).accentColor,
-                          )
-                        : null,
+                if (_rate == preset)
+                  FilledButton(
+                    onPressed: () {
+                      setState(() => _rate = preset);
+                      widget.onRateChanged(preset);
+                    },
+                    child: Text('${preset}x'),
+                  )
+                else
+                  Button(
+                    onPressed: () {
+                      setState(() => _rate = preset);
+                      widget.onRateChanged(preset);
+                    },
+                    child: Text('${preset}x'),
                   ),
-                  child: Text('${preset}x'),
-                ),
             ],
           ),
         ],

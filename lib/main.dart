@@ -26,7 +26,7 @@ import 'package:canto_sync/core/services/keyboard_shortcuts_service.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  MediaKit.ensureInitialized(libmpv: 'libmpv2.dll');
+  MediaKit.ensureInitialized(libmpv: 'libmpv-2.dll');
 
   await windowManager.ensureInitialized();
 

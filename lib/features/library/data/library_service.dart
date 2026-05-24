@@ -214,7 +214,7 @@ class LibraryService {
     final settings = _ref.read(appSettingsProvider);
     final libraryPaths = settings.libraryPaths;
 
-    MediaKit.ensureInitialized(libmpv: 'libmpv2.dll');
+    MediaKit.ensureInitialized(libmpv: 'libmpv-2.dll');
     final probePlayer = Player(
       configuration: const PlayerConfiguration(vo: 'null'),
     );

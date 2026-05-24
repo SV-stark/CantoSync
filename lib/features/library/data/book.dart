@@ -68,6 +68,23 @@ class Book {
 
   List<String>? collections;
   List<ChapterMetadata>? internalChapters;
+
+  String get fileExtension {
+    if (audioFiles != null && audioFiles!.isNotEmpty) {
+      final file = audioFiles!.first;
+      final dotIndex = file.lastIndexOf('.');
+      if (dotIndex != -1 && dotIndex < file.length - 1) {
+        return file.substring(dotIndex + 1).toLowerCase();
+      }
+    }
+    if (path != null) {
+      final dotIndex = path!.lastIndexOf('.');
+      if (dotIndex != -1 && dotIndex < path!.length - 1) {
+        return path!.substring(dotIndex + 1).toLowerCase();
+      }
+    }
+    return '';
+  }
 }
 
 @embedded

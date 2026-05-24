@@ -249,10 +249,7 @@ class ShortcutActionCallbacks extends _$ShortcutActionCallbacks {
     final list = List<ShortcutActionCallback>.from(current[action] ?? []);
     if (!list.contains(callback)) {
       list.add(callback);
-      state = {
-        ...current,
-        action: list,
-      };
+      state = {...current, action: list};
     }
   }
 
@@ -261,12 +258,8 @@ class ShortcutActionCallbacks extends _$ShortcutActionCallbacks {
     if (current.containsKey(action)) {
       final list = List<ShortcutActionCallback>.from(current[action]!);
       if (list.remove(callback)) {
-        state = {
-          ...current,
-          action: list,
-        };
+        state = {...current, action: list};
       }
     }
   }
 }
-

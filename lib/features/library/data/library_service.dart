@@ -135,7 +135,10 @@ Future<Map<String, List<Book>>> libraryGroupedBooks(Ref ref) async {
 }
 
 String _cleanMetadataString(String str) {
-  return str.replaceAll(RegExp(r'[_\\-]'), ' ').replaceAll(RegExp(r'\s+'), ' ').trim();
+  return str
+      .replaceAll(RegExp(r'[_\\-]'), ' ')
+      .replaceAll(RegExp(r'\s+'), ' ')
+      .trim();
 }
 
 Future<Map<String, List<String>>> _performFileScan(String path) async {
@@ -211,7 +214,7 @@ class LibraryService {
     final settings = _ref.read(appSettingsProvider);
     final libraryPaths = settings.libraryPaths;
 
-    MediaKit.ensureInitialized();
+    MediaKit.ensureInitialized(libmpv: 'libmpv2.dll');
     final probePlayer = Player(
       configuration: const PlayerConfiguration(vo: 'null'),
     );
@@ -314,6 +317,35 @@ class LibraryService {
     }
   }
 
+  Future<String?> _findLocalCoverImage(
+    String bookPath, {
+    required bool isDirectory,
+  }) async {
+    try {
+      final dirPath = isDirectory ? bookPath : p.dirname(bookPath);
+      final dir = Directory(dirPath);
+      if (!await dir.exists()) return null;
+
+      final imageExtensions = {'.jpg', '.jpeg', '.png', '.webp', '.bmp'};
+      final entities = await dir
+          .list(recursive: false, followLinks: false)
+          .toList();
+
+      for (final entity in entities) {
+        if (entity is File) {
+          final name = p.basename(entity.path).toLowerCase();
+          final ext = p.extension(entity.path).toLowerCase();
+          if (imageExtensions.contains(ext) && name.contains('cover')) {
+            return entity.path;
+          }
+        }
+      }
+    } catch (e) {
+      logger.w('Error scanning for local cover image in $bookPath: $e');
+    }
+    return null;
+  }
+
   Future<List<String>> _scanDirectory(
     String path,
     Player probePlayer, {
@@ -382,9 +414,15 @@ class LibraryService {
           options: const ParseOptions(duration: true, includeChapters: true),
         ),
       );
-      title = metadata.common.title != null ? _cleanMetadataString(metadata.common.title!) : null;
-      author = metadata.common.artist != null ? _cleanMetadataString(metadata.common.artist!) : null;
-      album = metadata.common.album != null ? _cleanMetadataString(metadata.common.album!) : null;
+      title = metadata.common.title != null
+          ? _cleanMetadataString(metadata.common.title!)
+          : null;
+      author = metadata.common.artist != null
+          ? _cleanMetadataString(metadata.common.artist!)
+          : null;
+      album = metadata.common.album != null
+          ? _cleanMetadataString(metadata.common.album!)
+          : null;
 
       // Robust cover selection: try selectCover, then fallback to first picture
       final pictures = metadata.common.picture;
@@ -398,14 +436,23 @@ class LibraryService {
         cover ??= pictures.first;
       }
 
-      if (cover != null) {
+      final localCover = await _findLocalCoverImage(
+        path,
+        isDirectory: isDirectory,
+      );
+      if (localCover != null) {
+        coverPath = localCover;
+        logger.i('Found local cover image for book at: $localCover');
+      } else if (cover != null) {
         logger.i(
           'Found cover art in metadata for $metadataSourcePath. Size: ${cover.data.length} bytes',
         );
         coverPath = await _extractAndCacheCover(cover, metadataSourcePath);
         logger.i('Extracted cover to: $coverPath');
       } else {
-        logger.w('No cover art found in metadata for $metadataSourcePath');
+        logger.w(
+          'No cover art found in metadata or folder for $metadataSourcePath',
+        );
       }
 
       if (metadata.format.chapters != null &&
@@ -451,13 +498,17 @@ class LibraryService {
                   path: filePath,
                   title: fileMeta.common.title != null
                       ? _cleanMetadataString(fileMeta.common.title!)
-                      : _cleanMetadataString(p.basenameWithoutExtension(filePath)),
+                      : _cleanMetadataString(
+                          p.basenameWithoutExtension(filePath),
+                        ),
                   duration: fileMeta.format.duration,
                 );
               } catch (e) {
                 return FileMetadata(
                   path: filePath,
-                  title: _cleanMetadataString(p.basenameWithoutExtension(filePath)),
+                  title: _cleanMetadataString(
+                    p.basenameWithoutExtension(filePath),
+                  ),
                   duration: null,
                 );
               }
@@ -551,6 +602,15 @@ class LibraryService {
     List<String>? audioFiles,
   ) async {
     try {
+      final isDir = book.isDirectory ?? false;
+      final localCover = await _findLocalCoverImage(path, isDirectory: isDir);
+      if (localCover != null) {
+        book.coverPath = localCover;
+        await saveBook(book);
+        logger.i('Backfilled local cover for "${book.title}": $localCover');
+        return;
+      }
+
       final sourcePath = (audioFiles != null && audioFiles.isNotEmpty)
           ? audioFiles.first
           : path;

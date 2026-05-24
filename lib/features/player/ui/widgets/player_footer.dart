@@ -7,12 +7,8 @@ import 'package:canto_sync/features/player/ui/widgets/waveform_visualizer.dart';
 import 'package:canto_sync/core/utils/format_duration.dart';
 import 'package:canto_sync/features/player/ui/player_screen.dart';
 
-
 class PlayerFooterSection extends ConsumerWidget {
-  const PlayerFooterSection({
-    super.key,
-    required this.remainingTimer,
-  });
+  const PlayerFooterSection({super.key, required this.remainingTimer});
   final Duration? remainingTimer;
 
   @override

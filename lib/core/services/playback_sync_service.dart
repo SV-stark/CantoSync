@@ -72,6 +72,41 @@ class PlaybackSyncService {
         unawaited(onPlaybackCompleted());
       }
     });
+
+    _mediaService.chaptersStream.listen((chapters) {
+      if (_currentBook != null &&
+          chapters.isNotEmpty &&
+          (_currentBook!.audioFiles == null ||
+              _currentBook!.audioFiles!.length <= 1) &&
+          (_currentBook!.internalChapters == null ||
+              _currentBook!.internalChapters!.isEmpty)) {
+        final updatedChapters = chapters
+            .map(
+              (c) => ChapterMetadata(
+                title: c.title,
+                startTime: c.startTime,
+                endTime: c.endTime,
+              ),
+            )
+            .toList();
+
+        _currentBook!.internalChapters = updatedChapters;
+        _libraryService
+            .saveBook(_currentBook!)
+            .then((_) {
+              logger.i(
+                'Saved ${chapters.length} chapters from mpv to DB for book: ${_currentBook!.title}',
+              );
+            })
+            .catchError((e, stack) {
+              logger.e(
+                'Error saving chapters from mpv to DB',
+                error: e,
+                stackTrace: stack,
+              );
+            });
+      }
+    });
   }
 
   void setCurrentBook(String path) {
@@ -272,15 +307,18 @@ class PlaybackSyncService {
       title: title,
       artist: author,
       album: album,
-      chapters: book?.internalChapters
-          ?.map(
-            (c) => Chapter(
-              title: c.title ?? '',
-              startTime: c.startTime ?? 0,
-              endTime: c.endTime,
-            ),
-          )
-          .toList(),
+      chapters:
+          (book?.internalChapters != null && book!.internalChapters!.isNotEmpty)
+          ? book.internalChapters!
+                .map(
+                  (c) => Chapter(
+                    title: c.title ?? '',
+                    startTime: c.startTime ?? 0,
+                    endTime: c.endTime,
+                  ),
+                )
+                .toList()
+          : null,
     );
 
     if (lastPosition != null && lastPosition > 0.1) {

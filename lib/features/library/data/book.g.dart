@@ -51,53 +51,58 @@ const BookSchema = CollectionSchema(
       name: r'durationSeconds',
       type: IsarType.double,
     ),
-    r'filesMetadata': PropertySchema(
+    r'fileExtension': PropertySchema(
       id: 8,
+      name: r'fileExtension',
+      type: IsarType.string,
+    ),
+    r'filesMetadata': PropertySchema(
+      id: 9,
       name: r'filesMetadata',
       type: IsarType.objectList,
 
       target: r'FileMetadata',
     ),
     r'internalChapters': PropertySchema(
-      id: 9,
+      id: 10,
       name: r'internalChapters',
       type: IsarType.objectList,
 
       target: r'ChapterMetadata',
     ),
     r'isDirectory': PropertySchema(
-      id: 10,
+      id: 11,
       name: r'isDirectory',
       type: IsarType.bool,
     ),
     r'lastPlayed': PropertySchema(
-      id: 11,
+      id: 12,
       name: r'lastPlayed',
       type: IsarType.dateTime,
     ),
     r'lastTrackIndex': PropertySchema(
-      id: 12,
+      id: 13,
       name: r'lastTrackIndex',
       type: IsarType.long,
     ),
     r'narrator': PropertySchema(
-      id: 13,
+      id: 14,
       name: r'narrator',
       type: IsarType.string,
     ),
-    r'path': PropertySchema(id: 14, name: r'path', type: IsarType.string),
+    r'path': PropertySchema(id: 15, name: r'path', type: IsarType.string),
     r'positionSeconds': PropertySchema(
-      id: 15,
+      id: 16,
       name: r'positionSeconds',
       type: IsarType.double,
     ),
-    r'series': PropertySchema(id: 16, name: r'series', type: IsarType.string),
+    r'series': PropertySchema(id: 17, name: r'series', type: IsarType.string),
     r'seriesIndex': PropertySchema(
-      id: 17,
+      id: 18,
       name: r'seriesIndex',
       type: IsarType.long,
     ),
-    r'title': PropertySchema(id: 18, name: r'title', type: IsarType.string),
+    r'title': PropertySchema(id: 19, name: r'title', type: IsarType.string),
   },
 
   estimateSize: _bookEstimateSize,
@@ -252,6 +257,7 @@ int _bookEstimateSize(
       bytesCount += 3 + value.length * 3;
     }
   }
+  bytesCount += 3 + object.fileExtension.length * 3;
   {
     final list = object.filesMetadata;
     if (list != null) {
@@ -332,27 +338,28 @@ void _bookSerialize(
   writer.writeString(offsets[5], object.coverPath);
   writer.writeString(offsets[6], object.description);
   writer.writeDouble(offsets[7], object.durationSeconds);
+  writer.writeString(offsets[8], object.fileExtension);
   writer.writeObjectList<FileMetadata>(
-    offsets[8],
+    offsets[9],
     allOffsets,
     FileMetadataSchema.serialize,
     object.filesMetadata,
   );
   writer.writeObjectList<ChapterMetadata>(
-    offsets[9],
+    offsets[10],
     allOffsets,
     ChapterMetadataSchema.serialize,
     object.internalChapters,
   );
-  writer.writeBool(offsets[10], object.isDirectory);
-  writer.writeDateTime(offsets[11], object.lastPlayed);
-  writer.writeLong(offsets[12], object.lastTrackIndex);
-  writer.writeString(offsets[13], object.narrator);
-  writer.writeString(offsets[14], object.path);
-  writer.writeDouble(offsets[15], object.positionSeconds);
-  writer.writeString(offsets[16], object.series);
-  writer.writeLong(offsets[17], object.seriesIndex);
-  writer.writeString(offsets[18], object.title);
+  writer.writeBool(offsets[11], object.isDirectory);
+  writer.writeDateTime(offsets[12], object.lastPlayed);
+  writer.writeLong(offsets[13], object.lastTrackIndex);
+  writer.writeString(offsets[14], object.narrator);
+  writer.writeString(offsets[15], object.path);
+  writer.writeDouble(offsets[16], object.positionSeconds);
+  writer.writeString(offsets[17], object.series);
+  writer.writeLong(offsets[18], object.seriesIndex);
+  writer.writeString(offsets[19], object.title);
 }
 
 Book _bookDeserialize(
@@ -376,26 +383,26 @@ Book _bookDeserialize(
     description: reader.readStringOrNull(offsets[6]),
     durationSeconds: reader.readDoubleOrNull(offsets[7]),
     filesMetadata: reader.readObjectList<FileMetadata>(
-      offsets[8],
+      offsets[9],
       FileMetadataSchema.deserialize,
       allOffsets,
       FileMetadata(),
     ),
     internalChapters: reader.readObjectList<ChapterMetadata>(
-      offsets[9],
+      offsets[10],
       ChapterMetadataSchema.deserialize,
       allOffsets,
       ChapterMetadata(),
     ),
-    isDirectory: reader.readBoolOrNull(offsets[10]),
-    lastPlayed: reader.readDateTimeOrNull(offsets[11]),
-    lastTrackIndex: reader.readLongOrNull(offsets[12]),
-    narrator: reader.readStringOrNull(offsets[13]),
-    path: reader.readStringOrNull(offsets[14]),
-    positionSeconds: reader.readDoubleOrNull(offsets[15]),
-    series: reader.readStringOrNull(offsets[16]),
-    seriesIndex: reader.readLongOrNull(offsets[17]),
-    title: reader.readStringOrNull(offsets[18]),
+    isDirectory: reader.readBoolOrNull(offsets[11]),
+    lastPlayed: reader.readDateTimeOrNull(offsets[12]),
+    lastTrackIndex: reader.readLongOrNull(offsets[13]),
+    narrator: reader.readStringOrNull(offsets[14]),
+    path: reader.readStringOrNull(offsets[15]),
+    positionSeconds: reader.readDoubleOrNull(offsets[16]),
+    series: reader.readStringOrNull(offsets[17]),
+    seriesIndex: reader.readLongOrNull(offsets[18]),
+    title: reader.readStringOrNull(offsets[19]),
   );
   object.id = id;
   return object;
@@ -431,6 +438,8 @@ P _bookDeserializeProp<P>(
     case 7:
       return (reader.readDoubleOrNull(offset)) as P;
     case 8:
+      return (reader.readString(offset)) as P;
+    case 9:
       return (reader.readObjectList<FileMetadata>(
             offset,
             FileMetadataSchema.deserialize,
@@ -438,7 +447,7 @@ P _bookDeserializeProp<P>(
             FileMetadata(),
           ))
           as P;
-    case 9:
+    case 10:
       return (reader.readObjectList<ChapterMetadata>(
             offset,
             ChapterMetadataSchema.deserialize,
@@ -446,23 +455,23 @@ P _bookDeserializeProp<P>(
             ChapterMetadata(),
           ))
           as P;
-    case 10:
-      return (reader.readBoolOrNull(offset)) as P;
     case 11:
-      return (reader.readDateTimeOrNull(offset)) as P;
+      return (reader.readBoolOrNull(offset)) as P;
     case 12:
-      return (reader.readLongOrNull(offset)) as P;
+      return (reader.readDateTimeOrNull(offset)) as P;
     case 13:
-      return (reader.readStringOrNull(offset)) as P;
+      return (reader.readLongOrNull(offset)) as P;
     case 14:
       return (reader.readStringOrNull(offset)) as P;
     case 15:
-      return (reader.readDoubleOrNull(offset)) as P;
-    case 16:
       return (reader.readStringOrNull(offset)) as P;
+    case 16:
+      return (reader.readDoubleOrNull(offset)) as P;
     case 17:
-      return (reader.readLongOrNull(offset)) as P;
+      return (reader.readStringOrNull(offset)) as P;
     case 18:
+      return (reader.readLongOrNull(offset)) as P;
+    case 19:
       return (reader.readStringOrNull(offset)) as P;
     default:
       throw IsarError('Unknown property with id $propertyId');
@@ -2281,6 +2290,152 @@ extension BookQueryFilter on QueryBuilder<Book, Book, QFilterCondition> {
     });
   }
 
+  QueryBuilder<Book, Book, QAfterFilterCondition> fileExtensionEqualTo(
+    String value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.equalTo(
+          property: r'fileExtension',
+          value: value,
+          caseSensitive: caseSensitive,
+        ),
+      );
+    });
+  }
+
+  QueryBuilder<Book, Book, QAfterFilterCondition> fileExtensionGreaterThan(
+    String value, {
+    bool include = false,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.greaterThan(
+          include: include,
+          property: r'fileExtension',
+          value: value,
+          caseSensitive: caseSensitive,
+        ),
+      );
+    });
+  }
+
+  QueryBuilder<Book, Book, QAfterFilterCondition> fileExtensionLessThan(
+    String value, {
+    bool include = false,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.lessThan(
+          include: include,
+          property: r'fileExtension',
+          value: value,
+          caseSensitive: caseSensitive,
+        ),
+      );
+    });
+  }
+
+  QueryBuilder<Book, Book, QAfterFilterCondition> fileExtensionBetween(
+    String lower,
+    String upper, {
+    bool includeLower = true,
+    bool includeUpper = true,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.between(
+          property: r'fileExtension',
+          lower: lower,
+          includeLower: includeLower,
+          upper: upper,
+          includeUpper: includeUpper,
+          caseSensitive: caseSensitive,
+        ),
+      );
+    });
+  }
+
+  QueryBuilder<Book, Book, QAfterFilterCondition> fileExtensionStartsWith(
+    String value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.startsWith(
+          property: r'fileExtension',
+          value: value,
+          caseSensitive: caseSensitive,
+        ),
+      );
+    });
+  }
+
+  QueryBuilder<Book, Book, QAfterFilterCondition> fileExtensionEndsWith(
+    String value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.endsWith(
+          property: r'fileExtension',
+          value: value,
+          caseSensitive: caseSensitive,
+        ),
+      );
+    });
+  }
+
+  QueryBuilder<Book, Book, QAfterFilterCondition> fileExtensionContains(
+    String value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.contains(
+          property: r'fileExtension',
+          value: value,
+          caseSensitive: caseSensitive,
+        ),
+      );
+    });
+  }
+
+  QueryBuilder<Book, Book, QAfterFilterCondition> fileExtensionMatches(
+    String pattern, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.matches(
+          property: r'fileExtension',
+          wildcard: pattern,
+          caseSensitive: caseSensitive,
+        ),
+      );
+    });
+  }
+
+  QueryBuilder<Book, Book, QAfterFilterCondition> fileExtensionIsEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.equalTo(property: r'fileExtension', value: ''),
+      );
+    });
+  }
+
+  QueryBuilder<Book, Book, QAfterFilterCondition> fileExtensionIsNotEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.greaterThan(property: r'fileExtension', value: ''),
+      );
+    });
+  }
+
   QueryBuilder<Book, Book, QAfterFilterCondition> filesMetadataIsNull() {
     return QueryBuilder.apply(this, (query) {
       return query.addFilterCondition(
@@ -3559,6 +3714,18 @@ extension BookQuerySortBy on QueryBuilder<Book, Book, QSortBy> {
     });
   }
 
+  QueryBuilder<Book, Book, QAfterSortBy> sortByFileExtension() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'fileExtension', Sort.asc);
+    });
+  }
+
+  QueryBuilder<Book, Book, QAfterSortBy> sortByFileExtensionDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'fileExtension', Sort.desc);
+    });
+  }
+
   QueryBuilder<Book, Book, QAfterSortBy> sortByIsDirectory() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'isDirectory', Sort.asc);
@@ -3726,6 +3893,18 @@ extension BookQuerySortThenBy on QueryBuilder<Book, Book, QSortThenBy> {
   QueryBuilder<Book, Book, QAfterSortBy> thenByDurationSecondsDesc() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'durationSeconds', Sort.desc);
+    });
+  }
+
+  QueryBuilder<Book, Book, QAfterSortBy> thenByFileExtension() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'fileExtension', Sort.asc);
+    });
+  }
+
+  QueryBuilder<Book, Book, QAfterSortBy> thenByFileExtensionDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'fileExtension', Sort.desc);
     });
   }
 
@@ -3901,6 +4080,17 @@ extension BookQueryWhereDistinct on QueryBuilder<Book, Book, QDistinct> {
     });
   }
 
+  QueryBuilder<Book, Book, QDistinct> distinctByFileExtension({
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addDistinctBy(
+        r'fileExtension',
+        caseSensitive: caseSensitive,
+      );
+    });
+  }
+
   QueryBuilder<Book, Book, QDistinct> distinctByIsDirectory() {
     return QueryBuilder.apply(this, (query) {
       return query.addDistinctBy(r'isDirectory');
@@ -4016,6 +4206,12 @@ extension BookQueryProperty on QueryBuilder<Book, Book, QQueryProperty> {
   QueryBuilder<Book, double?, QQueryOperations> durationSecondsProperty() {
     return QueryBuilder.apply(this, (query) {
       return query.addPropertyName(r'durationSeconds');
+    });
+  }
+
+  QueryBuilder<Book, String, QQueryOperations> fileExtensionProperty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addPropertyName(r'fileExtension');
     });
   }
 

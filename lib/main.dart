@@ -24,10 +24,9 @@ import 'package:canto_sync/features/stats/data/listening_stats.dart';
 import 'package:canto_sync/core/data/keyboard_shortcuts.dart';
 import 'package:canto_sync/core/services/keyboard_shortcuts_service.dart';
 
-
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  MediaKit.ensureInitialized();
+  MediaKit.ensureInitialized(libmpv: 'libmpv2.dll');
 
   await windowManager.ensureInitialized();
 
@@ -129,7 +128,6 @@ class _CantoSyncAppState extends ConsumerState<CantoSyncApp>
     windowManager.removeListener(this);
     super.dispose();
   }
-
 
   Future<void> _initServices() async {
     if (_servicesInitialized) return;

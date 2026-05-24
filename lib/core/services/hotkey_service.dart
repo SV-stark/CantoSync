@@ -28,7 +28,6 @@ class HotkeyService {
       debugPrint('Error unregistering hotkeys: $e');
     }
 
-
     final shortcuts = _ref.read(keyboardShortcutsProvider);
 
     for (final shortcut in shortcuts) {

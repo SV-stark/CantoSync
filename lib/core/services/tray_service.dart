@@ -44,7 +44,6 @@ class TrayService extends TrayListener {
     }
   }
 
-
   @override
   void onTrayIconMouseDown() {
     windowManager.show();

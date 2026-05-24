@@ -85,111 +85,114 @@ class PlayerPlaybackProgress {
   final bool isMultiFile;
 }
 
-final playerPlaybackProgressProvider = Provider.autoDispose<PlayerPlaybackProgress>((ref) {
-  final currentBook = ref.watch(currentBookProvider).value;
-  final position = ref.watch(playerPositionProvider).value ?? Duration.zero;
-  final duration = ref.watch(playerDurationProvider).value ?? Duration.zero;
-  var totalDuration = ref.watch(playerTotalDurationProvider).value ?? Duration.zero;
-  final chapters = ref.watch(playerChaptersProvider).value ?? [];
-  final mediaService = ref.watch(mediaServiceProvider);
-  final currentIndex = mediaService.currentIndex;
+final playerPlaybackProgressProvider =
+    Provider.autoDispose<PlayerPlaybackProgress>((ref) {
+      final currentBook = ref.watch(currentBookProvider).value;
+      final position = ref.watch(playerPositionProvider).value ?? Duration.zero;
+      final duration = ref.watch(playerDurationProvider).value ?? Duration.zero;
+      var totalDuration =
+          ref.watch(playerTotalDurationProvider).value ?? Duration.zero;
+      final chapters = ref.watch(playerChaptersProvider).value ?? [];
+      final mediaService = ref.watch(mediaServiceProvider);
+      final currentIndex = mediaService.currentIndex;
 
-  // Fallback: If player reports 0 duration (common with heavy m4b or initial load),
-  // use metadata from library scan.
-  final bookDurationSeconds = currentBook?.durationSeconds;
-  if (totalDuration.inSeconds == 0 && bookDurationSeconds != null) {
-    if (bookDurationSeconds > 0) {
-      totalDuration = Duration(
-        milliseconds: (bookDurationSeconds * 1000).toInt(),
-      );
-    }
-  }
-
-  final isMultiFile =
-      totalDuration.inSeconds > (duration.inSeconds + 10) || currentIndex > 0;
-
-  // Determine current chapter
-  Chapter? currentChapter;
-  if (chapters.isNotEmpty) {
-    if (isMultiFile) {
-      if (currentIndex < chapters.length) {
-        currentChapter = chapters[currentIndex];
+      // Fallback: If player reports 0 duration (common with heavy m4b or initial load),
+      // use metadata from library scan.
+      final bookDurationSeconds = currentBook?.durationSeconds;
+      if (totalDuration.inSeconds == 0 && bookDurationSeconds != null) {
+        if (bookDurationSeconds > 0) {
+          totalDuration = Duration(
+            milliseconds: (bookDurationSeconds * 1000).toInt(),
+          );
+        }
       }
-    } else {
-      final posSeconds = position.inMilliseconds / 1000.0;
-      currentChapter = chapters.lastWhere(
-        (c) =>
-            c.startTime <=
-            posSeconds + AppConstants.chapterMatchingToleranceSeconds,
-        orElse: () => chapters.first,
-      );
-    }
-  }
 
-  // --- Calculations ---
+      final isMultiFile =
+          totalDuration.inSeconds > (duration.inSeconds + 10) ||
+          currentIndex > 0;
 
-  // 1. Total Progress (Global)
-  double globalPositionSeconds = position.inMilliseconds / 1000.0;
-  if (currentChapter != null && isMultiFile) {
-    globalPositionSeconds += currentChapter.startTime;
-  }
-
-  double totalBookSeconds = totalDuration.inMilliseconds / 1000.0;
-
-  // Percentage
-  String percentageText = '';
-  if (totalBookSeconds > 0) {
-    final percent = (globalPositionSeconds / totalBookSeconds * 100).clamp(
-      0.0,
-      100.0,
-    );
-    percentageText = '${percent.toStringAsFixed(1)}%';
-  }
-
-  // 2. Chapter Progress (Local)
-  Duration chapterPosition = Duration.zero;
-  Duration chapterDuration = duration;
-
-  if (currentChapter != null) {
-    if (isMultiFile) {
-      chapterDuration = duration; // File duration
-      chapterPosition = position; // File position
-    } else {
-      // Single File Chapter Logic
-      final start = Duration(
-        milliseconds: (currentChapter.startTime * 1000).toInt(),
-      );
-      final end = currentChapter.endTime != null
-          ? Duration(milliseconds: (currentChapter.endTime! * 1000).toInt())
-          : duration;
-
-      chapterDuration = end - start;
-      chapterPosition = position - start;
-
-      if (chapterPosition.isNegative) {
-        chapterPosition = Duration.zero;
+      // Determine current chapter
+      Chapter? currentChapter;
+      if (chapters.isNotEmpty) {
+        if (isMultiFile) {
+          if (currentIndex < chapters.length) {
+            currentChapter = chapters[currentIndex];
+          }
+        } else {
+          final posSeconds = position.inMilliseconds / 1000.0;
+          currentChapter = chapters.lastWhere(
+            (c) =>
+                c.startTime <=
+                posSeconds + AppConstants.chapterMatchingToleranceSeconds,
+            orElse: () => chapters.first,
+          );
+        }
       }
-      if (chapterPosition > chapterDuration) {
-        chapterPosition = chapterDuration;
-      }
-    }
-  } else {
-    chapterDuration = duration;
-    chapterPosition = position;
-  }
 
-  return PlayerPlaybackProgress(
-    currentChapter: currentChapter,
-    chapterPosition: chapterPosition,
-    chapterDuration: chapterDuration,
-    percentageText: percentageText,
-    totalDuration: totalDuration,
-    position: position,
-    duration: duration,
-    globalPositionSeconds: globalPositionSeconds,
-    isMultiFile: isMultiFile,
-  );
-});
+      // --- Calculations ---
+
+      // 1. Total Progress (Global)
+      double globalPositionSeconds = position.inMilliseconds / 1000.0;
+      if (currentChapter != null && isMultiFile) {
+        globalPositionSeconds += currentChapter.startTime;
+      }
+
+      double totalBookSeconds = totalDuration.inMilliseconds / 1000.0;
+
+      // Percentage
+      String percentageText = '';
+      if (totalBookSeconds > 0) {
+        final percent = (globalPositionSeconds / totalBookSeconds * 100).clamp(
+          0.0,
+          100.0,
+        );
+        percentageText = '${percent.toStringAsFixed(1)}%';
+      }
+
+      // 2. Chapter Progress (Local)
+      Duration chapterPosition = Duration.zero;
+      Duration chapterDuration = duration;
+
+      if (currentChapter != null) {
+        if (isMultiFile) {
+          chapterDuration = duration; // File duration
+          chapterPosition = position; // File position
+        } else {
+          // Single File Chapter Logic
+          final start = Duration(
+            milliseconds: (currentChapter.startTime * 1000).toInt(),
+          );
+          final end = currentChapter.endTime != null
+              ? Duration(milliseconds: (currentChapter.endTime! * 1000).toInt())
+              : duration;
+
+          chapterDuration = end - start;
+          chapterPosition = position - start;
+
+          if (chapterPosition.isNegative) {
+            chapterPosition = Duration.zero;
+          }
+          if (chapterPosition > chapterDuration) {
+            chapterPosition = chapterDuration;
+          }
+        }
+      } else {
+        chapterDuration = duration;
+        chapterPosition = position;
+      }
+
+      return PlayerPlaybackProgress(
+        currentChapter: currentChapter,
+        chapterPosition: chapterPosition,
+        chapterDuration: chapterDuration,
+        percentageText: percentageText,
+        totalDuration: totalDuration,
+        position: position,
+        duration: duration,
+        globalPositionSeconds: globalPositionSeconds,
+        isMultiFile: isMultiFile,
+      );
+    });
 
 class PlayerScreen extends ConsumerStatefulWidget {
   const PlayerScreen({super.key});

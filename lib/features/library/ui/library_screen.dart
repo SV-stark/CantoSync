@@ -17,7 +17,6 @@ import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'package:canto_sync/core/data/keyboard_shortcuts.dart';
 import 'package:canto_sync/core/services/keyboard_shortcuts_service.dart';
 
-
 part 'library_screen.g.dart';
 
 @riverpod
@@ -138,8 +137,9 @@ class LibraryScreen extends HookConsumerWidget {
                 focusNode: searchFocusNode,
                 controller: searchController,
                 placeholder: 'Search library...',
-                onChanged: (text) =>
-                    ref.read(librarySearchQueryProvider.notifier).updateQuery(text),
+                onChanged: (text) => ref
+                    .read(librarySearchQueryProvider.notifier)
+                    .updateQuery(text),
                 prefix: const Padding(
                   padding: EdgeInsets.symmetric(horizontal: 8.0),
                   child: Icon(FluentIcons.search, size: 14),
@@ -169,14 +169,18 @@ class LibraryScreen extends HookConsumerWidget {
                   onPressed: isScanning.value ? null : rescanLibrary,
                 ),
                 CommandBarButton(
-                  icon: Icon(viewMode ? FluentIcons.list : FluentIcons.view_all),
+                  icon: Icon(
+                    viewMode ? FluentIcons.list : FluentIcons.view_all,
+                  ),
                   label: Text(viewMode ? 'List View' : 'Grid View'),
                   onPressed: () =>
                       ref.read(libraryViewModeProvider.notifier).toggle(),
                 ),
                 CommandBarButton(
                   icon: Icon(
-                    isGroupingEnabled ? FluentIcons.group_list : FluentIcons.group,
+                    isGroupingEnabled
+                        ? FluentIcons.group_list
+                        : FluentIcons.group,
                   ),
                   label: const Text('Group by Series'),
                   onPressed: () =>
@@ -455,6 +459,35 @@ class _BookList extends ConsumerWidget {
               ),
               title: Text(book.title ?? 'Unknown'),
               subtitle: Text(book.author ?? 'Unknown Author'),
+              trailing: book.fileExtension.isNotEmpty
+                  ? Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 6,
+                        vertical: 2,
+                      ),
+                      decoration: BoxDecoration(
+                        color: FluentTheme.of(
+                          context,
+                        ).resources.subtleFillColorSecondary,
+                        borderRadius: BorderRadius.circular(4),
+                        border: Border.all(
+                          color: FluentTheme.of(
+                            context,
+                          ).resources.controlStrokeColorDefault,
+                        ),
+                      ),
+                      child: Text(
+                        book.fileExtension.toUpperCase(),
+                        style: TextStyle(
+                          fontSize: 10,
+                          fontWeight: FontWeight.bold,
+                          color: FluentTheme.of(
+                            context,
+                          ).typography.caption?.color,
+                        ),
+                      ),
+                    )
+                  : null,
               onPressed: () =>
                   ref.read(playbackSyncProvider).resumeBook(book.path!),
             ),
@@ -689,11 +722,50 @@ class BookCard extends ConsumerWidget {
                           style: FluentTheme.of(context).typography.bodyStrong,
                         ),
                         const SizedBox(height: 4),
-                        Text(
-                          book.author ?? 'Unknown Author',
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: FluentTheme.of(context).typography.caption,
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Expanded(
+                              child: Text(
+                                book.author ?? 'Unknown Author',
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: FluentTheme.of(
+                                  context,
+                                ).typography.caption,
+                              ),
+                            ),
+                            if (book.fileExtension.isNotEmpty) ...[
+                              const SizedBox(width: 4),
+                              Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 4,
+                                  vertical: 1,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: FluentTheme.of(
+                                    context,
+                                  ).resources.subtleFillColorSecondary,
+                                  borderRadius: BorderRadius.circular(4),
+                                  border: Border.all(
+                                    color: FluentTheme.of(
+                                      context,
+                                    ).resources.controlStrokeColorDefault,
+                                  ),
+                                ),
+                                child: Text(
+                                  book.fileExtension.toUpperCase(),
+                                  style: TextStyle(
+                                    fontSize: 9,
+                                    fontWeight: FontWeight.bold,
+                                    color: FluentTheme.of(
+                                      context,
+                                    ).typography.caption?.color,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ],
                         ),
                       ],
                     ),

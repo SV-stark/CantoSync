@@ -3,11 +3,11 @@
 #
 
 list(APPEND FLUTTER_PLUGIN_LIST
+  connectivity_plus
   desktop_drop
   hotkey_manager_windows
   isar_community_flutter_libs
   media_kit_libs_windows_video
-  media_kit_video
   screen_retriever_windows
   system_theme
   tray_manager

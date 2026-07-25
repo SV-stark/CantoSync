@@ -224,18 +224,13 @@ class MediaService {
       if (platform is NativePlayer) {
         final native = platform;
         try {
-          // Retry logic to handle race conditions where chapters/metadata aren't loaded yet.
-          for (int i = 0; i < 15; i++) {
-            // Increased retries to ~7.5 seconds
+          // Optimized fast-check retry logic to handle race conditions when metadata is loading.
+          for (int i = 0; i < 10; i++) {
             final countStr = await native.getProperty('chapters');
             final count = int.tryParse(countStr) ?? 0;
 
-            logger.d('Chapter check attempt $i: count = $count');
-
             if (count > 0) {
               final resultString = await native.getProperty('chapter-list');
-              logger.d('Chapter list raw string: $resultString');
-
               if (resultString.isNotEmpty) {
                 final result = jsonDecode(resultString);
                 if (result is List && result.isNotEmpty) {
@@ -273,14 +268,12 @@ class MediaService {
             }
 
             final currentDuration = _p.state.duration.inMilliseconds;
-            if (currentDuration > 0 && i > 8) {
-              logger.d(
-                'Duration loaded but no chapters found after $i attempts. Likely no internal chapters.',
-              );
+            if (currentDuration > 0 && i > 3) {
+              logger.d('Duration loaded but no chapters found. Likely no internal chapters.');
               return [];
             }
 
-            await Future.delayed(const Duration(milliseconds: 500));
+            await Future.delayed(const Duration(milliseconds: 150));
           }
         } catch (e, stack) {
           logger.e(
@@ -374,6 +367,7 @@ class MediaService {
   void dispose() {
     _player?.dispose();
     _totalDurationController.close();
+    _chaptersController.close();
   }
 }
 

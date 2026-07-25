@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:io';
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:isar_community/isar.dart';
@@ -26,7 +27,9 @@ import 'package:canto_sync/core/services/keyboard_shortcuts_service.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  MediaKit.ensureInitialized(libmpv: 'libmpv-2.dll');
+  MediaKit.ensureInitialized(
+    libmpv: Platform.isWindows ? 'libmpv-2.dll' : null,
+  );
 
   await windowManager.ensureInitialized();
 

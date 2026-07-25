@@ -38,6 +38,7 @@
 | 📊 **Listening Statistics** | Track your listening habits with daily stats, author analytics, and completion tracking. |
 | 📝 **Metadata Editor** | Edit book titles, authors, descriptions, and custom cover art directly in the app. |
 | 🎚️ **Equalizer** | Built-in audio equalization to customize your listening experience. |
+| 🧹 **Orphaned File Cleaner** | Scan & purge database records for missing or deleted audio files automatically. |
 | 🔄 **Auto-Updater** | Built-in update checker that automatically notifies you of new releases. |
 
 ---
@@ -58,14 +59,17 @@
 
 - **Framework**: [Flutter](https://flutter.dev)
 - **UI Library**: [fluent_ui](https://pub.dev/packages/fluent_ui)
-- **Audio Engine**: [media_kit](https://pub.dev/packages/media_kit)
-- **State Management**: [Riverpod](https://riverpod.dev)
-- **Database**: [Hive](https://docs.hivedb.dev/)
+- **Audio Engine**: [media_kit](https://pub.dev/packages/media_kit) (libmpv)
+- **State Management**: [Riverpod](https://riverpod.dev) & [flutter_hooks](https://pub.dev/packages/flutter_hooks)
+- **Database**: [Isar Community](https://pub.dev/packages/isar_community)
+- **OS Controls**: [audio_service](https://pub.dev/packages/audio_service) (Windows SMTC & Linux MPRIS)
+- **Metadata Extraction**: [metadata_audio](https://pub.dev/packages/metadata_audio)
+- **Image & Data Caching**: [cached_network_image](https://pub.dev/packages/cached_network_image) & [flutter_cache_manager](https://pub.dev/packages/flutter_cache_manager)
 - **Window Management**: [window_manager](https://pub.dev/packages/window_manager)
-- **Metadata Extraction**: [metadata_god](https://pub.dev/packages/metadata_god)
 - **Global Hotkeys**: [hotkey_manager](https://pub.dev/packages/hotkey_manager)
 - **System Tray**: [tray_manager](https://pub.dev/packages/tray_manager)
 - **File Picker**: [file_picker](https://pub.dev/packages/file_picker)
+- **Layout & Utilities**: [gap](https://pub.dev/packages/gap), [fpdart](https://pub.dev/packages/fpdart), [fast_immutable_collections](https://pub.dev/packages/fast_immutable_collections)
 
 ---
 

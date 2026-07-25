@@ -36,6 +36,7 @@ class PlaybackSyncService {
   final Ref _ref;
   StreamSubscription? _subscription;
   StreamSubscription? _completedSubscription;
+  StreamSubscription? _chaptersSubscription;
   String? _currentPath;
   Timer? _debounceTimer;
   Timer? _statsTimer;
@@ -73,7 +74,7 @@ class PlaybackSyncService {
       }
     });
 
-    _mediaService.chaptersStream.listen((chapters) {
+    _chaptersSubscription = _mediaService.chaptersStream.listen((chapters) {
       if (_currentBook != null &&
           chapters.isNotEmpty &&
           (_currentBook!.audioFiles == null ||
@@ -365,6 +366,7 @@ class PlaybackSyncService {
   void dispose() {
     _subscription?.cancel();
     _completedSubscription?.cancel();
+    _chaptersSubscription?.cancel();
     _debounceTimer?.cancel();
     _statsTimer?.cancel();
 

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart' as material;
 import 'package:fluent_ui/fluent_ui.dart';
+import 'package:gap/gap.dart';
 import 'package:canto_sync/core/utils/format_duration.dart';
 
 class SleepTimerOverlay extends StatelessWidget {
@@ -23,7 +24,7 @@ class SleepTimerOverlay extends StatelessWidget {
                 size: 48,
                 color: Colors.white.withValues(alpha: 0.7),
               ),
-              const SizedBox(height: 16),
+              const Gap(16),
               Text(
                 'Sleep Timer Active',
                 style: TextStyle(
@@ -32,7 +33,7 @@ class SleepTimerOverlay extends StatelessWidget {
                   fontWeight: FontWeight.bold,
                 ),
               ),
-              const SizedBox(height: 8),
+              const Gap(8),
               Text(
                 'Playback will stop in ${_formatDuration(remainingTime!)}',
                 style: TextStyle(
@@ -40,7 +41,7 @@ class SleepTimerOverlay extends StatelessWidget {
                   fontSize: 16,
                 ),
               ),
-              const SizedBox(height: 16),
+              const Gap(16),
               Text(
                 '(Click Timer button to cancel)',
                 style: TextStyle(

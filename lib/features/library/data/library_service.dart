@@ -200,21 +200,27 @@ class LibraryService {
 
   Future<void> removeCollection(String collectionName) async {
     final books = await getAllBooks();
-    await _isar.writeTxn(() async {
-      for (final book in books) {
-        if (book.collections?.contains(collectionName) ?? false) {
-          book.collections!.remove(collectionName);
-          await _isar.books.put(book);
-        }
+    final updatedBooks = <Book>[];
+    for (final book in books) {
+      if (book.collections?.contains(collectionName) ?? false) {
+        book.collections!.remove(collectionName);
+        updatedBooks.add(book);
       }
-    });
+    }
+    if (updatedBooks.isNotEmpty) {
+      await _isar.writeTxn(() async {
+        await _isar.books.putAll(updatedBooks);
+      });
+    }
   }
 
   Future<void> rescanLibraries() async {
     final settings = _ref.read(appSettingsProvider);
     final libraryPaths = settings.libraryPaths;
 
-    MediaKit.ensureInitialized(libmpv: 'libmpv-2.dll');
+    MediaKit.ensureInitialized(
+      libmpv: Platform.isWindows ? 'libmpv-2.dll' : null,
+    );
     final probePlayer = Player(
       configuration: const PlayerConfiguration(vo: 'null'),
     );
@@ -268,18 +274,23 @@ class LibraryService {
       }
     }
 
-    await _isar.writeTxn(() async {
-      for (var entry in seriesGroups.entries) {
-        final seriesBooks = entry.value;
-        seriesBooks.sort((a, b) => (a.title ?? '').compareTo(b.title ?? ''));
-        for (int i = 0; i < seriesBooks.length; i++) {
-          if (seriesBooks[i].seriesIndex != i + 1) {
-            seriesBooks[i].seriesIndex = i + 1;
-            await _isar.books.put(seriesBooks[i]);
-          }
+    final updatedBooks = <Book>[];
+    for (var entry in seriesGroups.entries) {
+      final seriesBooks = entry.value;
+      seriesBooks.sort((a, b) => (a.title ?? '').compareTo(b.title ?? ''));
+      for (int i = 0; i < seriesBooks.length; i++) {
+        if (seriesBooks[i].seriesIndex != i + 1) {
+          seriesBooks[i].seriesIndex = i + 1;
+          updatedBooks.add(seriesBooks[i]);
         }
       }
-    });
+    }
+
+    if (updatedBooks.isNotEmpty) {
+      await _isar.writeTxn(() async {
+        await _isar.books.putAll(updatedBooks);
+      });
+    }
   }
 
   Future<void> scanDirectory(String path, {bool forceUpdate = false}) async {
@@ -308,7 +319,7 @@ class LibraryService {
         logger.w('Source cover file does not exist: $newCoverFile');
         return;
       }
-      await sourceFile.copy(targetPath);
+      await Isolate.run(() => sourceFile.copySync(targetPath));
 
       book.coverPath = targetPath;
       await saveBook(book);
@@ -486,35 +497,45 @@ class LibraryService {
           metadata.common.description?.toString();
 
       if (audioFiles != null) {
-        final results = await Future.wait(
-          audioFiles.map(
-            (filePath) => Isolate.run(() async {
-              try {
-                final fileMeta = await parseFile(
-                  filePath,
-                  options: const ParseOptions(duration: true),
-                );
-                return FileMetadata(
-                  path: filePath,
-                  title: fileMeta.common.title != null
-                      ? _cleanMetadataString(fileMeta.common.title!)
-                      : _cleanMetadataString(
-                          p.basenameWithoutExtension(filePath),
-                        ),
-                  duration: fileMeta.format.duration,
-                );
-              } catch (e) {
-                return FileMetadata(
-                  path: filePath,
-                  title: _cleanMetadataString(
-                    p.basenameWithoutExtension(filePath),
-                  ),
-                  duration: null,
-                );
-              }
-            }),
-          ),
-        );
+        // Process in bounded chunks of 8 concurrent isolates to prevent isolate thrashing
+        const chunkSize = 8;
+        final results = <FileMetadata>[];
+        for (var i = 0; i < audioFiles.length; i += chunkSize) {
+          final chunk = audioFiles.sublist(
+            i,
+            i + chunkSize > audioFiles.length ? audioFiles.length : i + chunkSize,
+          );
+          final chunkResults = await Future.wait(
+            chunk.map(
+              (filePath) => Isolate.run(() async {
+                try {
+                  final fileMeta = await parseFile(
+                    filePath,
+                    options: const ParseOptions(duration: true),
+                  );
+                  return FileMetadata(
+                    path: filePath,
+                    title: fileMeta.common.title != null
+                        ? _cleanMetadataString(fileMeta.common.title!)
+                        : _cleanMetadataString(
+                            p.basenameWithoutExtension(filePath),
+                          ),
+                    duration: fileMeta.format.duration,
+                  );
+                } catch (e) {
+                  return FileMetadata(
+                    path: filePath,
+                    title: _cleanMetadataString(
+                      p.basenameWithoutExtension(filePath),
+                    ),
+                    duration: null,
+                  );
+                }
+              }),
+            ),
+          );
+          results.addAll(chunkResults);
+        }
 
         for (final m in results) {
           if (m.duration != null) {
@@ -687,5 +708,59 @@ class LibraryService {
     } catch (e, stack) {
       logger.e('Error removing bookmark', error: e, stackTrace: stack);
     }
+  }
+
+  /// Scans the database and removes entries for books whose audio files or main path no longer exist on disk.
+  Future<int> cleanOrphanedBooks() async {
+    final books = await getAllBooks();
+    final idsToRemove = <int>[];
+    final coverPathsToDelete = <String>[];
+
+    for (final book in books) {
+      final mainPath = book.path;
+      bool exists = false;
+
+      if (mainPath != null) {
+        if (await File(mainPath).exists() || await Directory(mainPath).exists()) {
+          exists = true;
+        }
+      }
+
+      if (!exists && book.audioFiles != null && book.audioFiles!.isNotEmpty) {
+        for (final file in book.audioFiles!) {
+          if (await File(file).exists()) {
+            exists = true;
+            break;
+          }
+        }
+      }
+
+      if (!exists) {
+        idsToRemove.add(book.id);
+        if (book.coverPath != null) {
+          coverPathsToDelete.add(book.coverPath!);
+        }
+      }
+    }
+
+    if (idsToRemove.isNotEmpty) {
+      await _isar.writeTxn(() async {
+        await _isar.books.deleteAll(idsToRemove);
+      });
+
+      for (final coverPath in coverPathsToDelete) {
+        try {
+          final file = File(coverPath);
+          if (await file.exists()) {
+            await file.delete();
+          }
+        } catch (e) {
+          logger.w('Failed to delete orphaned cover file $coverPath: $e');
+        }
+      }
+      logger.i('Cleaned ${idsToRemove.length} orphaned book(s) from database.');
+    }
+
+    return idsToRemove.length;
   }
 }

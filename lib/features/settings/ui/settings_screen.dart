@@ -58,6 +58,26 @@ class SettingsScreen extends ConsumerWidget {
     );
   }
 
+  Future<void> _cleanOrphaned(BuildContext context, WidgetRef ref) async {
+    final count = await ref.read(libraryServiceProvider).cleanOrphanedBooks();
+    if (!context.mounted) return;
+    displayInfoBar(
+      context,
+      builder: (context, close) {
+        return InfoBar(
+          title: const Text('Orphaned Files Cleaned'),
+          content: Text(
+            count > 0
+                ? 'Removed $count missing audiobook(s) from database.'
+                : 'No missing audiobooks found.',
+          ),
+          severity: count > 0 ? InfoBarSeverity.warning : InfoBarSeverity.info,
+          onClose: close,
+        );
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final settings = ref.watch(appSettingsProvider);
@@ -232,7 +252,9 @@ class SettingsScreen extends ConsumerWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Row(
+                Wrap(
+                  spacing: 12,
+                  runSpacing: 12,
                   children: [
                     FilledButton(
                       child: const Row(
@@ -245,7 +267,6 @@ class SettingsScreen extends ConsumerWidget {
                       ),
                       onPressed: () => _pickFolder(ref),
                     ),
-                    const SizedBox(width: 12),
                     Button(
                       child: const Row(
                         mainAxisSize: MainAxisSize.min,
@@ -256,6 +277,17 @@ class SettingsScreen extends ConsumerWidget {
                         ],
                       ),
                       onPressed: () => _rescanAll(context, ref),
+                    ),
+                    Button(
+                      child: const Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(FluentIcons.delete, size: 16),
+                          SizedBox(width: 8),
+                          Text('Clean Missing Files'),
+                        ],
+                      ),
+                      onPressed: () => _cleanOrphaned(context, ref),
                     ),
                   ],
                 ),

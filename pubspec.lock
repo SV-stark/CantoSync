@@ -689,10 +689,10 @@ packages:
     dependency: "direct main"
     description:
       name: metadata_audio
-      sha256: c3ba5f441999806178d7b4982ad7a302ab5bf19683152beca55f903c4c235dbc
+      sha256: de81c95a265a98880078c39d7bc1e048c6f73878994bc0bdc1c26e7758e25d87
       url: "https://pub.dev"
     source: hosted
-    version: "0.8.0"
+    version: "0.9.2"
   mime:
     dependency: transitive
     description:

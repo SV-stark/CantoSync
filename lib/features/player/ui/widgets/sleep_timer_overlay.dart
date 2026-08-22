@@ -1,4 +1,3 @@
-import 'package:flutter/material.dart' as material;
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:gap/gap.dart';
 import 'package:canto_sync/core/utils/format_duration.dart';
@@ -12,7 +11,7 @@ class SleepTimerOverlay extends StatelessWidget {
   Widget build(BuildContext context) {
     if (remainingTime == null) return const SizedBox.shrink();
 
-    return material.IgnorePointer(
+    return IgnorePointer(
       child: Container(
         color: Colors.black.withValues(alpha: opacity),
         child: Center(

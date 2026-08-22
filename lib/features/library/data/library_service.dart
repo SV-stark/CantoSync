@@ -9,18 +9,12 @@ import 'package:metadata_audio/metadata_audio.dart' hide Chapter;
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
 import 'package:crypto/crypto.dart';
+import 'package:canto_sync/core/data/isar_provider.dart';
 import 'package:canto_sync/core/services/app_settings_service.dart';
 import 'package:canto_sync/core/utils/logger.dart';
 import 'book.dart';
 
 part 'library_service.g.dart';
-
-@Riverpod(keepAlive: true)
-Isar isar(Ref ref) {
-  throw UnimplementedError(
-    'Isar must be initialized in main.dart and overridden in ProviderScope',
-  );
-}
 
 @Riverpod(keepAlive: true)
 LibraryService libraryService(Ref ref) {
@@ -34,6 +28,7 @@ class LibrarySearchQuery extends _$LibrarySearchQuery {
   String build() => '';
 
   void updateQuery(String query) => state = query;
+  void setQuery(String query) => state = query;
 }
 
 @riverpod
@@ -124,10 +119,17 @@ Future<Map<String, List<Book>>> libraryGroupedBooks(Ref ref) async {
     groups.putIfAbsent(key, () => []).add(book);
   }
 
-  // Sort books within each series
+  // Sort books within each series by seriesIndex then title
   for (final entry in groups.entries) {
     if (entry.key != 'Standalone') {
-      entry.value.sort((a, b) => (a.title ?? '').compareTo(b.title ?? ''));
+      entry.value.sort((a, b) {
+        if (a.seriesIndex != null && b.seriesIndex != null) {
+          return a.seriesIndex!.compareTo(b.seriesIndex!);
+        }
+        if (a.seriesIndex != null) return -1;
+        if (b.seriesIndex != null) return 1;
+        return (a.title ?? '').compareTo(b.title ?? '');
+      });
     }
   }
 
@@ -142,12 +144,22 @@ String _cleanMetadataString(String str) {
 }
 
 Future<Map<String, List<String>>> _performFileScan(String path) async {
+  final audioExtensions = {'.mp3', '.m4b', '.m4a', '.flac', '.ogg', '.wav', '.opus'};
+  final Map<String, List<String>> groups = {};
+
+  final file = File(path);
+  if (await file.exists()) {
+    final ext = p.extension(path).toLowerCase();
+    if (audioExtensions.contains(ext)) {
+      groups[p.dirname(path)] = [path];
+      return groups;
+    }
+  }
+
   final dir = Directory(path);
   if (!await dir.exists()) return {};
 
   final entities = await dir.list(recursive: true, followLinks: false).toList();
-  final audioExtensions = {'.mp3', '.m4b', '.m4a', '.flac', '.ogg', '.wav'};
-  final Map<String, List<String>> groups = {};
 
   for (final entity in entities) {
     if (entity is File) {
@@ -170,6 +182,10 @@ class LibraryService {
     return _isar.books.where().findAll();
   }
 
+  Future<Book?> getBookByPath(String path) async {
+    return _isar.books.where().pathEqualTo(path).findFirst();
+  }
+
   Future<void> saveBook(Book book) async {
     await _isar.writeTxn(() async {
       await _isar.books.put(book);
@@ -180,10 +196,14 @@ class LibraryService {
     final book = await _isar.books.where().pathEqualTo(path).findFirst();
     if (book != null && book.coverPath != null) {
       try {
-        final file = File(book.coverPath!);
-        if (await file.exists()) {
-          await file.delete();
-          logger.d('Deleted cached cover file: ${book.coverPath}');
+        final appDir = await getApplicationDocumentsDirectory();
+        final coversDirPath = p.join(appDir.path, 'canto_sync', 'covers');
+        if (p.isWithin(coversDirPath, book.coverPath!)) {
+          final file = File(book.coverPath!);
+          if (await file.exists()) {
+            await file.delete();
+            logger.d('Deleted cached cover file: ${book.coverPath}');
+          }
         }
       } catch (e) {
         logger.w('Failed to delete cached cover file: $e');
@@ -195,7 +215,32 @@ class LibraryService {
   }
 
   Stream<List<Book>> listenToBooks() {
-    return _isar.books.where().watch(fireImmediately: true);
+    return _isar.books
+        .where()
+        .watch(fireImmediately: true)
+        .debounce(const Duration(milliseconds: 500));
+  }
+
+  Future<void> assignCollection(String path, String collectionName) async {
+    final book = await _isar.books.where().pathEqualTo(path).findFirst();
+    if (book != null) {
+      final collections = List<String>.from(book.collections ?? []);
+      if (!collections.contains(collectionName)) {
+        collections.add(collectionName);
+        book.collections = collections;
+        await saveBook(book);
+      }
+    }
+  }
+
+  Future<void> removeBookFromCollection(String path, String collectionName) async {
+    final book = await _isar.books.where().pathEqualTo(path).findFirst();
+    if (book != null && (book.collections?.contains(collectionName) ?? false)) {
+      final collections = List<String>.from(book.collections!);
+      collections.remove(collectionName);
+      book.collections = collections;
+      await saveBook(book);
+    }
   }
 
   Future<void> removeCollection(String collectionName) async {
@@ -229,8 +274,12 @@ class LibraryService {
 
     try {
       for (final path in libraryPaths) {
-        final found = await _scanDirectory(path, probePlayer);
-        allFoundBookPaths.addAll(found);
+        if (await Directory(path).exists()) {
+          final found = await _scanDirectory(path, probePlayer);
+          allFoundBookPaths.addAll(found);
+        } else {
+          logger.w('Library folder inaccessible (unmounted/offline): $path');
+        }
       }
 
       final existingBooks = await getAllBooks();
@@ -238,16 +287,20 @@ class LibraryService {
 
       for (final book in existingBooks) {
         bool isManaged = false;
+        bool isLibAvailable = false;
         for (final libPath in libraryPaths) {
           final bookPath = book.path;
           if (bookPath != null &&
               (p.isWithin(libPath, bookPath) || p.equals(libPath, bookPath))) {
             isManaged = true;
+            if (await Directory(libPath).exists()) {
+              isLibAvailable = true;
+            }
             break;
           }
         }
 
-        if (isManaged && !allFoundBookPaths.contains(book.path)) {
+        if (isManaged && isLibAvailable && !allFoundBookPaths.contains(book.path)) {
           idsToRemove.add(book.id);
         }
       }
@@ -277,9 +330,16 @@ class LibraryService {
     final updatedBooks = <Book>[];
     for (var entry in seriesGroups.entries) {
       final seriesBooks = entry.value;
-      seriesBooks.sort((a, b) => (a.title ?? '').compareTo(b.title ?? ''));
+      seriesBooks.sort((a, b) {
+        if (a.seriesIndex != null && b.seriesIndex != null) {
+          return a.seriesIndex!.compareTo(b.seriesIndex!);
+        }
+        if (a.seriesIndex != null) return -1;
+        if (b.seriesIndex != null) return 1;
+        return (a.title ?? '').compareTo(b.title ?? '');
+      });
       for (int i = 0; i < seriesBooks.length; i++) {
-        if (seriesBooks[i].seriesIndex != i + 1) {
+        if (seriesBooks[i].seriesIndex == null) {
           seriesBooks[i].seriesIndex = i + 1;
           updatedBooks.add(seriesBooks[i]);
         }
@@ -306,20 +366,20 @@ class LibraryService {
 
   Future<void> updateBookCover(Book book, String newCoverFile) async {
     try {
-      final bookPath = book.path;
-      if (bookPath == null) return;
-      final bookDir = (book.isDirectory ?? false)
-          ? bookPath
-          : p.dirname(bookPath);
-      final ext = p.extension(newCoverFile);
-      final targetPath = p.join(bookDir, 'CoverSC$ext');
-
       final sourceFile = File(newCoverFile);
       if (!await sourceFile.exists()) {
         logger.w('Source cover file does not exist: $newCoverFile');
         return;
       }
-      await Isolate.run(() => sourceFile.copySync(targetPath));
+      final appDir = await getApplicationDocumentsDirectory();
+      final coversDir = Directory(p.join(appDir.path, 'canto_sync', 'covers'));
+      if (!await coversDir.exists()) {
+        await coversDir.create(recursive: true);
+      }
+      final ext = p.extension(newCoverFile);
+      final hash = md5.convert(await sourceFile.readAsBytes()).toString();
+      final targetPath = p.join(coversDir.path, '$hash$ext');
+      await sourceFile.copy(targetPath);
 
       book.coverPath = targetPath;
       await saveBook(book);
@@ -405,6 +465,7 @@ class LibraryService {
     String? title;
     String? author;
     String? album;
+    String? narrator;
     String? coverPath;
     String? description;
     double duration = 0;
@@ -434,6 +495,11 @@ class LibraryService {
       album = metadata.common.album != null
           ? _cleanMetadataString(metadata.common.album!)
           : null;
+
+      final composers = metadata.common.composer;
+      if (composers != null && composers.isNotEmpty) {
+        narrator = _cleanMetadataString(composers.first);
+      }
 
       // Robust cover selection: try selectCover, then fallback to first picture
       final pictures = metadata.common.picture;
@@ -556,6 +622,7 @@ class LibraryService {
       existingBook.title = title ?? _cleanMetadataString(folderName);
       existingBook.author = author;
       existingBook.album = album;
+      existingBook.narrator = narrator ?? existingBook.narrator;
       existingBook.durationSeconds = duration > 0 ? duration : null;
       existingBook.coverPath = coverPath ?? existingBook.coverPath;
       existingBook.audioFiles = audioFiles;
@@ -574,6 +641,7 @@ class LibraryService {
         title: title ?? _cleanMetadataString(folderName),
         author: author,
         album: album,
+        narrator: narrator,
         durationSeconds: duration > 0 ? duration : null,
         coverPath: coverPath,
         lastPlayed: null, // Don't set lastPlayed until actually played
@@ -748,15 +816,19 @@ class LibraryService {
         await _isar.books.deleteAll(idsToRemove);
       });
 
-      for (final coverPath in coverPathsToDelete) {
-        try {
-          final file = File(coverPath);
-          if (await file.exists()) {
-            await file.delete();
+      try {
+        final appDir = await getApplicationDocumentsDirectory();
+        final coversDirPath = p.join(appDir.path, 'canto_sync', 'covers');
+        for (final coverPath in coverPathsToDelete) {
+          if (p.isWithin(coversDirPath, coverPath)) {
+            final file = File(coverPath);
+            if (await file.exists()) {
+              await file.delete();
+            }
           }
-        } catch (e) {
-          logger.w('Failed to delete orphaned cover file $coverPath: $e');
         }
+      } catch (e) {
+        logger.w('Failed to delete orphaned cover files: $e');
       }
       logger.i('Cleaned ${idsToRemove.length} orphaned book(s) from database.');
     }

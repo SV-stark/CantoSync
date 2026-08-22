@@ -31,11 +31,6 @@ class LibraryScreen extends HookConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final flyoutController = useMemoized(() => FlyoutController());
-    useEffect(() {
-      return () => flyoutController.dispose();
-    }, [flyoutController]);
-
     final booksAsync = ref.watch(libraryBooksProvider);
     final viewMode = ref.watch(libraryViewModeProvider);
     final isGroupingEnabled = ref.watch(libraryGroupingModeProvider);
@@ -132,66 +127,77 @@ class LibraryScreen extends HookConsumerWidget {
           mainAxisSize: MainAxisSize.min,
           children: [
             SizedBox(
-              width: 200,
+              width: 240,
               child: TextBox(
-                focusNode: searchFocusNode,
                 controller: searchController,
-                placeholder: 'Search library...',
-                onChanged: (text) => ref
-                    .read(librarySearchQueryProvider.notifier)
-                    .updateQuery(text),
+                focusNode: searchFocusNode,
+                placeholder: 'Search title, author, narrator...',
                 prefix: const Padding(
-                  padding: EdgeInsets.symmetric(horizontal: 8.0),
+                  padding: EdgeInsets.only(left: 8.0),
                   child: Icon(FluentIcons.search, size: 14),
                 ),
-                suffix: searchController.text.isNotEmpty
+                suffix: searchQuery.isNotEmpty
                     ? IconButton(
-                        icon: const Icon(FluentIcons.clear),
+                        icon: const Icon(FluentIcons.clear, size: 10),
                         onPressed: () {
                           searchController.clear();
                           ref
                               .read(librarySearchQueryProvider.notifier)
-                              .updateQuery('');
+                              .setQuery('');
                         },
                       )
                     : null,
+                onChanged: (value) => ref
+                    .read(librarySearchQueryProvider.notifier)
+                    .setQuery(value),
               ),
             ),
-            const SizedBox(width: 12),
-            CommandBar(
-              mainAxisAlignment: MainAxisAlignment.end,
-              primaryItems: [
-                CommandBarButton(
-                  icon: isScanning.value
-                      ? const ProgressRing(strokeWidth: 2)
-                      : const Icon(FluentIcons.refresh),
-                  label: Text(isScanning.value ? 'Scanning...' : 'Rescan All'),
-                  onPressed: isScanning.value ? null : rescanLibrary,
+            const SizedBox(width: 8),
+            Tooltip(
+              message: 'Toggle View Mode',
+              child: IconButton(
+                icon: Icon(
+                  viewMode ? FluentIcons.list : FluentIcons.view_all,
                 ),
-                CommandBarButton(
-                  icon: Icon(
-                    viewMode ? FluentIcons.list : FluentIcons.view_all,
-                  ),
-                  label: Text(viewMode ? 'List View' : 'Grid View'),
-                  onPressed: () =>
-                      ref.read(libraryViewModeProvider.notifier).toggle(),
+                onPressed: () =>
+                    ref.read(libraryViewModeProvider.notifier).toggle(),
+              ),
+            ),
+            const SizedBox(width: 8),
+            Tooltip(
+              message: 'Toggle Grouping by Series',
+              child: IconButton(
+                icon: Icon(
+                  isGroupingEnabled
+                      ? FluentIcons.group_list
+                      : FluentIcons.bulleted_list,
+                  color: isGroupingEnabled
+                      ? FluentTheme.of(context).accentColor
+                      : null,
                 ),
-                CommandBarButton(
-                  icon: Icon(
-                    isGroupingEnabled
-                        ? FluentIcons.group_list
-                        : FluentIcons.group,
-                  ),
-                  label: const Text('Group by Series'),
-                  onPressed: () =>
-                      ref.read(libraryGroupingModeProvider.notifier).toggle(),
-                ),
-                CommandBarButton(
-                  icon: const Icon(FluentIcons.add),
-                  label: const Text('Add Folder'),
-                  onPressed: pickFolder,
-                ),
-              ],
+                onPressed: () =>
+                    ref.read(libraryGroupingModeProvider.notifier).toggle(),
+              ),
+            ),
+            const SizedBox(width: 8),
+            Tooltip(
+              message: 'Rescan Library',
+              child: IconButton(
+                icon: const Icon(FluentIcons.refresh),
+                onPressed: isScanning.value ? null : rescanLibrary,
+              ),
+            ),
+            const SizedBox(width: 8),
+            FilledButton(
+              onPressed: pickFolder,
+              child: const Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(FluentIcons.add, size: 12),
+                  SizedBox(width: 6),
+                  Text('Add Folder'),
+                ],
+              ),
             ),
           ],
         ),
@@ -201,27 +207,41 @@ class LibraryScreen extends HookConsumerWidget {
           _Sidebar(
             selectedCollection: selectedCollection,
             sortedCollections: sortedCollections,
-            flyoutController: flyoutController,
           ),
           const Divider(direction: Axis.vertical),
           Expanded(
             child: DropTarget(
-              onDragDone: (detail) {
-                for (final file in detail.files) {
-                  ref.read(libraryServiceProvider).scanDirectory(file.path);
+              onDragDone: (detail) async {
+                final files = detail.files;
+                if (files.isEmpty) return;
+                for (final file in files) {
+                  await ref.read(libraryServiceProvider).scanDirectory(file.path);
+                }
+                if (context.mounted) {
+                  displayInfoBar(
+                    context,
+                    builder: (context, close) => InfoBar(
+                      title: const Text('Import Complete'),
+                      content: Text('Processed ${files.length} dragged item(s).'),
+                      action: IconButton(
+                        icon: const Icon(FluentIcons.clear),
+                        onPressed: close,
+                      ),
+                      severity: InfoBarSeverity.success,
+                    ),
+                  );
                 }
               },
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  _RecentsRow(flyoutController: flyoutController),
+                  const _RecentsRow(),
                   Expanded(
                     child: Skeletonizer(
                       enabled: booksAsync.isLoading,
                       child: isGroupingEnabled
                           ? _GroupedView(
                               viewMode: viewMode,
-                              flyoutController: flyoutController,
                             )
                           : booksAsync.maybeWhen(
                               data: (books) {
@@ -231,7 +251,6 @@ class LibraryScreen extends HookConsumerWidget {
                                 return _BookList(
                                   books: books,
                                   isGridView: viewMode,
-                                  flyoutController: flyoutController,
                                 );
                               },
                               orElse: () => const Center(child: ProgressRing()),
@@ -252,11 +271,9 @@ class _Sidebar extends ConsumerWidget {
   const _Sidebar({
     required this.selectedCollection,
     required this.sortedCollections,
-    required this.flyoutController,
   });
   final String? selectedCollection;
   final List<String> sortedCollections;
-  final FlyoutController flyoutController;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -281,28 +298,61 @@ class _Sidebar extends ConsumerWidget {
                 .setFilter(null),
           ),
           ...sortedCollections.map(
-            (c) => FlyoutTarget(
-              controller: flyoutController,
-              child: GestureDetector(
-                onSecondaryTapDown: (detail) => _showCollectionContextMenu(
-                  context,
-                  ref,
-                  c,
-                  detail.globalPosition,
-                  flyoutController,
-                ),
-                child: ListTile.selectable(
-                  selected: selectedCollection == c,
-                  leading: const Icon(FluentIcons.library),
-                  title: Text(c),
-                  onPressed: () => ref
-                      .read(libraryCollectionFilterProvider.notifier)
-                      .setFilter(c),
-                ),
-              ),
+            (c) => _CollectionTile(
+              name: c,
+              isSelected: selectedCollection == c,
+              onTap: () => ref
+                  .read(libraryCollectionFilterProvider.notifier)
+                  .setFilter(c),
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _CollectionTile extends ConsumerStatefulWidget {
+  const _CollectionTile({
+    required this.name,
+    required this.isSelected,
+    required this.onTap,
+  });
+  final String name;
+  final bool isSelected;
+  final VoidCallback onTap;
+
+  @override
+  ConsumerState<_CollectionTile> createState() => _CollectionTileState();
+}
+
+class _CollectionTileState extends ConsumerState<_CollectionTile> {
+  final FlyoutController _flyoutController = FlyoutController();
+
+  @override
+  void dispose() {
+    _flyoutController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return FlyoutTarget(
+      controller: _flyoutController,
+      child: GestureDetector(
+        onSecondaryTapDown: (detail) => _showCollectionContextMenu(
+          context,
+          ref,
+          widget.name,
+          detail.globalPosition,
+          _flyoutController,
+        ),
+        child: ListTile.selectable(
+          selected: widget.isSelected,
+          leading: const Icon(FluentIcons.library),
+          title: Text(widget.name),
+          onPressed: widget.onTap,
+        ),
       ),
     );
   }
@@ -323,17 +373,32 @@ class _Sidebar extends ConsumerWidget {
             leading: const Icon(FluentIcons.play),
             text: const Text('Play All'),
             onPressed: () async {
-              final books = await libraryService
-                  .getAllBooks(); // Simplified for now
+              final books = await libraryService.getAllBooks();
               final collectionBooks = books
                   .where(
                     (b) => b.collections?.contains(collectionName) ?? false,
                   )
                   .toList();
               if (collectionBooks.isNotEmpty) {
-                ref
-                    .read(playbackSyncProvider)
-                    .resumeBook(collectionBooks.first.path!);
+                collectionBooks.sort((a, b) {
+                  if (a.seriesIndex != null && b.seriesIndex != null) {
+                    return a.seriesIndex!.compareTo(b.seriesIndex!);
+                  }
+                  if (a.seriesIndex != null) return -1;
+                  if (b.seriesIndex != null) return 1;
+                  return (a.title ?? '').compareTo(b.title ?? '');
+                });
+                final firstToPlay = collectionBooks.firstWhere(
+                  (b) =>
+                      _calculateBookProgress(b) <
+                      AppConstants.bookCompletionThreshold,
+                  orElse: () => collectionBooks.first,
+                );
+                if (firstToPlay.path != null) {
+                  ref
+                      .read(playbackSyncProvider)
+                      .resumeBook(firstToPlay.path!);
+                }
               }
             },
           ),
@@ -403,7 +468,6 @@ class _BookList extends ConsumerWidget {
   });
   final List<Book> books;
   final bool isGridView;
-  final FlyoutController flyoutController;
   final Map<String, int>? seriesTotals;
 
   @override
@@ -420,15 +484,11 @@ class _BookList extends ConsumerWidget {
         itemCount: books.length,
         itemBuilder: (context, index) {
           final book = books[index];
-          return FlyoutTarget(
-            controller: flyoutController,
-            child: BookCard(
-              book: book,
-              flyoutController: flyoutController,
-              seriesTotal: (book.series != null && seriesTotals != null)
-                  ? seriesTotals![book.series!]
-                  : null,
-            ),
+          return BookCard(
+            book: book,
+            seriesTotal: (book.series != null && seriesTotals != null)
+                ? seriesTotals![book.series!]
+                : null,
           );
         },
       );
@@ -436,72 +496,97 @@ class _BookList extends ConsumerWidget {
       return ListView.builder(
         itemCount: books.length,
         itemBuilder: (context, index) {
-          final book = books[index];
-          return GestureDetector(
-            onSecondaryTapDown: (detail) => _showBookContextMenu(
-              context,
-              ref,
-              book,
-              detail.globalPosition,
-              flyoutController,
-            ),
-            child: ListTile(
-              leading: ClipRRect(
-                borderRadius: BorderRadius.circular(4),
-                child: book.coverPath != null
-                    ? Image.file(
-                        File(book.coverPath!),
-                        width: 40,
-                        height: 40,
-                        fit: BoxFit.cover,
-                      )
-                    : const Icon(FluentIcons.music_note),
-              ),
-              title: Text(book.title ?? 'Unknown'),
-              subtitle: Text(book.author ?? 'Unknown Author'),
-              trailing: book.fileExtension.isNotEmpty
-                  ? Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 6,
-                        vertical: 2,
-                      ),
-                      decoration: BoxDecoration(
-                        color: FluentTheme.of(
-                          context,
-                        ).resources.subtleFillColorSecondary,
-                        borderRadius: BorderRadius.circular(4),
-                        border: Border.all(
-                          color: FluentTheme.of(
-                            context,
-                          ).resources.controlStrokeColorDefault,
-                        ),
-                      ),
-                      child: Text(
-                        book.fileExtension.toUpperCase(),
-                        style: TextStyle(
-                          fontSize: 10,
-                          fontWeight: FontWeight.bold,
-                          color: FluentTheme.of(
-                            context,
-                          ).typography.caption?.color,
-                        ),
-                      ),
-                    )
-                  : null,
-              onPressed: () =>
-                  ref.read(playbackSyncProvider).resumeBook(book.path!),
-            ),
-          );
+          return _BookListTile(book: books[index]);
         },
       );
     }
   }
 }
 
+class _BookListTile extends ConsumerStatefulWidget {
+  const _BookListTile({required this.book});
+  final Book book;
+
+  @override
+  ConsumerState<_BookListTile> createState() => _BookListTileState();
+}
+
+class _BookListTileState extends ConsumerState<_BookListTile> {
+  final FlyoutController _flyoutController = FlyoutController();
+
+  @override
+  void dispose() {
+    _flyoutController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final book = widget.book;
+    return FlyoutTarget(
+      controller: _flyoutController,
+      child: GestureDetector(
+        onSecondaryTapDown: (detail) => _showBookContextMenu(
+          context,
+          ref,
+          book,
+          detail.globalPosition,
+          _flyoutController,
+        ),
+        child: ListTile(
+          leading: ClipRRect(
+            borderRadius: BorderRadius.circular(4),
+            child: book.coverPath != null
+                ? Image.file(
+                    File(book.coverPath!),
+                    width: 40,
+                    height: 40,
+                    fit: BoxFit.cover,
+                  )
+                : const Icon(FluentIcons.music_note),
+          ),
+          title: Text(book.title ?? 'Unknown'),
+          subtitle: Text(book.author ?? 'Unknown Author'),
+          trailing: book.fileExtension.isNotEmpty
+              ? Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 6,
+                    vertical: 2,
+                  ),
+                  decoration: BoxDecoration(
+                    color: FluentTheme.of(
+                      context,
+                    ).resources.subtleFillColorSecondary,
+                    borderRadius: BorderRadius.circular(4),
+                    border: Border.all(
+                      color: FluentTheme.of(
+                        context,
+                      ).resources.controlStrokeColorDefault,
+                    ),
+                  ),
+                  child: Text(
+                    book.fileExtension.toUpperCase(),
+                    style: TextStyle(
+                      fontSize: 10,
+                      fontWeight: FontWeight.bold,
+                      color: FluentTheme.of(
+                        context,
+                      ).typography.caption?.color,
+                    ),
+                  ),
+                )
+              : null,
+          onPressed: () =>
+              ref.read(playbackSyncProvider).resumeBook(book.path!),
+        ),
+      ),
+    );
+  }
+}
+
 class _GroupedView extends ConsumerWidget {
-  const _GroupedView({required this.viewMode, required this.flyoutController});
+  const _GroupedView({required this.viewMode});
   final bool viewMode;
-  final FlyoutController flyoutController;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -535,7 +620,6 @@ class _GroupedView extends ConsumerWidget {
                 child: _BookList(
                   books: books,
                   isGridView: viewMode,
-                  flyoutController: flyoutController,
                   seriesTotals: seriesTotals,
                 ),
               ),
@@ -550,8 +634,7 @@ class _GroupedView extends ConsumerWidget {
 }
 
 class _RecentsRow extends ConsumerWidget {
-  const _RecentsRow({required this.flyoutController});
-  final FlyoutController flyoutController;
+  const _RecentsRow();
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -579,7 +662,6 @@ class _RecentsRow extends ConsumerWidget {
               margin: const EdgeInsets.symmetric(horizontal: 8),
               child: BookCard(
                 book: recentBooks[index],
-                flyoutController: flyoutController,
               ),
             ),
           ),
@@ -590,92 +672,141 @@ class _RecentsRow extends ConsumerWidget {
   }
 }
 
-class BookCard extends ConsumerWidget {
+double _calculateBookProgress(Book book) {
+  final dur = book.durationSeconds ?? 0;
+  if (dur <= 0) return 0.0;
+  final pos = book.positionSeconds ?? 0;
+  if (book.audioFiles != null && book.audioFiles!.length > 1 && book.filesMetadata != null) {
+    final trackIndex = (book.lastTrackIndex ?? 0).clamp(0, book.filesMetadata!.length - 1);
+    double cumulativeBefore = 0;
+    for (int i = 0; i < trackIndex; i++) {
+      cumulativeBefore += book.filesMetadata![i].duration ?? 0;
+    }
+    final effectivePos = cumulativeBefore + pos;
+    return (effectivePos / dur).clamp(0.0, 1.0);
+  }
+  return (pos / dur).clamp(0.0, 1.0);
+}
+
+class BookCard extends ConsumerStatefulWidget {
   const BookCard({
     required this.book,
-    required this.flyoutController,
     this.seriesTotal,
     super.key,
   });
   final Book book;
-  final FlyoutController flyoutController;
   final int? seriesTotal;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final dur = book.durationSeconds ?? 1;
-    final pos = book.positionSeconds ?? 0;
-    final progress = (pos / dur).clamp(0.0, 1.0);
-    final hasProgress =
-        pos > 0 && pos < dur * AppConstants.bookCompletionThreshold;
-    final isCompleted =
-        dur > 0 && pos >= dur * AppConstants.bookCompletionThreshold;
+  ConsumerState<BookCard> createState() => _BookCardState();
+}
 
-    return GestureDetector(
-      onSecondaryTapDown: (detail) => _showBookContextMenu(
-        context,
-        ref,
-        book,
-        detail.globalPosition,
-        flyoutController,
-      ),
-      child: HoverButton(
-        onPressed: () => ref.read(playbackSyncProvider).resumeBook(book.path!),
-        builder: (context, states) => Card(
-          padding: EdgeInsets.zero,
-          borderRadius: BorderRadius.circular(8),
-          child: Stack(
-            children: [
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Expanded(
-                    child: ClipRRect(
-                      borderRadius: const BorderRadius.vertical(
-                        top: Radius.circular(8),
-                      ),
-                      child: Stack(
-                        fit: StackFit.expand,
-                        children: [
-                          if (book.coverPath != null)
-                            Image.file(File(book.coverPath!), fit: BoxFit.cover)
-                          else
-                            const Center(
-                              child: Icon(FluentIcons.music_note, size: 48),
-                            ),
+class _BookCardState extends ConsumerState<BookCard> {
+  final FlyoutController _flyoutController = FlyoutController();
+
+  @override
+  void dispose() {
+    _flyoutController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final book = widget.book;
+    final seriesTotal = widget.seriesTotal;
+    final progress = _calculateBookProgress(book);
+    final hasProgress =
+        progress > 0 && progress < AppConstants.bookCompletionThreshold;
+    final isCompleted = progress >= AppConstants.bookCompletionThreshold;
+
+    return FlyoutTarget(
+      controller: _flyoutController,
+      child: GestureDetector(
+        onSecondaryTapDown: (detail) => _showBookContextMenu(
+          context,
+          ref,
+          book,
+          detail.globalPosition,
+          _flyoutController,
+        ),
+        child: HoverButton(
+          onPressed: () => ref.read(playbackSyncProvider).resumeBook(book.path!),
+          builder: (context, states) => Card(
+            padding: EdgeInsets.zero,
+            borderRadius: BorderRadius.circular(8),
+            child: Stack(
+              children: [
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Expanded(
+                      child: ClipRRect(
+                        borderRadius: const BorderRadius.vertical(
+                          top: Radius.circular(8),
+                        ),
+                        child: Stack(
+                          fit: StackFit.expand,
+                          children: [
+                            if (book.coverPath != null)
+                              Image.file(
+                                File(book.coverPath!),
+                                fit: BoxFit.cover,
+                                errorBuilder: (context, error, stackTrace) =>
+                                    Container(
+                                  color: FluentTheme.of(
+                                    context,
+                                  ).resources.subtleFillColorSecondary,
+                                  child: const Center(
+                                    child: Icon(
+                                      FluentIcons.music_in_collection,
+                                      size: 48,
+                                    ),
+                                  ),
+                                ),
+                              )
+                            else
+                              Container(
+                                color: FluentTheme.of(
+                                  context,
+                                ).resources.subtleFillColorSecondary,
+                                child: const Center(
+                                  child: Icon(
+                                    FluentIcons.music_in_collection,
+                                    size: 48,
+                                  ),
+                                ),
+                              ),
 
                           if (hasProgress)
                             Positioned(
-                              bottom: 8,
-                              left: 8,
-                              child: CircularPercentIndicator(
-                                radius: 18.0,
-                                lineWidth: 3.0,
-                                percent: progress,
-                                center: Text(
-                                  '${(progress * 100).toInt()}%',
-                                  style: const TextStyle(
-                                    fontSize: 10,
-                                    fontWeight: FontWeight.bold,
-                                    color: Colors.white,
+                              top: 8,
+                              right: 8,
+                              child: Container(
+                                padding: const EdgeInsets.all(4),
+                                decoration: BoxDecoration(
+                                  color: Colors.black.withValues(alpha: 0.7),
+                                  shape: BoxShape.circle,
+                                ),
+                                child: CircularPercentIndicator(
+                                  radius: 12.0,
+                                  lineWidth: 3.0,
+                                  percent: progress,
+                                  progressColor: Colors.blue,
+                                  backgroundColor: Colors.white.withValues(
+                                    alpha: 0.3,
                                   ),
                                 ),
-                                progressColor: Colors.white,
-                                backgroundColor: Colors.white.withValues(
-                                  alpha: 0.2,
-                                ),
-                                circularStrokeCap: CircularStrokeCap.round,
-                                fillColor: Colors.black.withValues(alpha: 0.7),
                               ),
                             ),
 
                           if (isCompleted)
                             _Badge(
                               icon: FluentIcons.check_mark,
-                              label: 'Completed',
+                              label: 'Finished',
                               color: Colors.green,
                             ),
-                          if (hasProgress && !isCompleted)
+
+                          if (hasProgress)
                             _Badge(
                               icon: FluentIcons.play_resume,
                               label: 'Continue',
@@ -790,8 +921,9 @@ class BookCard extends ConsumerWidget {
           ),
         ),
       ),
-    );
-  }
+    ),
+  );
+}
 }
 
 class _Badge extends StatelessWidget {
@@ -855,6 +987,21 @@ void _showBookContextMenu(
               ref.read(playbackSyncProvider).resumeBook(book.path!),
         ),
         MenuFlyoutItem(
+          leading: const Icon(FluentIcons.edit),
+          text: const Text('Edit Metadata'),
+          onPressed: () => Navigator.push(
+            context,
+            FluentPageRoute(
+              builder: (context) => MetadataEditor(book: book),
+            ),
+          ),
+        ),
+        MenuFlyoutItem(
+          leading: const Icon(FluentIcons.tag),
+          text: const Text('Add to Collection...'),
+          onPressed: () => _showAddToCollectionDialog(context, ref, book),
+        ),
+        MenuFlyoutItem(
           leading: const Icon(FluentIcons.info),
           text: const Text('INFO'),
           onPressed: () => showDialog(
@@ -891,6 +1038,49 @@ void _showBookContextMenu(
               ],
             ),
           ),
+        ),
+      ],
+    ),
+  );
+}
+
+void _showAddToCollectionDialog(
+  BuildContext context,
+  WidgetRef ref,
+  Book book,
+) {
+  final textController = TextEditingController();
+  showDialog(
+    context: context,
+    builder: (dialogContext) => ContentDialog(
+      title: const Text('Add to Collection'),
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text('Enter collection name:'),
+          const SizedBox(height: 8),
+          TextBox(
+            controller: textController,
+            placeholder: 'e.g. Sci-Fi, Favorites, To Listen',
+            autofocus: true,
+          ),
+        ],
+      ),
+      actions: [
+        Button(
+          child: const Text('Cancel'),
+          onPressed: () => Navigator.pop(dialogContext),
+        ),
+        FilledButton(
+          child: const Text('Add'),
+          onPressed: () {
+            final name = textController.text.trim();
+            if (name.isNotEmpty && book.path != null) {
+              ref.read(libraryServiceProvider).assignCollection(book.path!, name);
+            }
+            Navigator.pop(dialogContext);
+          },
         ),
       ],
     ),

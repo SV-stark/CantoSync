@@ -1,5 +1,4 @@
 import 'dart:io';
-import 'package:flutter/material.dart' as material;
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:canto_sync/features/library/data/book.dart';
 
@@ -74,7 +73,7 @@ class CoverArtWithReflection extends StatelessWidget {
                         ..setEntry(1, 1, -0.3),
                       child: ShaderMask(
                         shaderCallback: (Rect bounds) {
-                          return material.LinearGradient(
+                          return LinearGradient(
                             begin: Alignment.topCenter,
                             end: Alignment.bottomCenter,
                             colors: [
@@ -83,7 +82,7 @@ class CoverArtWithReflection extends StatelessWidget {
                             ],
                           ).createShader(bounds);
                         },
-                        blendMode: material.BlendMode.dstIn,
+                        blendMode: BlendMode.dstIn,
                         child: Image(image: imageProvider, fit: BoxFit.cover),
                       ),
                     )

@@ -83,26 +83,33 @@ class SleepTimer extends _$SleepTimer {
       if (state.isEndOfChapter) {
         final mediaService = ref.read(mediaServiceProvider);
 
-        // Use custom chapters end time if available (single-file M4B),
-        // otherwise fallback to file duration (multi-file)
-        Duration chapterEndTime = mediaService.duration;
-
-        // If we can determine the current chapter's end time, use it
-        // This is a bit simplified; in a full implementation we'd check internal chapters
-        final chapters = mediaService.customChapters;
-        if (chapters != null && chapters.isNotEmpty) {
-          final currentIndex = mediaService.currentIndex;
-          if (currentIndex < chapters.length) {
-            final endTime = chapters[currentIndex].endTime;
-            if (endTime != null) {
-              chapterEndTime = Duration(milliseconds: (endTime * 1000).toInt());
+        Duration remaining;
+        if (mediaService.customChapters != null &&
+            mediaService.customChapters!.isNotEmpty) {
+          // Multi-file playlist: chapter boundary is end of current file
+          final trackDuration = mediaService.duration;
+          remaining = trackDuration > Duration.zero
+              ? trackDuration - position
+              : const Duration(minutes: 60);
+        } else {
+          // Single-file: calculate end from current internal chapter if available, or file duration
+          Duration chapterEndTime = mediaService.duration;
+          final chapters = mediaService.customChapters;
+          if (chapters != null && chapters.isNotEmpty) {
+            final currentIndex = mediaService.currentIndex;
+            if (currentIndex < chapters.length) {
+              final endTime = chapters[currentIndex].endTime;
+              if (endTime != null) {
+                chapterEndTime = Duration(
+                  milliseconds: (endTime * 1000).toInt(),
+                );
+              }
             }
           }
+          remaining = chapterEndTime - position;
         }
 
-        final remaining = chapterEndTime - position;
-        if (chapterEndTime > Duration.zero &&
-            remaining <= const Duration(seconds: 3) &&
+        if (remaining <= const Duration(seconds: 3) &&
             remaining >= Duration.zero) {
           cancelTimer();
           _fadeOutAndPause();

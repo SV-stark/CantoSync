@@ -1,4 +1,3 @@
-import 'package:flutter/material.dart' as material;
 import 'package:fluent_ui/fluent_ui.dart';
 
 class PulsingPlayButton extends StatefulWidget {
@@ -87,16 +86,13 @@ class _PulsingPlayButtonState extends State<PulsingPlayButton>
                   ),
                 ],
               ),
-              child: material.Material(
-                color: Colors.transparent,
-                child: IconButton(
-                  icon: Icon(
-                    widget.isPlaying ? FluentIcons.pause : FluentIcons.play,
-                    color: Colors.black,
-                    size: widget.size * 0.4,
-                  ),
-                  onPressed: widget.onPressed,
+              child: IconButton(
+                icon: Icon(
+                  widget.isPlaying ? FluentIcons.pause : FluentIcons.play,
+                  color: Colors.black,
+                  size: widget.size * 0.4,
                 ),
+                onPressed: widget.onPressed,
               ),
             );
           },

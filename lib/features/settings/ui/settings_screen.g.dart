@@ -40,7 +40,7 @@ final class AppVersionProvider
   }
 }
 
-String _$appVersionHash() => r'd9868ee0d35de272c8240568d4b1120300457864';
+String _$appVersionHash() => r'd69e13be1520e27ae1c9827c4d77156ed26551a6';
 
 @ProviderFor(packageInfo)
 final packageInfoProvider = PackageInfoProvider._();

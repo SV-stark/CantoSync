@@ -1,6 +1,6 @@
 import 'package:isar_community/isar.dart';
 import 'package:rxdart/rxdart.dart';
-import 'package:canto_sync/features/library/data/library_service.dart';
+import 'package:canto_sync/core/data/isar_provider.dart';
 import 'package:canto_sync/features/library/data/book.dart';
 import 'package:canto_sync/features/stats/data/listening_stats.dart';
 import 'dart:convert';
@@ -211,6 +211,12 @@ class ListeningStatsService {
     return activity;
   }
 
+  Map<String, int> calculateStreaksForTesting(List<DailyListeningStats> stats) =>
+      _calculateStreaks(stats);
+
+  Map<String, int> calculateWeeklyActivityForTesting(List<DailyListeningStats> stats) =>
+      _calculateWeeklyActivity(stats);
+
   String _formatDate(DateTime date) {
     return '${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';
   }
@@ -317,6 +323,8 @@ class ListeningStatsService {
           .filter()
           .bookPathEqualTo(bookPath)
           .findFirst();
+      final bool wasAlreadyCompleted = bookStats?.isCompleted ?? false;
+
       bookStats ??= BookCompletionStats(
         bookPath: bookPath,
         bookTitle: book.title ?? 'Unknown',
@@ -328,14 +336,16 @@ class ListeningStatsService {
       bookStats.completedDate = DateTime.now();
       await _isar.bookCompletionStats.put(bookStats);
 
-      // Update author completed count
-      var authorStats = await _isar.authorStats
-          .filter()
-          .authorNameEqualTo(authorName)
-          .findFirst();
-      if (authorStats != null) {
-        authorStats.booksCompleted++;
-        await _isar.authorStats.put(authorStats);
+      // Update author completed count only on first completion
+      if (!wasAlreadyCompleted) {
+        var authorStats = await _isar.authorStats
+            .filter()
+            .authorNameEqualTo(authorName)
+            .findFirst();
+        if (authorStats != null) {
+          authorStats.booksCompleted++;
+          await _isar.authorStats.put(authorStats);
+        }
       }
     });
   }

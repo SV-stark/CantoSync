@@ -1,10 +1,11 @@
 import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter/widgets.dart';
 import 'package:hotkey_manager/hotkey_manager.dart';
-import 'package:canto_sync/core/services/media_service.dart';
 import 'package:canto_sync/core/services/keyboard_shortcuts_service.dart';
 import 'package:canto_sync/core/data/keyboard_shortcuts.dart';
+import 'package:canto_sync/core/utils/logger.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
 part 'hotkey_service.g.dart';
@@ -19,78 +20,43 @@ class HotkeyService {
   final Ref _ref;
 
   Future<void> init() async {
+    await registerShortcuts();
+  }
+
+  Future<void> registerShortcuts() async {
     if (kIsWeb) return;
     if (!Platform.isWindows && !Platform.isLinux) return;
 
     try {
       await hotKeyManager.unregisterAll();
     } catch (e) {
-      debugPrint('Error unregistering hotkeys: $e');
+      logger.w('Error unregistering hotkeys: $e');
     }
 
     final shortcuts = _ref.read(keyboardShortcutsProvider);
 
     for (final shortcut in shortcuts) {
-      VoidCallback? callback;
-
-      switch (shortcut.action) {
-        case ShortcutAction.playPause:
-          callback = () => _ref.read(mediaServiceProvider).playOrPause();
-          break;
-        case ShortcutAction.stop:
-          callback = () {
-            final media = _ref.read(mediaServiceProvider);
-            media.seek(Duration.zero);
-            media.pause();
-          };
-          break;
-        case ShortcutAction.nextTrack:
-          callback = () => _ref.read(mediaServiceProvider).nextChapter();
-          break;
-        case ShortcutAction.previousTrack:
-          callback = () => _ref.read(mediaServiceProvider).previousChapter();
-          break;
-        case ShortcutAction.skipForward:
-          callback = () {
-            final media = _ref.read(mediaServiceProvider);
-            media.seek(media.position + const Duration(seconds: 15));
-          };
-          break;
-        case ShortcutAction.skipBackward:
-          callback = () {
-            final media = _ref.read(mediaServiceProvider);
-            media.seek(media.position - const Duration(seconds: 15));
-          };
-          break;
-        case ShortcutAction.volumeUp:
-          callback = () {
-            final media = _ref.read(mediaServiceProvider);
-            media.setVolume((media.volume + 5).clamp(0, 100));
-          };
-          break;
-        case ShortcutAction.volumeDown:
-          callback = () {
-            final media = _ref.read(mediaServiceProvider);
-            media.setVolume((media.volume - 5).clamp(0, 100));
-          };
-          break;
-        case ShortcutAction.increaseSpeed:
-          callback = () {
-            final media = _ref.read(mediaServiceProvider);
-            media.setRate((media.playRate + 0.1).clamp(0.5, 3.0));
-          };
-          break;
-        case ShortcutAction.decreaseSpeed:
-          callback = () {
-            final media = _ref.read(mediaServiceProvider);
-            media.setRate((media.playRate - 0.1).clamp(0.5, 3.0));
-          };
-          break;
-      }
-
-      if (callback != null) {
-        await _registerHotKeyFromShortcut(shortcut, callback);
-      }
+      await _registerHotKeyFromShortcut(shortcut, () {
+        if (!shortcut.ctrl &&
+            !shortcut.alt &&
+            !shortcut.shift &&
+            shortcut.logicalKeys != null &&
+            shortcut.logicalKeys!.isNotEmpty &&
+            !_isMediaKey(shortcut.logicalKeys!.last)) {
+          final primaryFocus = FocusManager.instance.primaryFocus;
+          if (primaryFocus != null) {
+            final context = primaryFocus.context;
+            if (context != null) {
+              final isEditable =
+                  context.findAncestorWidgetOfExactType<EditableText>() != null;
+              if (isEditable) return;
+            }
+          }
+        }
+        _ref
+            .read(keyboardShortcutsProvider.notifier)
+            .executeAction(shortcut.action);
+      });
     }
   }
 
@@ -126,7 +92,7 @@ class HotkeyService {
       );
       await hotKeyManager.register(hotKey, keyDownHandler: (_) => onDown());
     } catch (e) {
-      debugPrint('Failed to register hotkey ${shortcut.shortcutString}: $e');
+      logger.w('Failed to register hotkey ${shortcut.shortcutString}: $e');
     }
   }
 
@@ -144,3 +110,4 @@ class HotkeyService {
         key == LogicalKeyboardKey.audioVolumeMute;
   }
 }
+

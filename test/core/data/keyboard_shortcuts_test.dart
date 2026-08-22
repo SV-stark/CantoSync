@@ -114,4 +114,39 @@ void main() {
       }
     });
   });
+
+  group('Symbol and Special Key Mappings', () {
+    test('bracket keys [ and ] map correctly to logical keys', () {
+      final bracketLeft = KeyboardShortcut(
+        action: ShortcutAction.decreaseSpeed,
+        keyValue: '[',
+        description: 'Decrease Speed',
+      );
+      final bracketRight = KeyboardShortcut(
+        action: ShortcutAction.increaseSpeed,
+        keyValue: ']',
+        description: 'Increase Speed',
+      );
+      expect(bracketLeft.logicalKeys, isNotNull);
+      expect(bracketLeft.logicalKeys!.isNotEmpty, isTrue);
+      expect(bracketRight.logicalKeys, isNotNull);
+      expect(bracketRight.logicalKeys!.isNotEmpty, isTrue);
+    });
+
+    test('punctuation keys ;, ,, ., /, \\ map correctly', () {
+      final keys = [';', ',', '.', '/', '\\', '-', '=', '`', "'"];
+      for (final k in keys) {
+        final shortcut = KeyboardShortcut(
+          action: 'custom',
+          keyValue: k,
+          description: 'Custom $k',
+        );
+        expect(
+          shortcut.logicalKeys,
+          isNotNull,
+          reason: 'Key $k should map to a valid LogicalKeyboardKey',
+        );
+      }
+    });
+  });
 }

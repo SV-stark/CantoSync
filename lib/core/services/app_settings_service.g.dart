@@ -184,11 +184,13 @@ const _IsarAppSettingsaudioPresetEnumValueMap = {
   'flat': 0,
   'voiceEnhance': 1,
   'bassBoost': 2,
+  'trebleBoost': 3,
 };
 const _IsarAppSettingsaudioPresetValueEnumMap = {
   0: AudioPreset.flat,
   1: AudioPreset.voiceEnhance,
   2: AudioPreset.bassBoost,
+  3: AudioPreset.trebleBoost,
 };
 const _IsarAppSettingsplayerThemeModeEnumValueMap = {
   'standard': 0,

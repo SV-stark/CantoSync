@@ -81,26 +81,31 @@ class _MetadataEditorState extends ConsumerState<MetadataEditor> {
 
     if (hasError) return;
 
-    widget.book.title = titleText;
-    widget.book.author = _authorController.text;
-    widget.book.album = _albumController.text;
-    widget.book.series = _seriesController.text.isNotEmpty
+    final libraryService = ref.read(libraryServiceProvider);
+    final bookPath = widget.book.path;
+    final bookToSave = (bookPath != null
+            ? await libraryService.getBookByPath(bookPath)
+            : null) ??
+        widget.book;
+
+    bookToSave.title = titleText;
+    bookToSave.author = _authorController.text;
+    bookToSave.album = _albumController.text;
+    bookToSave.series = _seriesController.text.isNotEmpty
         ? _seriesController.text
         : null;
-    widget.book.narrator = _narratorController.text;
-    widget.book.description = _descriptionController.text;
+    bookToSave.narrator = _narratorController.text;
+    bookToSave.description = _descriptionController.text;
 
     // Parse series index if provided
     if (seriesIndexText.isNotEmpty) {
       final index = int.tryParse(seriesIndexText);
-      if (index != null) {
-        widget.book.seriesIndex = index;
-      }
+      bookToSave.seriesIndex = index;
     } else {
-      widget.book.seriesIndex = null;
+      bookToSave.seriesIndex = null;
     }
 
-    await ref.read(libraryServiceProvider).saveBook(widget.book);
+    await libraryService.saveBook(bookToSave);
     if (mounted) Navigator.pop(context);
   }
 

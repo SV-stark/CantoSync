@@ -40,7 +40,7 @@ class UpdateService {
         final data = json.decode(response.body) as Map<String, dynamic>;
         final latestVersion = (data['tag_name'] as String).replaceAll('v', '');
 
-        if (_isNewerVersion(currentVersion, latestVersion)) {
+        if (isNewerVersion(currentVersion, latestVersion)) {
           return UpdateInfo(
             latestVersion: latestVersion,
             downloadUrl: data['html_url'] as String,
@@ -54,7 +54,7 @@ class UpdateService {
     return null;
   }
 
-  bool _isNewerVersion(String current, String latest) {
+  bool isNewerVersion(String current, String latest) {
     try {
       final currentParts = current.split('.').map(int.parse).toList();
       final latestParts = latest.split('.').map(int.parse).toList();

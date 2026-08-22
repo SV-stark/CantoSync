@@ -29,58 +29,15 @@ class _MiniPlayerState extends ConsumerState<MiniPlayer> {
     final currentBook = books.where((b) => b.path == currentPath).firstOrNull;
     if (currentBook == null) return const SizedBox.shrink();
 
-    final mediaService = ref.watch(mediaServiceProvider);
-    final position = ref.watch(playerPositionProvider).value ?? Duration.zero;
-    final duration = ref.watch(playerDurationProvider).value ?? Duration.zero;
-    final totalDuration =
-        ref.watch(playerTotalDurationProvider).value ?? duration;
-
-    final chapters = ref.watch(playerChaptersProvider).value ?? [];
-    final currentIndex = mediaService.currentIndex;
-
-    final isMultiFile =
-        totalDuration.inSeconds > (duration.inSeconds + 10) || currentIndex > 0;
-
-    Chapter? currentChapter;
-    String? chapterTitle;
-    if (chapters.isNotEmpty) {
-      if (isMultiFile) {
-        if (currentIndex < chapters.length) {
-          currentChapter = chapters[currentIndex];
-          chapterTitle = currentChapter.title;
-        }
-      } else {
-        final posSeconds = position.inMilliseconds / 1000.0;
-        currentChapter = chapters.lastWhere(
-          (c) => c.startTime <= posSeconds + 1.0,
-          orElse: () => chapters.first,
-        );
-        chapterTitle = currentChapter.title;
-      }
-    }
-
-    Duration chapterPosition = position;
-    Duration chapterDuration = duration;
-
-    if (currentChapter != null && !isMultiFile) {
-      final start = Duration(
-        milliseconds: (currentChapter.startTime * 1000).toInt(),
-      );
-      final end = currentChapter.endTime != null
-          ? Duration(milliseconds: (currentChapter.endTime! * 1000).toInt())
-          : duration;
-
-      chapterDuration = end - start;
-      chapterPosition = position - start;
-
-      if (chapterPosition.isNegative) chapterPosition = Duration.zero;
-      if (chapterPosition > chapterDuration) chapterPosition = chapterDuration;
-    }
-
-    final sliderMax = chapterDuration.inMilliseconds.toDouble();
+    final progress = ref.watch(playerPlaybackProgressProvider);
+    final currentChapter = progress.currentChapter;
+    final chapterTitle = currentChapter?.title;
+    final chapterPosition = progress.chapterPosition;
+    final chapterDuration = progress.chapterDuration;
+    final sliderMax = progress.sliderMax;
     final sliderValue = _isDragging
         ? _dragValue
-        : chapterPosition.inMilliseconds.toDouble().clamp(0.0, sliderMax);
+        : progress.sliderValue;
 
     return GestureDetector(
       onTap: widget.onTap,

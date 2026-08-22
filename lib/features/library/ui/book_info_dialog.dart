@@ -18,12 +18,12 @@ class _BookInfoDialogState extends ConsumerState<BookInfoDialog> {
   String _formatDuration(double? seconds) => formatDurationVerbose(seconds);
 
   Future<void> _pickNewCover() async {
-    FilePickerResult? result = await FilePicker.pickFiles(type: FileType.image);
+    final result = await FilePicker.pickFiles(type: FileType.image);
 
-    if (result != null && result.files.single.path != null) {
+    if (result.isNotEmpty && result.first.path != null) {
       await ref
           .read(libraryServiceProvider)
-          .updateBookCover(widget.book, result.files.single.path!);
+          .updateBookCover(widget.book, result.first.path!);
       setState(() {}); // Refresh UI
     }
   }

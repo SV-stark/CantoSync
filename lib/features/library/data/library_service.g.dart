@@ -9,46 +9,6 @@ part of 'library_service.dart';
 // GENERATED CODE - DO NOT MODIFY BY HAND
 // ignore_for_file: type=lint, type=warning
 
-@ProviderFor(isar)
-final isarProvider = IsarProvider._();
-
-final class IsarProvider extends $FunctionalProvider<Isar, Isar, Isar>
-    with $Provider<Isar> {
-  IsarProvider._()
-    : super(
-        from: null,
-        argument: null,
-        retry: null,
-        name: r'isarProvider',
-        isAutoDispose: false,
-        dependencies: null,
-        $allTransitiveDependencies: null,
-      );
-
-  @override
-  String debugGetCreateSourceHash() => _$isarHash();
-
-  @$internal
-  @override
-  $ProviderElement<Isar> $createElement($ProviderPointer pointer) =>
-      $ProviderElement(pointer);
-
-  @override
-  Isar create(Ref ref) {
-    return isar(ref);
-  }
-
-  /// {@macro riverpod.override_with_value}
-  Override overrideWithValue(Isar value) {
-    return $ProviderOverride(
-      origin: this,
-      providerOverride: $SyncValueProvider<Isar>(value),
-    );
-  }
-}
-
-String _$isarHash() => r'0736f5b74e3aef62a2757db5c57c6d3267d60de4';
-
 @ProviderFor(libraryService)
 final libraryServiceProvider = LibraryServiceProvider._();
 
@@ -417,4 +377,4 @@ final class LibraryGroupedBooksProvider
 }
 
 String _$libraryGroupedBooksHash() =>
-    r'59b2b039a0f421c0d3215de7ed4bb1dc4abc399f';
+    r'9fde527d6a097138008fdc58876b0abcdd274f21';

@@ -93,6 +93,17 @@ class KeyboardShortcut {
       'VolumeUp': LogicalKeyboardKey.audioVolumeUp,
       'VolumeDown': LogicalKeyboardKey.audioVolumeDown,
       'VolumeMute': LogicalKeyboardKey.audioVolumeMute,
+      '[': LogicalKeyboardKey.bracketLeft,
+      ']': LogicalKeyboardKey.bracketRight,
+      ';': LogicalKeyboardKey.semicolon,
+      ',': LogicalKeyboardKey.comma,
+      '.': LogicalKeyboardKey.period,
+      '/': LogicalKeyboardKey.slash,
+      '\\': LogicalKeyboardKey.backslash,
+      '-': LogicalKeyboardKey.minus,
+      '=': LogicalKeyboardKey.equal,
+      '`': LogicalKeyboardKey.backquote,
+      "'": LogicalKeyboardKey.quote,
     };
 
     if (keyMap.containsKey(key)) {
@@ -101,7 +112,8 @@ class KeyboardShortcut {
 
     // Single character keys
     if (key.length == 1) {
-      final codePoint = key.codeUnitAt(0);
+      final upperKey = key.toUpperCase();
+      final codePoint = upperKey.codeUnitAt(0);
       if (codePoint >= 65 && codePoint <= 90) {
         // A-Z
         return LogicalKeyboardKey(0x00070004 + (codePoint - 65));

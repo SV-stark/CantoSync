@@ -15,6 +15,7 @@ class _KeyboardShortcutsScreenState
     extends ConsumerState<KeyboardShortcutsScreen> {
   @override
   Widget build(BuildContext context) {
+    ref.watch(keyboardShortcutsProvider);
     final shortcutsNotifier = ref.read(keyboardShortcutsProvider.notifier);
     final conflicts = shortcutsNotifier.getConflicts();
 

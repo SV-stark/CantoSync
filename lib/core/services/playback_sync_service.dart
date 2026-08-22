@@ -70,7 +70,11 @@ class PlaybackSyncService {
 
     _completedSubscription = _mediaService.completedStream.listen((completed) {
       if (completed) {
-        unawaited(onPlaybackCompleted());
+        final playlistLength = _currentBook?.audioFiles?.length ?? 1;
+        final currentIndex = _mediaService.currentIndex;
+        if (playlistLength <= 1 || currentIndex >= playlistLength - 1) {
+          unawaited(onPlaybackCompleted());
+        }
       }
     });
 
@@ -99,18 +103,14 @@ class PlaybackSyncService {
                 'Saved ${chapters.length} chapters from mpv to DB for book: ${_currentBook!.title}',
               );
             })
-            .catchError((e, stack) {
-              logger.e(
-                'Error saving chapters from mpv to DB',
-                error: e,
-                stackTrace: stack,
-              );
+            .catchError((e) {
+              logger.e('Error updating book chapters from mpv stream', error: e);
             });
       }
     });
   }
 
-  void setCurrentBook(String path) {
+  void setCurrentPath(String? path) {
     _currentPath = path;
     _ref.read(currentBookPathProvider.notifier).update(path);
   }
@@ -156,11 +156,7 @@ class PlaybackSyncService {
     bool isDirectory = false;
     int? lastTrackIndex;
 
-    final books = await _libraryService.getAllBooks();
-    final book = books.cast<Book?>().firstWhere(
-      (b) => b?.path == path,
-      orElse: () => null,
-    );
+    final book = await _libraryService.getBookByPath(path);
     if (book != null) {
       _currentBook = book;
       title = book.title;

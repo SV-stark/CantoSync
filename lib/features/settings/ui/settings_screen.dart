@@ -1,4 +1,3 @@
-import 'dart:ui';
 import 'package:file_picker/file_picker.dart';
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
@@ -8,6 +7,7 @@ import 'package:canto_sync/core/services/update_service.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:canto_sync/features/library/data/library_service.dart';
 import 'package:canto_sync/features/settings/ui/keyboard_shortcuts_screen.dart';
+import 'package:canto_sync/core/utils/logger.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
 part 'settings_screen.g.dart';
@@ -18,7 +18,7 @@ Future<String> appVersion(Ref ref) async {
     final packageInfo = await PackageInfo.fromPlatform();
     return 'v${packageInfo.version}';
   } catch (e) {
-    debugPrint('Error getting app version: $e');
+    logger.w('Error getting app version: $e');
     return 'v1.0.0';
   }
 }
@@ -40,10 +40,7 @@ class SettingsScreen extends ConsumerWidget {
   }
 
   Future<void> _rescanAll(BuildContext context, WidgetRef ref) async {
-    final paths = ref.read(appSettingsProvider).libraryPaths;
-    for (final path in paths) {
-      await ref.read(libraryServiceProvider).scanDirectory(path);
-    }
+    await ref.read(libraryServiceProvider).rescanLibraries();
     if (!context.mounted) return;
     displayInfoBar(
       context,
@@ -540,80 +537,62 @@ class SettingsScreen extends ConsumerWidget {
     required String subtitle,
     required Widget child,
   }) {
-    return ClipRRect(
+    final theme = FluentTheme.of(context);
+    return Card(
+      padding: EdgeInsets.zero,
       borderRadius: BorderRadius.circular(16),
-      child: BackdropFilter(
-        filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
-        child: Container(
-          decoration: BoxDecoration(
-            color: Colors.white.withValues(alpha: 0.05),
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(
-              color: Colors.white.withValues(alpha: 0.1),
-              width: 1,
-            ),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withValues(alpha: 0.2),
-                blurRadius: 20,
-                offset: const Offset(0, 10),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Header
+          Container(
+            padding: const EdgeInsets.all(20),
+            decoration: BoxDecoration(
+              border: Border(
+                bottom: BorderSide(
+                  color: theme.resources.dividerStrokeColorDefault,
+                ),
               ),
-            ],
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // Header
-              Container(
-                padding: const EdgeInsets.all(20),
-                decoration: BoxDecoration(
-                  border: Border(
-                    bottom: BorderSide(
-                      color: Colors.white.withValues(alpha: 0.1),
+            ),
+            child: Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: iconColor.withValues(alpha: 0.15),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(
+                      color: iconColor.withValues(alpha: 0.3),
                     ),
                   ),
+                  child: Icon(icon, color: iconColor, size: 24),
                 ),
-                child: Row(
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.all(12),
-                      decoration: BoxDecoration(
-                        color: iconColor.withValues(alpha: 0.15),
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(
-                          color: iconColor.withValues(alpha: 0.3),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        title,
+                        style: theme.typography.subtitle
+                            ?.copyWith(fontWeight: FontWeight.w600),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        subtitle,
+                        style: theme.typography.caption?.copyWith(
+                          color: theme.typography.caption?.color?.withValues(alpha: 0.7),
                         ),
                       ),
-                      child: Icon(icon, color: iconColor, size: 24),
-                    ),
-                    const SizedBox(width: 16),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            title,
-                            style: FluentTheme.of(context).typography.subtitle
-                                ?.copyWith(fontWeight: FontWeight.w600),
-                          ),
-                          const SizedBox(height: 4),
-                          Text(
-                            subtitle,
-                            style: FluentTheme.of(
-                              context,
-                            ).typography.caption?.copyWith(color: Colors.grey),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
-              ),
-              // Content
-              Padding(padding: const EdgeInsets.all(20), child: child),
-            ],
+              ],
+            ),
           ),
-        ),
+          // Content
+          Padding(padding: const EdgeInsets.all(20), child: child),
+        ],
       ),
     );
   }
@@ -778,67 +757,38 @@ class SettingsScreen extends ConsumerWidget {
       builder: (context, ref, child) {
         final appVersionAsync = ref.watch(appVersionProvider);
         final packageInfoAsync = ref.watch(packageInfoProvider);
+        final theme = FluentTheme.of(context);
 
-        return ClipRRect(
+        return Card(
+          padding: EdgeInsets.zero,
           borderRadius: BorderRadius.circular(16),
-          child: BackdropFilter(
-            filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
-            child: Container(
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                  colors: [
-                    FluentTheme.of(context).accentColor.withValues(alpha: 0.15),
-                    Colors.white.withValues(alpha: 0.05),
-                  ],
-                ),
-                borderRadius: BorderRadius.circular(16),
-                border: Border.all(
-                  color: FluentTheme.of(
-                    context,
-                  ).accentColor.withValues(alpha: 0.3),
-                  width: 1,
-                ),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.2),
-                    blurRadius: 20,
-                    offset: const Offset(0, 10),
-                  ),
-                ],
-              ),
-              child: Column(
-                children: [
-                  // Header with logo area
-                  Container(
-                    padding: const EdgeInsets.all(24),
-                    decoration: BoxDecoration(
-                      border: Border(
-                        bottom: BorderSide(
-                          color: FluentTheme.of(
-                            context,
-                          ).accentColor.withValues(alpha: 0.2),
-                        ),
-                      ),
+          child: Column(
+            children: [
+              // Header with logo area
+              Container(
+                padding: const EdgeInsets.all(24),
+                decoration: BoxDecoration(
+                  border: Border(
+                    bottom: BorderSide(
+                      color: theme.resources.dividerStrokeColorDefault,
                     ),
-                    child: Column(
-                      children: [
-                        // App Icon Placeholder
-                        Container(
-                          width: 80,
-                          height: 80,
-                          decoration: BoxDecoration(
-                            gradient: LinearGradient(
-                              begin: Alignment.topLeft,
-                              end: Alignment.bottomRight,
-                              colors: [
-                                FluentTheme.of(context).accentColor,
-                                FluentTheme.of(
-                                  context,
-                                ).accentColor.withValues(alpha: 0.7),
-                              ],
-                            ),
+                  ),
+                ),
+                child: Column(
+                  children: [
+                    // App Icon
+                    Container(
+                      width: 80,
+                      height: 80,
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                          colors: [
+                            theme.accentColor,
+                            theme.accentColor.withValues(alpha: 0.7),
+                          ],
+                        ),
                             borderRadius: BorderRadius.circular(20),
                             boxShadow: [
                               BoxShadow(
@@ -1004,12 +954,10 @@ class SettingsScreen extends ConsumerWidget {
                   ),
                 ],
               ),
-            ),
-          ),
+            );
+          },
         );
-      },
-    );
-  }
+      }
 
   Widget _buildAboutLink(
     BuildContext context, {

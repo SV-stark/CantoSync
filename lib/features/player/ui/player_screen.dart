@@ -396,7 +396,7 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
               icon: Icon(FluentIcons.bookmarks, color: white70),
               onPressed: currentBook == null
                   ? null
-                  : () => _showAddBookmarkDialog(
+                  : () => _showBookmarksMenu(
                       context,
                       ref,
                       currentBook,
@@ -687,8 +687,7 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
               icon: FluentIcons.equalizer,
               label: 'EQ',
               onTap: () {
-                // Show simple EQ menu
-                _showEQMenu(context, mediaService);
+                _showEQMenu(context, ref);
               },
             ),
             // Volume Slider (Mini)
@@ -724,38 +723,136 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
     );
   }
 
-  void _showEQMenu(BuildContext context, MediaService mediaService) {
+  void _showEQMenu(BuildContext context, WidgetRef ref) {
+    final currentPreset = ref.read(appSettingsProvider).audioPreset;
     showDialog(
       context: context,
       builder: (context) => ContentDialog(
         title: const Text('Equalizer Presets'),
         content: Column(
           mainAxisSize: MainAxisSize.min,
+          children: AudioPreset.values.map((preset) {
+            final isSelected = preset == currentPreset;
+            return _EQOption(
+              label: isSelected ? '✓ ${preset.label}' : preset.label,
+              onTap: () {
+                ref.read(appSettingsProvider.notifier).setAudioPreset(preset);
+                Navigator.pop(context);
+              },
+            );
+          }).toList(),
+        ),
+        actions: [
+          Button(
+            child: const Text('Close'),
+            onPressed: () => Navigator.pop(context),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showBookmarksMenu(
+    BuildContext context,
+    WidgetRef ref,
+    Book book,
+    Duration position,
+    Chapter? currentChapter,
+    bool isMultiFile,
+  ) {
+    showDialog(
+      context: context,
+      builder: (dialogContext) => ContentDialog(
+        title: const Text('Bookmarks'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
           children: [
-            _EQOption(
-              label: 'Flat (Off)',
-              onTap: () => mediaService.setAudioFilter(''),
+            ListTile(
+              leading: const Icon(FluentIcons.add),
+              title: const Text('Add Bookmark at Current Position'),
+              subtitle: Text(_formatDuration(position)),
+              onPressed: () {
+                Navigator.pop(dialogContext);
+                _showAddBookmarkDialog(
+                  context,
+                  ref,
+                  book,
+                  position,
+                  currentChapter,
+                  isMultiFile,
+                );
+              },
             ),
-            _EQOption(
-              label: 'Spoken Word (Optimized)',
-              onTap: () => mediaService.setAudioFilter(
-                'lavfi=[highpass=f=200,lowpass=f=3000]',
-              ),
-            ),
-            _EQOption(
-              label: 'Bass Boost',
-              onTap: () => mediaService.setAudioFilter('bass=g=10:f=100'),
-            ),
-            _EQOption(
-              label: 'Treble Boost',
-              onTap: () => mediaService.setAudioFilter('treble=g=10:f=5000'),
+            const Divider(),
+            ListTile(
+              leading: const Icon(FluentIcons.single_bookmark),
+              title: Text('View Saved Bookmarks (${book.bookmarks?.length ?? 0})'),
+              onPressed: () {
+                Navigator.pop(dialogContext);
+                _showBookmarksList(context, ref, book);
+              },
             ),
           ],
         ),
         actions: [
           Button(
             child: const Text('Close'),
-            onPressed: () => Navigator.pop(context),
+            onPressed: () => Navigator.pop(dialogContext),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showBookmarksList(
+    BuildContext context,
+    WidgetRef ref,
+    Book book,
+  ) {
+    final bookmarks = book.bookmarks ?? [];
+    showDialog(
+      context: context,
+      builder: (dialogContext) => ContentDialog(
+        title: const Text('Saved Bookmarks'),
+        content: SizedBox(
+          height: 300,
+          width: 350,
+          child: bookmarks.isEmpty
+              ? const Center(child: Text('No bookmarks saved for this book.'))
+              : ListView.builder(
+                  itemCount: bookmarks.length,
+                  itemBuilder: (context, index) {
+                    final b = bookmarks[index];
+                    final time = Duration(
+                      milliseconds: ((b.timestampSeconds ?? 0) * 1000).toInt(),
+                    );
+                    return ListTile(
+                      leading: const Icon(FluentIcons.single_bookmark, size: 14),
+                      title: Text(b.label ?? 'Bookmark'),
+                      subtitle: Text(_formatDuration(time)),
+                      trailing: IconButton(
+                        icon: const Icon(FluentIcons.delete, size: 12),
+                        onPressed: () async {
+                          if (book.path != null) {
+                            await ref
+                                .read(libraryServiceProvider)
+                                .removeBookmark(book.path!, index);
+                          }
+                          if (context.mounted) Navigator.pop(dialogContext);
+                        },
+                      ),
+                      onPressed: () {
+                        ref.read(mediaServiceProvider).seek(time);
+                        Navigator.pop(dialogContext);
+                      },
+                    );
+                  },
+                ),
+        ),
+        actions: [
+          Button(
+            child: const Text('Close'),
+            onPressed: () => Navigator.pop(dialogContext),
           ),
         ],
       ),

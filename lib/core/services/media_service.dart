@@ -33,9 +33,17 @@ class MediaService {
     return _player!;
   }
 
+  StreamSubscription<Duration>? _playerDurationSubscription;
+  int _chapterFetchGeneration = 0;
+
   void _init() {
     try {
       _player = Player();
+      _playerDurationSubscription = _player!.stream.duration.listen((d) {
+        if (_customTotalDuration == null) {
+          _totalDurationController.add(d);
+        }
+      });
       _initFilters();
       _initFailed = false;
     } catch (e, stack) {
@@ -98,14 +106,23 @@ class MediaService {
   }) async {
     _customChapters = chapters;
     _customTotalDuration = totalDuration;
-    _totalDurationController.add(totalDuration ?? Duration.zero);
+    final generation = ++_chapterFetchGeneration;
+
+    if (totalDuration != null) {
+      _totalDurationController.add(totalDuration);
+    }
 
     if (chapters != null) {
       _chaptersController.add(chapters);
     } else {
-      // Clear previous chapters and trigger fetch
       _chaptersController.add([]);
-      unawaited(getChapters().then((c) => _chaptersController.add(c)));
+      unawaited(
+        getChapters(generation: generation).then((c) {
+          if (generation == _chapterFetchGeneration) {
+            _chaptersController.add(c);
+          }
+        }),
+      );
     }
 
     if (mediaSource is String) {
@@ -210,7 +227,7 @@ class MediaService {
   // ... (constructor) ...
 
   // Chapter Navigation
-  Future<List<Chapter>> getChapters() async {
+  Future<List<Chapter>> getChapters({int? generation}) async {
     // If we have custom chapters (from multi-file book), return those
     if (_customChapters != null && _customChapters!.isNotEmpty) {
       return _customChapters!;
@@ -226,6 +243,9 @@ class MediaService {
         try {
           // Optimized fast-check retry logic to handle race conditions when metadata is loading.
           for (int i = 0; i < 10; i++) {
+            if (generation != null && generation != _chapterFetchGeneration) {
+              return [];
+            }
             final countStr = await native.getProperty('chapters');
             final count = int.tryParse(countStr) ?? 0;
 
@@ -299,12 +319,7 @@ class MediaService {
   /// Returns the total duration of the book.
   /// If it's a multi-file book, this is the sum of all files.
   /// Otherwise, it's the duration of the current file/stream.
-  Stream<Duration> get totalDurationStream {
-    if (_customTotalDuration != null) {
-      return _totalDurationController.stream;
-    }
-    return _p.stream.duration;
-  }
+  Stream<Duration> get totalDurationStream => _totalDurationController.stream;
 
   Future<void> jumpToChapter(int index) async {
     // If custom chapters exist, it means we are in multi-file mode where
@@ -365,6 +380,7 @@ class MediaService {
   Track get track => _player != null ? _p.state.track : const Track();
 
   void dispose() {
+    _playerDurationSubscription?.cancel();
     _player?.dispose();
     _totalDurationController.close();
     _chaptersController.close();

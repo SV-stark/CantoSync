@@ -1,20 +1,21 @@
-import 'package:flutter/material.dart';
+import 'package:fluent_ui/fluent_ui.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'package:isar_community/isar.dart';
 import 'package:freezed_annotation/freezed_annotation.dart';
-import 'package:canto_sync/features/library/data/library_service.dart';
+import 'package:canto_sync/core/data/isar_provider.dart';
 import 'package:canto_sync/core/services/media_service.dart';
 
 part 'app_settings_service.freezed.dart';
 part 'app_settings_service.g.dart';
 
 enum AudioPreset {
-  flat('Flat', ''),
+  flat('Flat (Off)', ''),
   voiceEnhance(
-    'Voice Enhance',
+    'Spoken Word (Optimized)',
     'equalizer=f=100:width_type=h:width=100:g=-10,equalizer=f=1000:width_type=h:width=500:g=4,equalizer=f=3000:width_type=h:width=1000:g=6',
   ),
-  bassBoost('Bass Boost', 'bass=g=6');
+  bassBoost('Bass Boost', 'bass=g=6'),
+  trebleBoost('Treble Boost', 'treble=g=6');
 
   const AudioPreset(this.label, this.filter);
 

@@ -1,8 +1,9 @@
-import 'package:flutter/foundation.dart';
-import 'package:canto_sync/features/library/data/library_service.dart';
+import 'package:canto_sync/core/data/isar_provider.dart';
 import 'package:canto_sync/core/data/keyboard_shortcuts.dart';
 import 'package:canto_sync/core/services/media_service.dart';
 import 'package:canto_sync/core/services/sleep_timer_service.dart';
+import 'package:canto_sync/core/services/hotkey_service.dart';
+import 'package:canto_sync/core/utils/logger.dart';
 import 'package:isar_community/isar.dart';
 import 'package:window_manager/window_manager.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
@@ -32,7 +33,7 @@ class KeyboardShortcuts extends _$KeyboardShortcuts {
       }
       state = shortcuts;
     } catch (e) {
-      debugPrint('Error loading shortcuts: $e');
+      logger.e('Error loading shortcuts', error: e);
       state = getDefaultShortcuts();
     }
   }
@@ -47,9 +48,10 @@ class KeyboardShortcuts extends _$KeyboardShortcuts {
         await _isar.writeTxn(() async {
           await _isar.keyboardShortcuts.put(shortcut);
         });
+        await ref.read(hotkeyServiceProvider).registerShortcuts();
       }
     } catch (e) {
-      debugPrint('Error updating shortcut: $e');
+      logger.e('Error updating shortcut', error: e);
     }
   }
 
@@ -61,8 +63,9 @@ class KeyboardShortcuts extends _$KeyboardShortcuts {
         await _isar.keyboardShortcuts.putAll(defaults);
       });
       state = defaults;
+      await ref.read(hotkeyServiceProvider).registerShortcuts();
     } catch (e) {
-      debugPrint('Error resetting to defaults: $e');
+      logger.e('Error resetting to defaults', error: e);
     }
   }
 
@@ -113,6 +116,7 @@ class KeyboardShortcuts extends _$KeyboardShortcuts {
         await mediaService.playOrPause();
         break;
       case ShortcutAction.stop:
+        await mediaService.seek(Duration.zero);
         await mediaService.pause();
         break;
       case ShortcutAction.nextTrack:
@@ -132,10 +136,10 @@ class KeyboardShortcuts extends _$KeyboardShortcuts {
         );
         break;
       case ShortcutAction.volumeUp:
-        await mediaService.setVolume((mediaService.volume + 10).clamp(0, 200));
+        await mediaService.setVolume((mediaService.volume + 5).clamp(0.0, 100.0));
         break;
       case ShortcutAction.volumeDown:
-        await mediaService.setVolume((mediaService.volume - 10).clamp(0, 200));
+        await mediaService.setVolume((mediaService.volume - 5).clamp(0.0, 100.0));
         break;
       case ShortcutAction.volumeMute:
         await mediaService.setVolume(0);
@@ -195,7 +199,7 @@ class KeyboardShortcuts extends _$KeyboardShortcuts {
         }
       }
     } catch (e) {
-      debugPrint('Error executing shortcut callback for $action: $e');
+      logger.e('Error executing shortcut callback for $action', error: e);
     }
   }
 

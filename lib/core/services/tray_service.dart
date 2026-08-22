@@ -5,6 +5,8 @@ import 'package:canto_sync/core/services/media_service.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'package:canto_sync/core/utils/logger.dart';
 
+import 'package:canto_sync/core/services/playback_sync_service.dart';
+
 part 'tray_service.g.dart';
 
 @Riverpod(keepAlive: true)
@@ -21,13 +23,9 @@ class TrayService extends TrayListener {
     try {
       trayManager.addListener(this);
 
-      // Set tray icon (using the same logo.png we updated earlier)
       String iconPath = Platform.isWindows
           ? 'assets/app_icon.ico'
           : 'assets/logo.png';
-      // Note: tray_manager on Windows needs an .ico usually or a png in the actual assets folder
-      // But it can load from file system if path is absolute or from assets.
-      // For now we'll use the relative path which tray_manager handles if in pubspec.
 
       await trayManager.setIcon(iconPath);
 
@@ -56,14 +54,22 @@ class TrayService extends TrayListener {
   }
 
   @override
-  void onTrayMenuItemClick(MenuItem menuItem) {
+  void onTrayMenuItemClick(MenuItem menuItem) async {
     if (menuItem.key == 'show_window') {
       windowManager.show();
       windowManager.focus();
     } else if (menuItem.key == 'play_pause') {
       _ref.read(mediaServiceProvider).playOrPause();
     } else if (menuItem.key == 'exit_app') {
-      windowManager.close();
+      try {
+        await _ref.read(playbackSyncProvider).forceSave();
+        await windowManager.setPreventClose(false);
+        await windowManager.destroy();
+      } catch (e) {
+        logger.e('Error during tray exit shutdown', error: e);
+      } finally {
+        exit(0);
+      }
     }
   }
 }

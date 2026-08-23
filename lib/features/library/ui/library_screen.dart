@@ -55,7 +55,7 @@ class LibraryScreen extends HookConsumerWidget {
 
     final searchFocusNode = useFocusNode();
     useEffect(() {
-      final callbacks = ref.read(shortcutActionCallbacksProvider.notifier);
+      final callbacks = ref.read(shortcutActionCallbacksProvider);
 
       void onFocusSearch() {
         searchFocusNode.requestFocus();
@@ -214,22 +214,45 @@ class LibraryScreen extends HookConsumerWidget {
               onDragDone: (detail) async {
                 final files = detail.files;
                 if (files.isEmpty) return;
+                int totalAdded = 0;
                 for (final file in files) {
-                  await ref.read(libraryServiceProvider).scanDirectory(file.path);
+                  final added = await ref
+                      .read(libraryServiceProvider)
+                      .scanDirectory(file.path);
+                  totalAdded += added.length;
                 }
                 if (context.mounted) {
-                  displayInfoBar(
-                    context,
-                    builder: (context, close) => InfoBar(
-                      title: const Text('Import Complete'),
-                      content: Text('Processed ${files.length} dragged item(s).'),
-                      action: IconButton(
-                        icon: const Icon(FluentIcons.clear),
-                        onPressed: close,
+                  if (totalAdded > 0) {
+                    displayInfoBar(
+                      context,
+                      builder: (context, close) => InfoBar(
+                        title: const Text('Import Complete'),
+                        content: Text(
+                          'Successfully imported $totalAdded audiobook(s).',
+                        ),
+                        action: IconButton(
+                          icon: const Icon(FluentIcons.clear),
+                          onPressed: close,
+                        ),
+                        severity: InfoBarSeverity.success,
                       ),
-                      severity: InfoBarSeverity.success,
-                    ),
-                  );
+                    );
+                  } else {
+                    displayInfoBar(
+                      context,
+                      builder: (context, close) => InfoBar(
+                        title: const Text('Import Notice'),
+                        content: const Text(
+                          'No new audiobooks found in the dragged items.',
+                        ),
+                        action: IconButton(
+                          icon: const Icon(FluentIcons.clear),
+                          onPressed: close,
+                        ),
+                        severity: InfoBarSeverity.warning,
+                      ),
+                    );
+                  }
                 }
               },
               child: Column(
@@ -390,7 +413,7 @@ class _CollectionTileState extends ConsumerState<_CollectionTile> {
                 });
                 final firstToPlay = collectionBooks.firstWhere(
                   (b) =>
-                      _calculateBookProgress(b) <
+                      calculateBookProgress(b) <
                       AppConstants.bookCompletionThreshold,
                   orElse: () => collectionBooks.first,
                 );
@@ -446,41 +469,63 @@ class _EmptyState extends StatelessWidget {
   Widget build(BuildContext context) {
     return Center(
       child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
+        mainAxisSize: MainAxisSize.min,
         children: [
-          const Icon(FluentIcons.library, size: 64, color: Colors.grey),
+          Icon(
+            FluentIcons.library,
+            size: 64,
+            color: FluentTheme.of(context).accentColor.normal,
+          ),
           const SizedBox(height: 16),
-          const Text('No books found in this view'),
-          const SizedBox(height: 16),
-          FilledButton(onPressed: onAddFolder, child: const Text('Add Folder')),
+          Text(
+            'Your library is empty',
+            style: FluentTheme.of(context).typography.subtitle,
+          ),
+          const SizedBox(height: 8),
+          Text(
+            'Add a folder containing audiobooks to get started.',
+            style: FluentTheme.of(context).typography.body,
+          ),
+          const SizedBox(height: 24),
+          FilledButton(
+            onPressed: onAddFolder,
+            child: const Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(FluentIcons.folder_open, size: 16),
+                SizedBox(width: 8),
+                Text('Add Folder'),
+              ],
+            ),
+          ),
         ],
       ),
     );
   }
 }
 
-class _BookList extends ConsumerWidget {
+class _BookList extends StatelessWidget {
   const _BookList({
     required this.books,
     required this.isGridView,
-    required this.flyoutController,
     this.seriesTotals,
   });
+
   final List<Book> books;
   final bool isGridView;
   final Map<String, int>? seriesTotals;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  Widget build(BuildContext context) {
     if (isGridView) {
       return GridView.builder(
+        padding: const EdgeInsets.all(16),
         gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
-          maxCrossAxisExtent: 200,
-          childAspectRatio: 0.7,
+          maxCrossAxisExtent: 180,
+          childAspectRatio: 0.65,
           crossAxisSpacing: 16,
           mainAxisSpacing: 16,
         ),
-        padding: const EdgeInsets.all(16),
         itemCount: books.length,
         itemBuilder: (context, index) {
           final book = books[index];
@@ -672,7 +717,7 @@ class _RecentsRow extends ConsumerWidget {
   }
 }
 
-double _calculateBookProgress(Book book) {
+double calculateBookProgress(Book book) {
   final dur = book.durationSeconds ?? 0;
   if (dur <= 0) return 0.0;
   final pos = book.positionSeconds ?? 0;
@@ -714,7 +759,7 @@ class _BookCardState extends ConsumerState<BookCard> {
   Widget build(BuildContext context) {
     final book = widget.book;
     final seriesTotal = widget.seriesTotal;
-    final progress = _calculateBookProgress(book);
+    final progress = calculateBookProgress(book);
     final hasProgress =
         progress > 0 && progress < AppConstants.bookCompletionThreshold;
     final isCompleted = progress >= AppConstants.bookCompletionThreshold;

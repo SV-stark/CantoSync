@@ -1,4 +1,3 @@
-import 'dart:async';
 import 'dart:io';
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
@@ -30,14 +29,26 @@ class _MiniPlayerState extends ConsumerState<MiniPlayer> {
     if (currentBook == null) return const SizedBox.shrink();
 
     final progress = ref.watch(playerPlaybackProgressProvider);
+    final mediaService = ref.watch(mediaServiceProvider);
+
     final currentChapter = progress.currentChapter;
     final chapterTitle = currentChapter?.title;
-    final chapterPosition = progress.chapterPosition;
+    final isMultiFile = progress.isMultiFile;
+
+    final duration = progress.duration;
+    final position = progress.position;
     final chapterDuration = progress.chapterDuration;
-    final sliderMax = progress.sliderMax;
-    final sliderValue = _isDragging
-        ? _dragValue
-        : progress.sliderValue;
+    final chapterPosition = progress.chapterPosition;
+
+    final sliderMax = (chapterDuration.inMilliseconds > 0)
+        ? chapterDuration.inMilliseconds.toDouble()
+        : (duration.inMilliseconds > 0
+            ? duration.inMilliseconds.toDouble()
+            : 1.0);
+    final sliderValue = (_isDragging
+            ? _dragValue
+            : chapterPosition.inMilliseconds.toDouble())
+        .clamp(0.0, sliderMax);
 
     return GestureDetector(
       onTap: widget.onTap,
@@ -93,8 +104,8 @@ class _MiniPlayerState extends ConsumerState<MiniPlayer> {
                     },
                     onChangeEnd: (val) async {
                       if (currentChapter != null && !isMultiFile) {
-                        final startMs = (currentChapter.startTime * 1000)
-                            .toInt();
+                        final startMs =
+                            (currentChapter.startTime * 1000).toInt();
                         await mediaService.seek(
                           Duration(milliseconds: startMs + val.toInt()),
                         );
@@ -122,19 +133,21 @@ class _MiniPlayerState extends ConsumerState<MiniPlayer> {
                         borderRadius: BorderRadius.circular(4),
                         child: AspectRatio(
                           aspectRatio: 1,
-                          child:
-                              currentBook.coverPath != null &&
+                          child: currentBook.coverPath != null &&
                                   currentBook.coverPath!.isNotEmpty
                               ? Image.file(
                                   File(currentBook.coverPath!),
                                   fit: BoxFit.cover,
                                   errorBuilder: (context, error, stackTrace) =>
                                       const Icon(
-                                        FluentIcons.music_note,
-                                        size: 24,
-                                      ),
+                                    FluentIcons.music_note,
+                                    size: 24,
+                                  ),
                                 )
-                              : const Icon(FluentIcons.music_note, size: 24),
+                              : const Icon(
+                                  FluentIcons.music_note,
+                                  size: 24,
+                                ),
                         ),
                       ),
                       const SizedBox(width: 12),
@@ -191,7 +204,8 @@ class _MiniPlayerState extends ConsumerState<MiniPlayer> {
                       IconButton(
                         icon: const Icon(FluentIcons.rewind, size: 18),
                         onPressed: () {
-                          final newPos = position - const Duration(seconds: 15);
+                          final newPos =
+                              position - const Duration(seconds: 15);
                           mediaService.seek(
                             newPos.isNegative ? Duration.zero : newPos,
                           );
@@ -214,7 +228,8 @@ class _MiniPlayerState extends ConsumerState<MiniPlayer> {
                       IconButton(
                         icon: const Icon(FluentIcons.fast_forward, size: 18),
                         onPressed: () {
-                          final newPos = position + const Duration(seconds: 15);
+                          final newPos =
+                              position + const Duration(seconds: 15);
                           mediaService.seek(
                             newPos > duration ? duration : newPos,
                           );

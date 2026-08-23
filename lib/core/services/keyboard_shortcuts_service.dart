@@ -2,7 +2,6 @@ import 'package:canto_sync/core/data/isar_provider.dart';
 import 'package:canto_sync/core/data/keyboard_shortcuts.dart';
 import 'package:canto_sync/core/services/media_service.dart';
 import 'package:canto_sync/core/services/sleep_timer_service.dart';
-import 'package:canto_sync/core/services/hotkey_service.dart';
 import 'package:canto_sync/core/utils/logger.dart';
 import 'package:isar_community/isar.dart';
 import 'package:window_manager/window_manager.dart';
@@ -19,9 +18,20 @@ class KeyboardShortcuts extends _$KeyboardShortcuts {
   @override
   List<KeyboardShortcut> build() {
     _isar = ref.watch(isarProvider);
-    final shortcuts = getDefaultShortcuts();
-    Future.microtask(() => loadShortcuts());
-    return shortcuts;
+    try {
+      final shortcuts = _isar.keyboardShortcuts.where().findAllSync();
+      if (shortcuts.isNotEmpty) {
+        return shortcuts;
+      }
+      final defaults = getDefaultShortcuts();
+      _isar.writeTxnSync(() {
+        _isar.keyboardShortcuts.putAllSync(defaults);
+      });
+      return defaults;
+    } catch (e) {
+      logger.w('Failed to load shortcuts synchronously: $e');
+      return getDefaultShortcuts();
+    }
   }
 
   Future<void> loadShortcuts() async {
@@ -48,7 +58,6 @@ class KeyboardShortcuts extends _$KeyboardShortcuts {
         await _isar.writeTxn(() async {
           await _isar.keyboardShortcuts.put(shortcut);
         });
-        await ref.read(hotkeyServiceProvider).registerShortcuts();
       }
     } catch (e) {
       logger.e('Error updating shortcut', error: e);
@@ -63,21 +72,27 @@ class KeyboardShortcuts extends _$KeyboardShortcuts {
         await _isar.keyboardShortcuts.putAll(defaults);
       });
       state = defaults;
-      await ref.read(hotkeyServiceProvider).registerShortcuts();
     } catch (e) {
       logger.e('Error resetting to defaults', error: e);
     }
   }
 
-  List<MapEntry<KeyboardShortcut, KeyboardShortcut>> getConflicts() {
-    final conflicts = <MapEntry<KeyboardShortcut, KeyboardShortcut>>[];
-    final shortcuts = state;
+  static bool isSameShortcut(KeyboardShortcut a, KeyboardShortcut b) {
+    return a.key == b.key &&
+        a.ctrl == b.ctrl &&
+        a.alt == b.alt &&
+        a.shift == b.shift;
+  }
 
+  static List<MapEntry<KeyboardShortcut, KeyboardShortcut>> findConflicts(
+    List<KeyboardShortcut> shortcuts,
+  ) {
+    final conflicts = <MapEntry<KeyboardShortcut, KeyboardShortcut>>[];
     for (int i = 0; i < shortcuts.length; i++) {
       for (int j = i + 1; j < shortcuts.length; j++) {
         final s1 = shortcuts[i];
         final s2 = shortcuts[j];
-        if (_isSameShortcut(s1, s2)) {
+        if (isSameShortcut(s1, s2)) {
           conflicts.add(MapEntry(s1, s2));
         }
       }
@@ -85,11 +100,17 @@ class KeyboardShortcuts extends _$KeyboardShortcuts {
     return conflicts;
   }
 
-  bool _isSameShortcut(KeyboardShortcut a, KeyboardShortcut b) {
-    return a.key == b.key &&
-        a.ctrl == b.ctrl &&
-        a.alt == b.alt &&
-        a.shift == b.shift;
+  static bool hasConflict(
+    List<KeyboardShortcut> shortcuts,
+    KeyboardShortcut shortcut,
+  ) {
+    return shortcuts.any(
+      (s) => s.action != shortcut.action && isSameShortcut(s, shortcut),
+    );
+  }
+
+  List<MapEntry<KeyboardShortcut, KeyboardShortcut>> getConflicts() {
+    return findConflicts(state);
   }
 
   KeyboardShortcut? findShortcut(String action) {
@@ -101,9 +122,7 @@ class KeyboardShortcuts extends _$KeyboardShortcuts {
   }
 
   bool hasConflicts(KeyboardShortcut shortcut) {
-    return state.any(
-      (s) => s.action != shortcut.action && _isSameShortcut(s, shortcut),
-    );
+    return hasConflict(state, shortcut);
   }
 
   Future<void> executeAction(String action) async {
@@ -189,25 +208,17 @@ class KeyboardShortcuts extends _$KeyboardShortcuts {
 
   void _executeCallbacks(String action) {
     try {
-      final Map<String, List<ShortcutActionCallback>> callbacks = ref.read(
-        shortcutActionCallbacksProvider,
-      );
-      final List<ShortcutActionCallback>? actionCallbacks = callbacks[action];
-      if (actionCallbacks != null) {
-        for (final callback in actionCallbacks) {
-          callback();
-        }
-      }
+      ref.read(shortcutActionCallbacksProvider).execute(action);
     } catch (e) {
       logger.e('Error executing shortcut callback for $action', error: e);
     }
   }
 
   List<KeyboardShortcut> getShortcutsByCategory(String category) {
-    return state.where((s) => _getCategory(s.action) == category).toList();
+    return state.where((s) => getCategory(s.action) == category).toList();
   }
 
-  String _getCategory(String action) {
+  static String getCategory(String action) {
     switch (action) {
       case ShortcutAction.playPause:
       case ShortcutAction.stop:
@@ -244,25 +255,37 @@ class KeyboardShortcuts extends _$KeyboardShortcuts {
 }
 
 @Riverpod(keepAlive: true)
-class ShortcutActionCallbacks extends _$ShortcutActionCallbacks {
-  @override
-  Map<String, List<ShortcutActionCallback>> build() => {};
+ShortcutActionCallbacks shortcutActionCallbacks(Ref ref) {
+  return ShortcutActionCallbacks();
+}
+
+class ShortcutActionCallbacks {
+  final Map<String, List<ShortcutActionCallback>> _callbacks = {};
+
+  Map<String, List<ShortcutActionCallback>> get callbacks => _callbacks;
 
   void register(String action, ShortcutActionCallback callback) {
-    final current = state;
-    final list = List<ShortcutActionCallback>.from(current[action] ?? []);
+    final list = _callbacks.putIfAbsent(action, () => []);
     if (!list.contains(callback)) {
       list.add(callback);
-      state = {...current, action: list};
     }
   }
 
   void unregister(String action, ShortcutActionCallback callback) {
-    final current = state;
-    if (current.containsKey(action)) {
-      final list = List<ShortcutActionCallback>.from(current[action]!);
-      if (list.remove(callback)) {
-        state = {...current, action: list};
+    if (_callbacks.containsKey(action)) {
+      final list = _callbacks[action]!;
+      list.remove(callback);
+      if (list.isEmpty) {
+        _callbacks.remove(action);
+      }
+    }
+  }
+
+  void execute(String action) {
+    final list = _callbacks[action];
+    if (list != null) {
+      for (final callback in List<ShortcutActionCallback>.from(list)) {
+        callback();
       }
     }
   }

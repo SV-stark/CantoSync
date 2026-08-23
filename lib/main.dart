@@ -26,6 +26,7 @@ import 'package:canto_sync/features/stats/data/listening_stats.dart';
 import 'package:canto_sync/core/data/keyboard_shortcuts.dart';
 import 'package:canto_sync/core/services/keyboard_shortcuts_service.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 part 'main.g.dart';
 
@@ -104,17 +105,17 @@ class _CantoSyncAppState extends ConsumerState<CantoSyncApp>
   }
 
   void _registerNavigationCallbacks() {
-    final notifier = ref.read(shortcutActionCallbacksProvider.notifier);
-    notifier.register(ShortcutAction.openLibrary, _openLibraryCallback);
-    notifier.register(ShortcutAction.openPlayer, _openPlayerCallback);
-    notifier.register(ShortcutAction.openSettings, _openSettingsCallback);
+    final callbacks = ref.read(shortcutActionCallbacksProvider);
+    callbacks.register(ShortcutAction.openLibrary, _openLibraryCallback);
+    callbacks.register(ShortcutAction.openPlayer, _openPlayerCallback);
+    callbacks.register(ShortcutAction.openSettings, _openSettingsCallback);
   }
 
   void _unregisterNavigationCallbacks() {
-    final notifier = ref.read(shortcutActionCallbacksProvider.notifier);
-    notifier.unregister(ShortcutAction.openLibrary, _openLibraryCallback);
-    notifier.unregister(ShortcutAction.openPlayer, _openPlayerCallback);
-    notifier.unregister(ShortcutAction.openSettings, _openSettingsCallback);
+    final callbacks = ref.read(shortcutActionCallbacksProvider);
+    callbacks.unregister(ShortcutAction.openLibrary, _openLibraryCallback);
+    callbacks.unregister(ShortcutAction.openPlayer, _openPlayerCallback);
+    callbacks.unregister(ShortcutAction.openSettings, _openSettingsCallback);
   }
 
   @override
@@ -178,8 +179,28 @@ class _CantoSyncAppState extends ConsumerState<CantoSyncApp>
     try {
       final updateService = ref.read(updateServiceProvider);
       final updateInfo = await updateService.checkForUpdates();
-      if (updateInfo != null) {
+      if (updateInfo != null && mounted) {
         logger.i('New version available: ${updateInfo.latestVersion}');
+        displayInfoBar(
+          context,
+          builder: (context, close) => InfoBar(
+            title: Text('Update Available (${updateInfo.latestVersion})'),
+            content: Text(
+              updateInfo.releaseNotes ??
+                  'A new version of CantoSync is available.',
+            ),
+            action: Button(
+              child: const Text('Download'),
+              onPressed: () async {
+                final uri = Uri.parse(updateInfo.downloadUrl);
+                if (await canLaunchUrl(uri)) {
+                  await launchUrl(uri);
+                }
+              },
+            ),
+            severity: InfoBarSeverity.info,
+          ),
+        );
       }
     } catch (e) {
       logger.e('Update check failed', error: e);
@@ -207,17 +228,11 @@ class _CantoSyncAppState extends ConsumerState<CantoSyncApp>
       theme: FluentThemeData(
         accentColor: SystemTheme.accentColor.accent.toAccentColor(),
         visualDensity: VisualDensity.standard,
-        focusTheme: FocusThemeData(
-          glowFactor: is10footScreen(context) ? 2.0 : 0.0,
-        ),
       ),
       darkTheme: FluentThemeData(
         brightness: Brightness.dark,
         accentColor: SystemTheme.accentColor.accent.toAccentColor(),
         visualDensity: VisualDensity.standard,
-        focusTheme: FocusThemeData(
-          glowFactor: is10footScreen(context) ? 2.0 : 0.0,
-        ),
       ),
       home: Stack(
         children: [

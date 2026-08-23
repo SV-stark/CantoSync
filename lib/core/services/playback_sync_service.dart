@@ -235,26 +235,20 @@ class PlaybackSyncService {
             }
           }
 
-          double currentStartTime = 0;
-          for (var i = 0; i < fileDataList.length; i++) {
-            final data = fileDataList[i];
-            final duration = data['duration'] as double?;
-            final title = data['title'] as String;
-
-            if (duration != null) {
-              chapters.add(
-                Chapter(
-                  title: title,
-                  startTime: currentStartTime,
-                  endTime: currentStartTime + duration,
-                ),
-              );
-              currentStartTime += duration;
-              totalDurationSeconds += duration;
-            } else {
-              chapters.add(Chapter(title: title, startTime: currentStartTime));
-            }
-          }
+          final metadataList = bookObj?.filesMetadata ??
+              fileDataList
+                  .map(
+                    (d) => FileMetadata(
+                      title: d['title'] as String?,
+                      duration: d['duration'] as double?,
+                      path: d['path'] as String?,
+                    ),
+                  )
+                  .toList();
+          final (builtChapters, builtTotalDuration) =
+              buildMultiFileChapters(metadataList);
+          chapters.addAll(builtChapters);
+          totalDurationSeconds += builtTotalDuration;
         } catch (e, stack) {
           logger.e(
             'Error processing multi-file book chapters',
@@ -382,4 +376,36 @@ class PlaybackSyncService {
       );
     }
   }
+}
+
+(List<Chapter> chapters, double totalDuration) buildMultiFileChapters(
+  List<FileMetadata> files,
+) {
+  final List<Chapter> chapters = [];
+  double totalDuration = 0;
+  double currentStartTime = 0;
+
+  for (var i = 0; i < files.length; i++) {
+    final file = files[i];
+    final duration = file.duration;
+    final title = (file.title != null && file.title!.isNotEmpty)
+        ? file.title!
+        : 'Track ${i + 1}';
+
+    if (duration != null) {
+      chapters.add(
+        Chapter(
+          title: title,
+          startTime: currentStartTime,
+          endTime: currentStartTime + duration,
+        ),
+      );
+      currentStartTime += duration;
+      totalDuration += duration;
+    } else {
+      chapters.add(Chapter(title: title, startTime: currentStartTime));
+    }
+  }
+
+  return (chapters, totalDuration);
 }

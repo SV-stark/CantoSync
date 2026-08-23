@@ -41,7 +41,7 @@ final class KeyboardShortcutsProvider
   }
 }
 
-String _$keyboardShortcutsHash() => r'd9178fdd512fa577941837a48362b11fee1b03f4';
+String _$keyboardShortcutsHash() => r'00582c213bc73b3da0b54e92b9743d1a88e832d8';
 
 abstract class _$KeyboardShortcuts extends $Notifier<List<KeyboardShortcut>> {
   List<KeyboardShortcut> build();
@@ -62,15 +62,17 @@ abstract class _$KeyboardShortcuts extends $Notifier<List<KeyboardShortcut>> {
   }
 }
 
-@ProviderFor(ShortcutActionCallbacks)
+@ProviderFor(shortcutActionCallbacks)
 final shortcutActionCallbacksProvider = ShortcutActionCallbacksProvider._();
 
 final class ShortcutActionCallbacksProvider
     extends
-        $NotifierProvider<
+        $FunctionalProvider<
           ShortcutActionCallbacks,
-          Map<String, List<ShortcutActionCallback>>
-        > {
+          ShortcutActionCallbacks,
+          ShortcutActionCallbacks
+        >
+    with $Provider<ShortcutActionCallbacks> {
   ShortcutActionCallbacksProvider._()
     : super(
         from: null,
@@ -87,44 +89,23 @@ final class ShortcutActionCallbacksProvider
 
   @$internal
   @override
-  ShortcutActionCallbacks create() => ShortcutActionCallbacks();
+  $ProviderElement<ShortcutActionCallbacks> $createElement(
+    $ProviderPointer pointer,
+  ) => $ProviderElement(pointer);
+
+  @override
+  ShortcutActionCallbacks create(Ref ref) {
+    return shortcutActionCallbacks(ref);
+  }
 
   /// {@macro riverpod.override_with_value}
-  Override overrideWithValue(Map<String, List<ShortcutActionCallback>> value) {
+  Override overrideWithValue(ShortcutActionCallbacks value) {
     return $ProviderOverride(
       origin: this,
-      providerOverride:
-          $SyncValueProvider<Map<String, List<ShortcutActionCallback>>>(value),
+      providerOverride: $SyncValueProvider<ShortcutActionCallbacks>(value),
     );
   }
 }
 
 String _$shortcutActionCallbacksHash() =>
-    r'c1ba98e8c373eb449123041a1962af40779cfdcb';
-
-abstract class _$ShortcutActionCallbacks
-    extends $Notifier<Map<String, List<ShortcutActionCallback>>> {
-  Map<String, List<ShortcutActionCallback>> build();
-  @$mustCallSuper
-  @override
-  void runBuild() {
-    final ref =
-        this.ref
-            as $Ref<
-              Map<String, List<ShortcutActionCallback>>,
-              Map<String, List<ShortcutActionCallback>>
-            >;
-    final element =
-        ref.element
-            as $ClassProviderElement<
-              AnyNotifier<
-                Map<String, List<ShortcutActionCallback>>,
-                Map<String, List<ShortcutActionCallback>>
-              >,
-              Map<String, List<ShortcutActionCallback>>,
-              Object?,
-              Object?
-            >;
-    element.handleCreate(ref, build);
-  }
-}
+    r'7f5bb5cea9a955bd968ab4af6e3004ec1cb8816b';

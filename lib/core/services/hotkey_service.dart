@@ -12,7 +12,11 @@ part 'hotkey_service.g.dart';
 
 @Riverpod(keepAlive: true)
 HotkeyService hotkeyService(Ref ref) {
-  return HotkeyService(ref);
+  final service = HotkeyService(ref);
+  ref.listen(keyboardShortcutsProvider, (previous, next) {
+    service.registerShortcuts();
+  });
+  return service;
 }
 
 class HotkeyService {
@@ -42,7 +46,7 @@ class HotkeyService {
             !shortcut.shift &&
             shortcut.logicalKeys != null &&
             shortcut.logicalKeys!.isNotEmpty &&
-            !_isMediaKey(shortcut.logicalKeys!.last)) {
+            !isMediaKey(shortcut.logicalKeys!.last)) {
           final primaryFocus = FocusManager.instance.primaryFocus;
           if (primaryFocus != null) {
             final context = primaryFocus.context;
@@ -50,6 +54,12 @@ class HotkeyService {
               final isEditable =
                   context.findAncestorWidgetOfExactType<EditableText>() != null;
               if (isEditable) return;
+
+              final route = ModalRoute.of(context);
+              if (route != null && !route.isCurrent) {
+                // Focus is on a background element behind a modal overlay or dialog
+                return;
+              }
             }
           }
         }
@@ -67,47 +77,53 @@ class HotkeyService {
     if (kIsWeb) return;
     if (!Platform.isWindows && !Platform.isLinux) return;
 
-    final logicalKeys = shortcut.logicalKeys;
-    if (logicalKeys == null || logicalKeys.isEmpty) return;
-
-    final mainKey = logicalKeys.last;
-    final modifiers = <HotKeyModifier>[];
-    for (final key in logicalKeys) {
-      if (key == LogicalKeyboardKey.control) {
-        modifiers.add(HotKeyModifier.control);
-      } else if (key == LogicalKeyboardKey.alt) {
-        modifiers.add(HotKeyModifier.alt);
-      } else if (key == LogicalKeyboardKey.shift) {
-        modifiers.add(HotKeyModifier.shift);
-      }
-    }
+    final hotKey = deriveHotKey(shortcut);
+    if (hotKey == null) return;
 
     try {
-      final hotKey = HotKey(
-        key: mainKey,
-        modifiers: modifiers,
-        scope: (modifiers.isNotEmpty || _isMediaKey(mainKey))
-            ? HotKeyScope.system
-            : HotKeyScope.inapp,
-      );
       await hotKeyManager.register(hotKey, keyDownHandler: (_) => onDown());
     } catch (e) {
       logger.w('Failed to register hotkey ${shortcut.shortcutString}: $e');
     }
   }
+}
 
-  bool _isMediaKey(LogicalKeyboardKey key) {
-    return key == LogicalKeyboardKey.mediaPlay ||
-        key == LogicalKeyboardKey.mediaPause ||
-        key == LogicalKeyboardKey.mediaPlayPause ||
-        key == LogicalKeyboardKey.mediaTrackNext ||
-        key == LogicalKeyboardKey.mediaTrackPrevious ||
-        key == LogicalKeyboardKey.mediaStop ||
-        key == LogicalKeyboardKey.mediaRewind ||
-        key == LogicalKeyboardKey.mediaFastForward ||
-        key == LogicalKeyboardKey.audioVolumeUp ||
-        key == LogicalKeyboardKey.audioVolumeDown ||
-        key == LogicalKeyboardKey.audioVolumeMute;
+bool isMediaKey(LogicalKeyboardKey key) {
+  return key == LogicalKeyboardKey.mediaPlay ||
+      key == LogicalKeyboardKey.mediaPause ||
+      key == LogicalKeyboardKey.mediaPlayPause ||
+      key == LogicalKeyboardKey.mediaTrackNext ||
+      key == LogicalKeyboardKey.mediaTrackPrevious ||
+      key == LogicalKeyboardKey.mediaStop ||
+      key == LogicalKeyboardKey.mediaRewind ||
+      key == LogicalKeyboardKey.mediaFastForward ||
+      key == LogicalKeyboardKey.audioVolumeUp ||
+      key == LogicalKeyboardKey.audioVolumeDown ||
+      key == LogicalKeyboardKey.audioVolumeMute;
+}
+
+HotKey? deriveHotKey(KeyboardShortcut shortcut) {
+  final logicalKeys = shortcut.logicalKeys;
+  if (logicalKeys == null || logicalKeys.isEmpty) return null;
+
+  final mainKey = logicalKeys.last;
+  final modifiers = <HotKeyModifier>[];
+  for (final key in logicalKeys) {
+    if (key == LogicalKeyboardKey.control) {
+      modifiers.add(HotKeyModifier.control);
+    } else if (key == LogicalKeyboardKey.alt) {
+      modifiers.add(HotKeyModifier.alt);
+    } else if (key == LogicalKeyboardKey.shift) {
+      modifiers.add(HotKeyModifier.shift);
+    }
   }
+
+  return HotKey(
+    key: mainKey,
+    modifiers: modifiers,
+    scope: (modifiers.isNotEmpty || isMediaKey(mainKey))
+        ? HotKeyScope.system
+        : HotKeyScope.inapp,
+  );
 }
 

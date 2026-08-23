@@ -62,15 +62,14 @@ class SleepTimer extends _$SleepTimer {
     cancelTimer();
     state = state.copyWith(remainingTime: duration, isEndOfChapter: false);
     _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
-      if (state.remainingTime == null) {
+      final step = stepSleepTimer(state.remainingTime);
+      if (step.shouldCancel) {
         cancelTimer();
-      } else if (state.remainingTime! <= Duration.zero) {
+      } else if (step.shouldExpire) {
         cancelTimer();
         _fadeOutAndPause();
       } else {
-        state = state.copyWith(
-          remainingTime: state.remainingTime! - const Duration(seconds: 1),
-        );
+        state = state.copyWith(remainingTime: step.remainingTime);
       }
     });
   }
@@ -83,31 +82,14 @@ class SleepTimer extends _$SleepTimer {
       if (state.isEndOfChapter) {
         final mediaService = ref.read(mediaServiceProvider);
 
-        Duration remaining;
-        if (mediaService.customChapters != null &&
-            mediaService.customChapters!.isNotEmpty) {
-          // Multi-file playlist: chapter boundary is end of current file
-          final trackDuration = mediaService.duration;
-          remaining = trackDuration > Duration.zero
-              ? trackDuration - position
-              : const Duration(minutes: 60);
-        } else {
-          // Single-file: calculate end from current internal chapter if available, or file duration
-          Duration chapterEndTime = mediaService.duration;
-          final chapters = mediaService.customChapters;
-          if (chapters != null && chapters.isNotEmpty) {
-            final currentIndex = mediaService.currentIndex;
-            if (currentIndex < chapters.length) {
-              final endTime = chapters[currentIndex].endTime;
-              if (endTime != null) {
-                chapterEndTime = Duration(
-                  milliseconds: (endTime * 1000).toInt(),
-                );
-              }
-            }
-          }
-          remaining = chapterEndTime - position;
-        }
+        final remaining = calculateEndOfChapterRemaining(
+          position: position,
+          trackDuration: mediaService.duration,
+          hasCustomChapters: mediaService.customChapters != null &&
+              mediaService.customChapters!.isNotEmpty,
+          customChapters: mediaService.customChapters,
+          currentIndex: mediaService.currentIndex,
+        );
 
         if (remaining <= const Duration(seconds: 3) &&
             remaining >= Duration.zero) {
@@ -124,5 +106,57 @@ class SleepTimer extends _$SleepTimer {
     _posSub?.cancel();
     _posSub = null;
     state = const SleepTimerState();
+  }
+}
+
+class SleepTimerStepResult {
+  const SleepTimerStepResult({
+    this.remainingTime,
+    this.shouldExpire = false,
+    this.shouldCancel = false,
+  });
+
+  final Duration? remainingTime;
+  final bool shouldExpire;
+  final bool shouldCancel;
+}
+
+SleepTimerStepResult stepSleepTimer(Duration? currentRemaining) {
+  if (currentRemaining == null) {
+    return const SleepTimerStepResult(shouldCancel: true);
+  }
+  if (currentRemaining <= Duration.zero) {
+    return const SleepTimerStepResult(shouldExpire: true);
+  }
+  return SleepTimerStepResult(
+    remainingTime: currentRemaining - const Duration(seconds: 1),
+  );
+}
+
+Duration calculateEndOfChapterRemaining({
+  required Duration position,
+  required Duration trackDuration,
+  required bool hasCustomChapters,
+  List<Chapter>? customChapters,
+  int currentIndex = 0,
+  Duration fallbackDuration = const Duration(minutes: 60),
+}) {
+  if (hasCustomChapters) {
+    return trackDuration > Duration.zero
+        ? trackDuration - position
+        : fallbackDuration;
+  } else {
+    Duration chapterEndTime = trackDuration;
+    if (customChapters != null && customChapters.isNotEmpty) {
+      if (currentIndex < customChapters.length) {
+        final endTime = customChapters[currentIndex].endTime;
+        if (endTime != null) {
+          chapterEndTime = Duration(
+            milliseconds: (endTime * 1000).toInt(),
+          );
+        }
+      }
+    }
+    return chapterEndTime - position;
   }
 }

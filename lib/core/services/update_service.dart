@@ -23,27 +23,37 @@ UpdateService updateService(Ref ref) {
 }
 
 class UpdateService {
+  UpdateService({
+    http.Client? client,
+    this.currentVersionOverride,
+  }) : _client = client ?? http.Client();
+
+  final http.Client _client;
+  final String? currentVersionOverride;
   final String repoOwner = 'SV-stark';
   final String repoName = 'CantoSync';
 
   Future<UpdateInfo?> checkForUpdates() async {
     try {
-      final packageInfo = await PackageInfo.fromPlatform();
-      final currentVersion = packageInfo.version;
+      final currentVersion = currentVersionOverride ??
+          (await PackageInfo.fromPlatform()).version;
 
       final url = Uri.parse(
         'https://api.github.com/repos/$repoOwner/$repoName/releases/latest',
       );
-      final response = await http.get(url);
+      final response = await _client.get(url);
 
       if (response.statusCode == 200) {
-        final data = json.decode(response.body) as Map<String, dynamic>;
-        final latestVersion = (data['tag_name'] as String).replaceAll('v', '');
+        final data = json.decode(response.body);
+        if (data is! Map<String, dynamic>) return null;
+        final tagName = data['tag_name']?.toString();
+        if (tagName == null) return null;
+        final latestVersion = tagName.replaceAll('v', '');
 
         if (isNewerVersion(currentVersion, latestVersion)) {
           return UpdateInfo(
             latestVersion: latestVersion,
-            downloadUrl: data['html_url'] as String,
+            downloadUrl: data['html_url'] as String? ?? '',
             releaseNotes: data['body'] as String?,
           );
         }

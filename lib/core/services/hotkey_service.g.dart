@@ -48,4 +48,4 @@ final class HotkeyServiceProvider
   }
 }
 
-String _$hotkeyServiceHash() => r'3e17eb7d04ec097e2f08d60d6a5c7d80ed84e874';
+String _$hotkeyServiceHash() => r'1e158e8d01e7979ade29139d0725eb406567eb95';

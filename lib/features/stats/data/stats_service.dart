@@ -278,32 +278,15 @@ class ListeningStatsService {
         var speedPref =
             await _isar.listeningSpeedPreferences.get(0) ??
             ListeningSpeedPreference();
-        Map<double, int> speedUsage = {};
-        if (speedPref.speedUsageCountJson != null) {
-          try {
-            final Map<String, dynamic> decoded = json.decode(
-              speedPref.speedUsageCountJson!,
-            );
-            speedUsage = decoded.map(
-              (key, value) => MapEntry(double.parse(key), value as int),
-            );
-          } catch (_) {}
-        }
+        final speedUsage = parseSpeedUsageJson(speedPref.speedUsageCountJson);
 
         speedUsage[playbackSpeed] = (speedUsage[playbackSpeed] ?? 0) + 1;
         speedPref.totalSessionsAtSpeed++;
 
-        // Recalculate weighted average
-        double totalWeight = 0;
-        double weightedSum = 0;
-        speedUsage.forEach((speed, count) {
-          weightedSum += speed * count;
-          totalWeight += count;
-        });
-
-        if (totalWeight > 0) {
-          speedPref.averageSpeed = weightedSum / totalWeight;
-        }
+        speedPref.averageSpeed = calculateWeightedAverageSpeed(
+          speedUsage,
+          currentAverage: speedPref.averageSpeed,
+        );
 
         speedPref.speedUsageCountJson = json.encode(
           speedUsage.map((k, v) => MapEntry(k.toString(), v)),
@@ -358,4 +341,33 @@ class ListeningStatsService {
       await _isar.listeningSpeedPreferences.clear();
     });
   }
+}
+
+Map<double, int> parseSpeedUsageJson(String? jsonString) {
+  if (jsonString == null || jsonString.isEmpty) return {};
+  try {
+    final Map<String, dynamic> decoded = json.decode(jsonString);
+    return decoded.map(
+      (key, value) => MapEntry(double.parse(key.toString()), (value as num).toInt()),
+    );
+  } catch (_) {
+    return {};
+  }
+}
+
+double calculateWeightedAverageSpeed(
+  Map<double, int> speedUsage, {
+  double currentAverage = 1.0,
+}) {
+  double totalWeight = 0;
+  double weightedSum = 0;
+  speedUsage.forEach((speed, count) {
+    weightedSum += speed * count;
+    totalWeight += count;
+  });
+
+  if (totalWeight > 0) {
+    return weightedSum / totalWeight;
+  }
+  return currentAverage;
 }

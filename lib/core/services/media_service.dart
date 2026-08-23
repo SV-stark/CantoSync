@@ -253,34 +253,8 @@ class MediaService {
               final resultString = await native.getProperty('chapter-list');
               if (resultString.isNotEmpty) {
                 final result = jsonDecode(resultString);
-                if (result is List && result.isNotEmpty) {
-                  final List<Chapter> chapters = [];
-
-                  for (int j = 0; j < result.length; j++) {
-                    final e = result[j];
-                    if (e is! Map) continue;
-
-                    final startTime = (e['time'] as num?)?.toDouble() ?? 0.0;
-                    double? endTime;
-
-                    if (j < result.length - 1) {
-                      final next = result[j + 1];
-                      if (next is Map) {
-                        endTime = (next['time'] as num?)?.toDouble();
-                      }
-                    } else {
-                      final d = _p.state.duration.inMilliseconds / 1000.0;
-                      if (d > 0) endTime = d;
-                    }
-
-                    chapters.add(
-                      Chapter(
-                        title: e['title']?.toString() ?? 'Chapter ${j + 1}',
-                        startTime: startTime,
-                        endTime: endTime,
-                      ),
-                    );
-                  }
+                final chapters = parseMpvChapters(result, _p.state.duration);
+                if (chapters.isNotEmpty) {
                   logger.d('Found ${chapters.length} chapters internally.');
                   return chapters;
                 }
@@ -395,4 +369,38 @@ class Chapter {
 
   double? get durationSeconds =>
       endTime != null ? (endTime! - startTime) : null;
+}
+
+List<Chapter> parseMpvChapters(dynamic jsonResult, Duration fallbackDuration) {
+  if (jsonResult is! List || jsonResult.isEmpty) return [];
+
+  final validEntries = jsonResult.whereType<Map>().toList();
+  if (validEntries.isEmpty) return [];
+
+  final List<Chapter> chapters = [];
+  for (int j = 0; j < validEntries.length; j++) {
+    final e = validEntries[j];
+
+    final startTime = (e['time'] as num?)?.toDouble() ?? 0.0;
+    double? endTime;
+
+    if (j < validEntries.length - 1) {
+      final next = validEntries[j + 1];
+      endTime = (next['time'] as num?)?.toDouble();
+    } else {
+      final d = fallbackDuration.inMilliseconds / 1000.0;
+      if (d > 0) endTime = d;
+    }
+
+    final title = e['title']?.toString() ?? 'Chapter ${j + 1}';
+
+    chapters.add(
+      Chapter(
+        title: title,
+        startTime: startTime,
+        endTime: endTime,
+      ),
+    );
+  }
+  return chapters;
 }

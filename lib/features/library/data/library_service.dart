@@ -12,6 +12,7 @@ import 'package:crypto/crypto.dart';
 import 'package:canto_sync/core/data/isar_provider.dart';
 import 'package:canto_sync/core/services/app_settings_service.dart';
 import 'package:canto_sync/core/utils/logger.dart';
+import 'package:rxdart/rxdart.dart';
 import 'book.dart';
 
 part 'library_service.g.dart';
@@ -47,35 +48,44 @@ class LibraryCollectionFilter extends _$LibraryCollectionFilter {
   void setFilter(String? collection) => state = collection;
 }
 
+List<Book> filterBooks(
+  List<Book> books,
+  String query,
+  String? collectionFilter,
+) {
+  var filteredBooks = books;
+
+  if (collectionFilter != null) {
+    filteredBooks = filteredBooks
+        .where((b) => b.collections?.contains(collectionFilter) ?? false)
+        .toList();
+  }
+
+  final trimmed = query.toLowerCase();
+  if (trimmed.isEmpty) return filteredBooks;
+  return filteredBooks.where((book) {
+    final title = book.title?.toLowerCase() ?? '';
+    final author = book.author?.toLowerCase() ?? '';
+    final narrator = book.narrator?.toLowerCase() ?? '';
+    final album = book.album?.toLowerCase() ?? '';
+    return title.contains(trimmed) ||
+        author.contains(trimmed) ||
+        narrator.contains(trimmed) ||
+        album.contains(trimmed);
+  }).toList();
+}
+
 /// Returns a stream of books filtered by search query and collection.
 /// Note: Riverpod automatically wraps this Stream in an [AsyncValue].
 @riverpod
 Stream<List<Book>> libraryBooks(Ref ref) {
   final service = ref.watch(libraryServiceProvider);
-  final searchQuery = ref.watch(librarySearchQueryProvider).toLowerCase();
+  final searchQuery = ref.watch(librarySearchQueryProvider);
   final collectionFilter = ref.watch(libraryCollectionFilterProvider);
 
-  return service.listenToBooks().map((books) {
-    var filteredBooks = books;
-
-    if (collectionFilter != null) {
-      filteredBooks = filteredBooks
-          .where((b) => b.collections?.contains(collectionFilter) ?? false)
-          .toList();
-    }
-
-    if (searchQuery.isEmpty) return filteredBooks;
-    return filteredBooks.where((book) {
-      final title = book.title?.toLowerCase() ?? '';
-      final author = book.author?.toLowerCase() ?? '';
-      final narrator = book.narrator?.toLowerCase() ?? '';
-      final album = book.album?.toLowerCase() ?? '';
-      return title.contains(searchQuery) ||
-          author.contains(searchQuery) ||
-          narrator.contains(searchQuery) ||
-          album.contains(searchQuery);
-    }).toList();
-  });
+  return service
+      .listenToBooks()
+      .map((books) => filterBooks(books, searchQuery, collectionFilter));
 }
 
 @riverpod
@@ -143,7 +153,11 @@ String _cleanMetadataString(String str) {
       .trim();
 }
 
-Future<Map<String, List<String>>> _performFileScan(String path) async {
+bool isDeletableCover(String coversDirPath, String coverPath) {
+  return p.isWithin(coversDirPath, coverPath);
+}
+
+Future<Map<String, List<String>>> performFileScan(String path) async {
   final audioExtensions = {'.mp3', '.m4b', '.m4a', '.flac', '.ogg', '.wav', '.opus'};
   final Map<String, List<String>> groups = {};
 
@@ -198,7 +212,7 @@ class LibraryService {
       try {
         final appDir = await getApplicationDocumentsDirectory();
         final coversDirPath = p.join(appDir.path, 'canto_sync', 'covers');
-        if (p.isWithin(coversDirPath, book.coverPath!)) {
+        if (isDeletableCover(coversDirPath, book.coverPath!)) {
           final file = File(book.coverPath!);
           if (await file.exists()) {
             await file.delete();
@@ -218,7 +232,11 @@ class LibraryService {
     return _isar.books
         .where()
         .watch(fireImmediately: true)
-        .debounce(const Duration(milliseconds: 500));
+        .throttleTime(
+          const Duration(seconds: 3),
+          leading: true,
+          trailing: true,
+        );
   }
 
   Future<void> assignCollection(String path, String collectionName) async {
@@ -353,12 +371,12 @@ class LibraryService {
     }
   }
 
-  Future<void> scanDirectory(String path, {bool forceUpdate = false}) async {
+  Future<List<String>> scanDirectory(String path, {bool forceUpdate = false}) async {
     final probePlayer = Player(
       configuration: const PlayerConfiguration(vo: 'null'),
     );
     try {
-      await _scanDirectory(path, probePlayer, forceUpdate: forceUpdate);
+      return await _scanDirectory(path, probePlayer, forceUpdate: forceUpdate);
     } finally {
       await probePlayer.dispose();
     }
@@ -422,7 +440,7 @@ class LibraryService {
     Player probePlayer, {
     bool forceUpdate = false,
   }) async {
-    final groups = await Isolate.run(() => _performFileScan(path));
+    final groups = await Isolate.run(() => performFileScan(path));
     final List<String> foundBookPaths = [];
 
     for (final entry in groups.entries) {
@@ -820,7 +838,7 @@ class LibraryService {
         final appDir = await getApplicationDocumentsDirectory();
         final coversDirPath = p.join(appDir.path, 'canto_sync', 'covers');
         for (final coverPath in coverPathsToDelete) {
-          if (p.isWithin(coversDirPath, coverPath)) {
+          if (isDeletableCover(coversDirPath, coverPath)) {
             final file = File(coverPath);
             if (await file.exists()) {
               await file.delete();
@@ -836,3 +854,4 @@ class LibraryService {
     return idsToRemove.length;
   }
 }
+

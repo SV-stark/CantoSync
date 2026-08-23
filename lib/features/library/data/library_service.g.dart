@@ -83,7 +83,7 @@ final class LibrarySearchQueryProvider
 }
 
 String _$librarySearchQueryHash() =>
-    r'409814798eb4ede9cf088f8c7c8078665599ad20';
+    r'0ff3f53e7149c3bd55c3bdc6ef3fb047639b8c19';
 
 abstract class _$LibrarySearchQuery extends $Notifier<String> {
   String build();
@@ -253,7 +253,7 @@ final class LibraryBooksProvider
   }
 }
 
-String _$libraryBooksHash() => r'649cdb61fdaf79d428a3983fdfeadd9fdff059ab';
+String _$libraryBooksHash() => r'bcdb617a4a3b2eb8e492120f01372ed95c5da405';
 
 @ProviderFor(libraryRecentBooks)
 final libraryRecentBooksProvider = LibraryRecentBooksProvider._();

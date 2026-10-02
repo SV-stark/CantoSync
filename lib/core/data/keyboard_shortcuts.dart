@@ -84,7 +84,7 @@ class KeyboardShortcut {
       'F10': LogicalKeyboardKey.f10,
       'F11': LogicalKeyboardKey.f11,
       'F12': LogicalKeyboardKey.f12,
-      'MediaPlayPause': LogicalKeyboardKey.mediaPlay,
+      'MediaPlayPause': LogicalKeyboardKey.mediaPlayPause,
       'MediaStop': LogicalKeyboardKey.mediaStop,
       'MediaTrackNext': LogicalKeyboardKey.mediaTrackNext,
       'MediaTrackPrevious': LogicalKeyboardKey.mediaTrackPrevious,
@@ -181,6 +181,10 @@ List<KeyboardShortcut> getDefaultShortcuts() {
     KeyboardShortcut(
       action: ShortcutAction.stop,
       keyValue: 'Escape',
+      ctrl: true,
+      // Escape alone is consumed by dialogs, text fields and the OS titlebar.
+      // As a bare in-app shortcut it fired "stop" while the user was trying
+      // to dismiss something, so it is Ctrl+Escape by default.
       description: ShortcutAction.descriptions[ShortcutAction.stop]!,
     ),
     KeyboardShortcut(

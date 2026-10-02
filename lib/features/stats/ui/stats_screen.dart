@@ -1,6 +1,7 @@
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:intl/intl.dart';
+import 'package:canto_sync/core/ui/theme/semantic_colors.dart';
 import 'package:canto_sync/features/stats/data/stats_service.dart';
 import 'package:canto_sync/features/stats/data/listening_stats.dart';
 
@@ -38,6 +39,8 @@ class StatsScreen extends ConsumerWidget {
   }
 
   Widget _buildSummaryCards(BuildContext context, ListeningStatsSummary stats) {
+    final theme = FluentTheme.of(context);
+    final semantic = context.semanticColors;
     return Wrap(
       spacing: 16,
       runSpacing: 16,
@@ -48,7 +51,7 @@ class StatsScreen extends ConsumerWidget {
           title: 'Total Hours',
           value: stats.totalHoursListened.toStringAsFixed(1),
           subtitle: 'of audiobooks listened',
-          color: Colors.blue,
+          color: theme.accentColor,
         ),
         _buildStatCard(
           context,
@@ -56,7 +59,7 @@ class StatsScreen extends ConsumerWidget {
           title: 'Books Completed',
           value: stats.totalBooksCompleted.toString(),
           subtitle: 'out of ${stats.totalBooksStarted} started',
-          color: Colors.successPrimaryColor,
+          color: semantic.success,
         ),
         _buildStatCard(
           context,
@@ -64,7 +67,7 @@ class StatsScreen extends ConsumerWidget {
           title: 'Current Streak',
           value: '${stats.currentStreak} days',
           subtitle: 'Longest: ${stats.longestStreak} days',
-          color: Colors.orange,
+          color: semantic.warning,
         ),
         _buildStatCard(
           context,
@@ -72,7 +75,7 @@ class StatsScreen extends ConsumerWidget {
           title: 'Sessions',
           value: stats.totalListeningSessions.toString(),
           subtitle: 'total listening sessions',
-          color: Colors.purple,
+          color: semantic.sessions,
         ),
       ],
     );
@@ -113,7 +116,7 @@ class StatsScreen extends ConsumerWidget {
               subtitle,
               style: FluentTheme.of(
                 context,
-              ).typography.caption?.copyWith(color: Colors.grey),
+              ).typography.caption?.copyWith(color: FluentTheme.of(context).resources.textFillColorSecondary),
             ),
           ],
         ),
@@ -189,7 +192,7 @@ class StatsScreen extends ConsumerWidget {
                 label,
                 style: FluentTheme.of(
                   context,
-                ).typography.caption?.copyWith(color: Colors.grey),
+                ).typography.caption?.copyWith(color: FluentTheme.of(context).resources.textFillColorSecondary),
               ),
               Text(
                 '$days days',
@@ -209,6 +212,8 @@ class StatsScreen extends ConsumerWidget {
     BuildContext context,
     ListeningStatsSummary stats,
   ) {
+    final semantic = context.semanticColors;
+    final isDark = FluentTheme.of(context).brightness == Brightness.dark;
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(16),
@@ -226,7 +231,7 @@ class StatsScreen extends ConsumerWidget {
                   'Last 30 Days',
                   style: FluentTheme.of(
                     context,
-                  ).typography.caption?.copyWith(color: Colors.grey),
+                  ).typography.caption?.copyWith(color: FluentTheme.of(context).resources.textFillColorSecondary),
                 ),
               ],
             ),
@@ -240,24 +245,19 @@ class StatsScreen extends ConsumerWidget {
                   'Less',
                   style: FluentTheme.of(
                     context,
-                  ).typography.caption?.copyWith(color: Colors.grey),
+                  ).typography.caption?.copyWith(color: FluentTheme.of(context).resources.textFillColorSecondary),
                 ),
                 const SizedBox(width: 8),
-                _buildLegendBox(Colors.grey.withValues(alpha: 0.1)),
-                const SizedBox(width: 4),
-                _buildLegendBox(Colors.blue.withValues(alpha: 0.3)),
-                const SizedBox(width: 4),
-                _buildLegendBox(Colors.blue.withValues(alpha: 0.5)),
-                const SizedBox(width: 4),
-                _buildLegendBox(Colors.blue.withValues(alpha: 0.7)),
-                const SizedBox(width: 4),
-                _buildLegendBox(Colors.blue),
+                for (var level = 0; level < 5; level++) ...[
+                  if (level > 0) const SizedBox(width: 4),
+                  _buildLegendBox(semantic.heatmapLevel(level, isDark)),
+                ],
                 const SizedBox(width: 8),
                 Text(
                   'More',
                   style: FluentTheme.of(
                     context,
-                  ).typography.caption?.copyWith(color: Colors.grey),
+                  ).typography.caption?.copyWith(color: FluentTheme.of(context).resources.textFillColorSecondary),
                 ),
               ],
             ),
@@ -309,7 +309,7 @@ class StatsScreen extends ConsumerWidget {
   }
 
   Widget _buildAuthorRow(BuildContext context, int rank, AuthorStats author) {
-    final progressColor = _getRankColor(rank);
+    final progressColor = _getRankColor(context, rank);
 
     return Padding(
       padding: const EdgeInsets.only(bottom: 12),
@@ -349,7 +349,7 @@ class StatsScreen extends ConsumerWidget {
                   '${author.totalHours.toStringAsFixed(1)} hours • ${author.booksCompleted} completed',
                   style: FluentTheme.of(
                     context,
-                  ).typography.caption?.copyWith(color: Colors.grey),
+                  ).typography.caption?.copyWith(color: FluentTheme.of(context).resources.textFillColorSecondary),
                 ),
               ],
             ),
@@ -359,16 +359,18 @@ class StatsScreen extends ConsumerWidget {
     );
   }
 
-  Color _getRankColor(int rank) {
+  Color _getRankColor(BuildContext context, int rank) {
+    final semantic = context.semanticColors;
+    final theme = FluentTheme.of(context);
     switch (rank) {
       case 1:
-        return Colors.yellow;
+        return semantic.highlight;
       case 2:
-        return Colors.grey;
+        return theme.resources.textFillColorSecondary;
       case 3:
-        return Colors.orange;
+        return semantic.warning;
       default:
-        return Colors.blue;
+        return theme.accentColor;
     }
   }
 
@@ -381,7 +383,11 @@ class StatsScreen extends ConsumerWidget {
         padding: const EdgeInsets.all(16),
         child: Row(
           children: [
-            Icon(FluentIcons.speed_high, size: 32, color: Colors.blue),
+            Icon(
+              FluentIcons.speed_high,
+              size: 32,
+              color: FluentTheme.of(context).accentColor,
+            ),
             const SizedBox(width: 16),
             Expanded(
               child: Column(
@@ -398,7 +404,7 @@ class StatsScreen extends ConsumerWidget {
                     'Your preferred playback speed',
                     style: FluentTheme.of(
                       context,
-                    ).typography.caption?.copyWith(color: Colors.grey),
+                    ).typography.caption?.copyWith(color: FluentTheme.of(context).resources.textFillColorSecondary),
                   ),
                 ],
               ),
@@ -406,13 +412,15 @@ class StatsScreen extends ConsumerWidget {
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
               decoration: BoxDecoration(
-                color: Colors.blue.withValues(alpha: 0.1),
+                color: FluentTheme.of(
+                  context,
+                ).accentColor.withValues(alpha: 0.1),
                 borderRadius: BorderRadius.circular(16),
               ),
               child: Text(
                 '${stats.averageListeningSpeed.toStringAsFixed(2)}x',
                 style: TextStyle(
-                  color: Colors.blue,
+                  color: FluentTheme.of(context).accentColor,
                   fontWeight: FontWeight.bold,
                   fontSize: 16,
                 ),
@@ -459,7 +467,9 @@ class _ContributionCalendar extends StatelessWidget {
                 child: Text(
                   day,
                   style: FluentTheme.of(context).typography.caption?.copyWith(
-                    color: Colors.grey,
+                    color: FluentTheme.of(
+                      context,
+                    ).resources.textFillColorSecondary,
                     fontSize: 10,
                   ),
                   textAlign: TextAlign.center,
@@ -487,7 +497,8 @@ class _ContributionCalendar extends StatelessWidget {
 
   Widget _buildDayCell(BuildContext context, DailyListeningStats day) {
     final seconds = day.totalSecondsListened;
-    final color = _getActivityColor(seconds);
+    final isDark = FluentTheme.of(context).brightness == Brightness.dark;
+    final color = _getActivityColor(context, seconds, isDark);
     final date = DateTime.parse(day.date);
     final tooltip =
         '${DateFormat('MMM d').format(date)}: ${_formatDuration(seconds)}';
@@ -505,12 +516,22 @@ class _ContributionCalendar extends StatelessWidget {
     );
   }
 
-  Color _getActivityColor(int seconds) {
-    if (seconds == 0) return Colors.grey.withValues(alpha: 0.1);
-    if (seconds < 1800) return Colors.blue.withValues(alpha: 0.3); // < 30 min
-    if (seconds < 3600) return Colors.blue.withValues(alpha: 0.5); // < 1 hour
-    if (seconds < 7200) return Colors.blue.withValues(alpha: 0.7); // < 2 hours
-    return Colors.blue;
+  /// Maps listening seconds onto a step in the [SemanticColors] heatmap ramp:
+  /// 0 = no activity, then 1-4 as time increases. The ramp lives in the theme
+  /// extension so the legend and the cells can never drift apart.
+  int _activityLevel(int seconds) {
+    if (seconds == 0) return 0;
+    if (seconds < 1800) return 1; // < 30 min
+    if (seconds < 3600) return 2; // < 1 hour
+    if (seconds < 7200) return 3; // < 2 hours
+    return 4;
+  }
+
+  Color _getActivityColor(BuildContext context, int seconds, bool isDark) {
+    return context.semanticColors.heatmapLevel(
+      _activityLevel(seconds),
+      isDark,
+    );
   }
 
   String _formatDuration(int seconds) {

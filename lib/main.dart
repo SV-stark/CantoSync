@@ -21,6 +21,7 @@ import 'package:canto_sync/features/player/ui/widgets/mini_player.dart';
 import 'package:canto_sync/features/settings/ui/settings_screen.dart';
 import 'package:canto_sync/features/stats/ui/stats_screen.dart';
 import 'package:canto_sync/core/ui/window_buttons.dart';
+import 'package:canto_sync/core/ui/theme/semantic_colors.dart';
 import 'package:canto_sync/core/utils/logger.dart';
 import 'package:canto_sync/features/stats/data/listening_stats.dart';
 import 'package:canto_sync/core/data/keyboard_shortcuts.dart';
@@ -139,40 +140,55 @@ class _CantoSyncAppState extends ConsumerState<CantoSyncApp>
     if (_servicesInitialized) return;
     _servicesInitialized = true;
 
+    // Tray first: onWindowClose() consults it to decide between hiding and
+    // destroying the window.
+    try {
+      await ref.read(trayServiceProvider).init();
+    } catch (e, stack) {
+      logger.e(
+        'Error initializing tray',
+        error: e,
+        stackTrace: stack,
+      );
+    }
+
     // Hotkeys
     try {
       await ref.read(hotkeyServiceProvider).init();
-    } catch (e) {
-      logger.e('Error initializing hotkeys', error: e);
-    }
-
-    // Tray
-    try {
-      await ref.read(trayServiceProvider).init();
-    } catch (e) {
-      logger.e('Error initializing tray', error: e);
+    } catch (e, stack) {
+      logger.e(
+        'Error initializing hotkeys',
+        error: e,
+        stackTrace: stack,
+      );
     }
 
     // Playback Sync
     try {
       ref.read(playbackSyncProvider);
-    } catch (e) {
-      logger.e('Error initializing playback sync', error: e);
+    } catch (e, stack) {
+      logger.e(
+        'Error initializing playback sync',
+        error: e,
+        stackTrace: stack,
+      );
     }
 
-    // Library Scan
+    // Library Scan. The previous try/catch could never fire: an un-awaited
+    // future's errors are not raised synchronously, so a failed rescan was
+    // logged as an unhandled async error instead of a handled one.
     try {
-      ref.read(libraryServiceProvider).rescanLibraries();
-    } catch (e) {
-      logger.e('Error starting library rescan', error: e);
+      await ref.read(libraryServiceProvider).rescanLibraries();
+    } catch (e, stack) {
+      logger.e(
+        'Error starting library rescan',
+        error: e,
+        stackTrace: stack,
+      );
     }
 
-    // Updates
-    try {
-      _checkUpdates();
-    } catch (e) {
-      logger.e('Error checking for updates', error: e);
-    }
+    // Updates (does its own error handling).
+    unawaited(_checkUpdates());
   }
 
   Future<void> _checkUpdates() async {
@@ -202,17 +218,25 @@ class _CantoSyncAppState extends ConsumerState<CantoSyncApp>
           ),
         );
       }
-    } catch (e) {
-      logger.e('Update check failed', error: e);
+    } catch (e, stack) {
+      logger.e('Update check failed', error: e, stackTrace: stack);
     }
   }
 
   @override
   void onWindowClose() async {
-    bool isPreventClose = await windowManager.isPreventClose();
-    if (isPreventClose) {
-      await ref.read(playbackSyncProvider).forceSave();
+    if (!await windowManager.isPreventClose()) return;
+
+    // Save progress before either closing or hiding.
+    await ref.read(playbackSyncProvider).forceSave();
+
+    // Only hide to the tray when a tray icon actually exists. Otherwise the
+    // window would vanish with no way to bring it back.
+    if (ref.read(trayServiceProvider).isAvailable) {
       await windowManager.hide();
+    } else {
+      await windowManager.setPreventClose(false);
+      await windowManager.destroy();
     }
   }
 
@@ -228,11 +252,13 @@ class _CantoSyncAppState extends ConsumerState<CantoSyncApp>
       theme: FluentThemeData(
         accentColor: SystemTheme.accentColor.accent.toAccentColor(),
         visualDensity: VisualDensity.standard,
+        extensions: const [SemanticColors.light],
       ),
       darkTheme: FluentThemeData(
         brightness: Brightness.dark,
         accentColor: SystemTheme.accentColor.accent.toAccentColor(),
         visualDensity: VisualDensity.standard,
+        extensions: const [SemanticColors.dark],
       ),
       home: Stack(
         children: [
@@ -294,9 +320,20 @@ class _CantoSyncAppState extends ConsumerState<CantoSyncApp>
           if (index != 1)
             Align(
               alignment: Alignment.bottomCenter,
-              child: MiniPlayer(
-                onTap: () =>
-                    ref.read(navigationIndexProvider.notifier).setIndex(1),
+              child: Padding(
+                // The mini player is stacked over the NavigationView, so it
+                // needs to clear the collapsed nav rail on the left and any
+                // bottom inset the platform reports, otherwise it covers the
+                // pane's footer and the Settings item is unclickable.
+                padding: EdgeInsets.only(
+                  left: kCompactNavigationPaneWidth,
+                  bottom: MediaQuery.viewPaddingOf(context).bottom,
+                ),
+                child: MiniPlayer(
+                  onTap: () => ref
+                      .read(navigationIndexProvider.notifier)
+                      .setIndex(1),
+                ),
               ),
             ),
         ],

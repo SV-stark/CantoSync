@@ -123,7 +123,10 @@ class ListeningStatsService {
   Map<String, int> _calculateStreaks(List<DailyListeningStats> stats) {
     if (stats.isEmpty) return {'current': 0, 'longest': 0};
 
-    final sortedDates = stats.map((s) => s.date).toList()..sort();
+    // De-duplicate before walking. The longest-streak loop below advances one
+    // day at a time and compares against the raw list, so a repeated date
+    // breaks the chain and under-counts the streak.
+    final sortedDates = stats.map((s) => s.date).toSet().toList()..sort();
     final datesWithActivity = sortedDates.toSet();
 
     int currentStreak = 0;
@@ -243,7 +246,9 @@ class ListeningStatsService {
       if (!dailyStats.booksListened.contains(bookPath)) {
         dailyStats.booksListened.add(bookPath);
       }
-      dailyStats.listeningSessions++;
+      // A "session" is a continuous stretch of playback, not each stats sample.
+      // The caller passes `isNewSession` only when playback resumed from idle,
+      // so a 2 hour listen counts as 1 session rather than 240.
       await _isar.dailyListeningStats.put(dailyStats);
 
       // Update author stats
@@ -253,8 +258,10 @@ class ListeningStatsService {
           .findFirst();
       authorStats ??= AuthorStats(authorName: authorName);
       authorStats.totalSecondsListened += secondsListened;
-      if (!authorStats.bookTitles.contains(book.title ?? 'Unknown')) {
-        authorStats.bookTitles.add(book.title ?? 'Unknown');
+      // Key by path, not title: two different books sharing a title are two
+      // books, and a renamed book must not count as a second "start".
+      if (!authorStats.bookTitles.contains(bookPath)) {
+        authorStats.bookTitles.add(bookPath);
         authorStats.booksStarted++;
       }
       await _isar.authorStats.put(authorStats);
@@ -275,8 +282,10 @@ class ListeningStatsService {
 
       // Update speed preference if provided
       if (playbackSpeed != null) {
-        var speedPref =
-            await _isar.listeningSpeedPreferences.get(0) ??
+        final speedPref =
+            await _isar.listeningSpeedPreferences.get(
+              ListeningSpeedPreference.kSpeedPreferenceId,
+            ) ??
             ListeningSpeedPreference();
         final speedUsage = parseSpeedUsageJson(speedPref.speedUsageCountJson);
 
@@ -291,9 +300,22 @@ class ListeningStatsService {
         speedPref.speedUsageCountJson = json.encode(
           speedUsage.map((k, v) => MapEntry(k.toString(), v)),
         );
-        speedPref.id = 0;
+        speedPref.id = ListeningSpeedPreference.kSpeedPreferenceId;
         await _isar.listeningSpeedPreferences.put(speedPref);
       }
+    });
+  }
+
+  /// Marks a playback session as started for today, incrementing the daily
+  /// session counter exactly once per continuous stretch of listening.
+  Future<void> startListeningSession(Book book) async {
+    final today = _formatDate(DateTime.now());
+    await _isar.writeTxn(() async {
+      final dailyStats =
+          await _isar.dailyListeningStats.filter().dateEqualTo(today).findFirst() ??
+          DailyListeningStats(date: today);
+      dailyStats.listeningSessions++;
+      await _isar.dailyListeningStats.put(dailyStats);
     });
   }
 
@@ -321,11 +343,21 @@ class ListeningStatsService {
 
       // Update author completed count only on first completion
       if (!wasAlreadyCompleted) {
-        var authorStats = await _isar.authorStats
+        final authorStats = await _isar.authorStats
             .filter()
             .authorNameEqualTo(authorName)
             .findFirst();
-        if (authorStats != null) {
+        if (authorStats == null) {
+          // The book finished before any 30s sample landed, so no AuthorStats
+          // row exists yet. Create one rather than dropping the completion.
+          final created = AuthorStats(
+            authorName: authorName,
+            booksStarted: 1,
+            booksCompleted: 1,
+          );
+          created.bookTitles = [bookPath];
+          await _isar.authorStats.put(created);
+        } else {
           authorStats.booksCompleted++;
           await _isar.authorStats.put(authorStats);
         }

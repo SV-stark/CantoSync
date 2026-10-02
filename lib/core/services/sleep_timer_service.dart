@@ -18,24 +18,38 @@ abstract class SleepTimerState with _$SleepTimerState {
 class SleepTimer extends _$SleepTimer {
   Timer? _timer;
   StreamSubscription? _posSub;
-  double? _originalVolume;
   bool _isFadingOut = false;
+
+  /// Generation token so a fade started by a previous timer can be aborted
+  /// when the user cancels mid-fade.
+  int _fadeGeneration = 0;
 
   @override
   SleepTimerState build() {
     ref.onDispose(() {
-      cancelTimer();
+      _teardown();
     });
     return const SleepTimerState();
+  }
+
+  /// Cancels timers/subscriptions and any in-flight fade without touching
+  /// `state`. Safe to call from build() and from dispose().
+  void _teardown() {
+    _fadeGeneration++;
+    _timer?.cancel();
+    _timer = null;
+    _posSub?.cancel();
+    _posSub = null;
   }
 
   Future<void> _fadeOutAndPause() async {
     if (_isFadingOut) return;
     _isFadingOut = true;
+    final generation = ++_fadeGeneration;
 
     final mediaService = ref.read(mediaServiceProvider);
-    _originalVolume = mediaService.volume;
-    final startVol = _originalVolume ?? 100.0;
+    final originalVolume = mediaService.volume;
+    final startVol = originalVolume;
 
     // Fade out over 3 seconds (12 steps of 250ms)
     const steps = 12;
@@ -44,22 +58,32 @@ class SleepTimer extends _$SleepTimer {
 
     double currentVol = startVol;
     for (int i = 0; i < steps; i++) {
+      // Abort if the user cancelled while we were fading.
+      if (generation != _fadeGeneration) {
+        await mediaService.setVolume(startVol);
+        _isFadingOut = false;
+        return;
+      }
       currentVol = (currentVol - volumeStep).clamp(0.0, startVol);
       await mediaService.setVolume(currentVol);
       await Future.delayed(interval);
     }
 
+    if (generation != _fadeGeneration) {
+      await mediaService.setVolume(startVol);
+      _isFadingOut = false;
+      return;
+    }
+
     await mediaService.pause();
     // Restore original volume after pausing
-    if (_originalVolume != null) {
-      await mediaService.setVolume(_originalVolume!);
-      _originalVolume = null;
-    }
+    await mediaService.setVolume(startVol);
     _isFadingOut = false;
   }
 
   void startTimer(Duration duration) {
     cancelTimer();
+    if (duration <= Duration.zero) return;
     state = state.copyWith(remainingTime: duration, isEndOfChapter: false);
     _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
       final step = stepSleepTimer(state.remainingTime);
@@ -101,11 +125,14 @@ class SleepTimer extends _$SleepTimer {
   }
 
   void cancelTimer() {
-    _timer?.cancel();
-    _timer = null;
-    _posSub?.cancel();
-    _posSub = null;
-    state = const SleepTimerState();
+    _teardown();
+    if (!_isFadingOut) {
+      state = const SleepTimerState();
+    } else {
+      // A fade is in flight; it will observe the generation change, restore
+      // the original volume and reset the state itself.
+      state = state.copyWith(remainingTime: null, isEndOfChapter: false);
+    }
   }
 }
 
@@ -133,6 +160,13 @@ SleepTimerStepResult stepSleepTimer(Duration? currentRemaining) {
   );
 }
 
+/// Time remaining until the end of the current chapter.
+///
+/// For multi-file books each chapter is a playlist item, so the remaining time
+/// is simply the rest of the current file. For single files with embedded
+/// chapters the chapter end comes from the chapter list matched against the
+/// current position -- the old implementation returned "rest of the file"
+/// instead, so the end-of-chapter timer always waited for the whole book.
 Duration calculateEndOfChapterRemaining({
   required Duration position,
   required Duration trackDuration,
@@ -142,21 +176,30 @@ Duration calculateEndOfChapterRemaining({
   Duration fallbackDuration = const Duration(minutes: 60),
 }) {
   if (hasCustomChapters) {
+    // Multi-file: the chapter *is* the current track.
     return trackDuration > Duration.zero
         ? trackDuration - position
         : fallbackDuration;
-  } else {
-    Duration chapterEndTime = trackDuration;
-    if (customChapters != null && customChapters.isNotEmpty) {
-      if (currentIndex < customChapters.length) {
-        final endTime = customChapters[currentIndex].endTime;
-        if (endTime != null) {
-          chapterEndTime = Duration(
-            milliseconds: (endTime * 1000).toInt(),
-          );
-        }
-      }
-    }
-    return chapterEndTime - position;
   }
+
+  // Single file with embedded chapters.
+  var chapterEndTime = trackDuration;
+  if (customChapters != null && customChapters.isNotEmpty) {
+    final positionSeconds = position.inMilliseconds / 1000.0;
+    var index = currentIndex;
+    if (index < 0 || index >= customChapters.length) {
+      index = MediaService.currentChapterIndex(
+        customChapters,
+        positionSeconds,
+      );
+    }
+    final endTime = customChapters[index].endTime;
+    if (endTime != null) {
+      chapterEndTime = Duration(milliseconds: (endTime * 1000).toInt());
+    }
+  }
+
+  final remaining = chapterEndTime - position;
+  // Guard against a chapter end earlier than the current position (bad tags).
+  return remaining.isNegative ? Duration.zero : remaining;
 }

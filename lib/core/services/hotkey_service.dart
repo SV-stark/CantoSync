@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
@@ -41,33 +42,55 @@ class HotkeyService {
 
     for (final shortcut in shortcuts) {
       await _registerHotKeyFromShortcut(shortcut, () {
-        if (!shortcut.ctrl &&
-            !shortcut.alt &&
-            !shortcut.shift &&
-            shortcut.logicalKeys != null &&
-            shortcut.logicalKeys!.isNotEmpty &&
-            !isMediaKey(shortcut.logicalKeys!.last)) {
-          final primaryFocus = FocusManager.instance.primaryFocus;
-          if (primaryFocus != null) {
-            final context = primaryFocus.context;
-            if (context != null) {
-              final isEditable =
-                  context.findAncestorWidgetOfExactType<EditableText>() != null;
-              if (isEditable) return;
+        // Never steal keystrokes from an editable field, whether or not the
+        // shortcut uses a modifier. The old guard only ran for unmodified
+        // keys, so Ctrl+B / Ctrl+1 fired "add bookmark" / "open library"
+        // while the user was typing in the metadata editor or search box.
+        if (!isMediaKeyIn(shortcut)) {
+          if (_isEditingText()) return;
 
-              final route = ModalRoute.of(context);
-              if (route != null && !route.isCurrent) {
-                // Focus is on a background element behind a modal overlay or dialog
-                return;
-              }
+          final context = _primaryFocusContext;
+          if (context != null) {
+            final route = ModalRoute.of(context);
+            if (route != null && !route.isCurrent) {
+              // Focus is on a background element behind a modal overlay.
+              return;
             }
           }
         }
-        _ref
-            .read(keyboardShortcutsProvider.notifier)
-            .executeAction(shortcut.action);
+
+        unawaited(
+          _ref
+              .read(keyboardShortcutsProvider.notifier)
+              .executeAction(shortcut.action),
+        );
       });
     }
+  }
+
+  /// The logical key that carries the shortcut, or null if unresolvable.
+  static LogicalKeyboardKey? _mainKeyOf(KeyboardShortcut shortcut) {
+    final keys = shortcut.logicalKeys;
+    if (keys == null || keys.isEmpty) return null;
+    return keys.last;
+  }
+
+  static bool isMediaKeyIn(KeyboardShortcut shortcut) {
+    final mainKey = _mainKeyOf(shortcut);
+    return mainKey != null && isMediaKey(mainKey);
+  }
+
+  static bool _isEditingText() {
+    final context = _primaryFocusContext;
+    if (context == null) return false;
+    return context.findAncestorWidgetOfExactType<EditableText>() != null;
+  }
+
+  static BuildContext? get _primaryFocusContext {
+    final primaryFocus = FocusManager.instance.primaryFocus;
+    if (primaryFocus == null) return null;
+    final context = primaryFocus.context;
+    return context != null && context.mounted ? context : null;
   }
 
   Future<void> _registerHotKeyFromShortcut(
@@ -121,9 +144,25 @@ HotKey? deriveHotKey(KeyboardShortcut shortcut) {
   return HotKey(
     key: mainKey,
     modifiers: modifiers,
-    scope: (modifiers.isNotEmpty || isMediaKey(mainKey))
-        ? HotKeyScope.system
-        : HotKeyScope.inapp,
+    scope: resolveHotKeyScope(modifiers, mainKey),
   );
+}
+
+/// Resolves the registration scope for a hotkey.
+///
+/// `HotKeyScope.inapp` is only implemented on Windows and macOS; registering
+/// it on Linux silently swallows the key, so unmodified non-media shortcuts
+/// fall back to system scope there.
+HotKeyScope resolveHotKeyScope(
+  List<HotKeyModifier> modifiers,
+  LogicalKeyboardKey mainKey,
+) {
+  if (modifiers.isNotEmpty || isMediaKey(mainKey)) {
+    return HotKeyScope.system;
+  }
+  if (Platform.isLinux) {
+    return HotKeyScope.system;
+  }
+  return HotKeyScope.inapp;
 }
 

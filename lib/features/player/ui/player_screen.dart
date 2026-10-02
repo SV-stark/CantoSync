@@ -241,7 +241,10 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
     return Stack(
       children: [
         // 1. Dynamic Background
-        AmbientBackground(coverPath: currentBook?.coverPath),
+        AmbientBackground(
+          coverPath: currentBook?.coverPath,
+          themeMode: settings.playerThemeMode,
+        ),
 
         // 2. Content Layer
         Positioned.fill(

@@ -39,7 +39,9 @@ void main() {
 
       final hotKey = deriveHotKey(mediaShortcut);
       expect(hotKey, isNotNull);
-      expect(hotKey!.key, LogicalKeyboardKey.mediaPlay);
+      // 'MediaPlayPause' must map to the dedicated play/pause key, not to
+      // play-only (it used to resolve to LogicalKeyboardKey.mediaPlay).
+      expect(hotKey!.key, LogicalKeyboardKey.mediaPlayPause);
       expect(hotKey.modifiers, isEmpty);
       expect(hotKey.scope, HotKeyScope.system);
     });

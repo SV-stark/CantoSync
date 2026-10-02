@@ -203,13 +203,12 @@ class _MiniPlayerState extends ConsumerState<MiniPlayer> {
                       const SizedBox(width: 8),
                       IconButton(
                         icon: const Icon(FluentIcons.rewind, size: 18),
-                        onPressed: () {
-                          final newPos =
-                              position - const Duration(seconds: 15);
-                          mediaService.seek(
-                            newPos.isNegative ? Duration.zero : newPos,
-                          );
-                        },
+                        onPressed: () => _seekRelative(
+                          mediaService,
+                          position,
+                          duration,
+                          const Duration(seconds: -15),
+                        ),
                       ),
                       StreamBuilder<bool>(
                         stream: mediaService.playingStream,
@@ -227,13 +226,12 @@ class _MiniPlayerState extends ConsumerState<MiniPlayer> {
                       ),
                       IconButton(
                         icon: const Icon(FluentIcons.fast_forward, size: 18),
-                        onPressed: () {
-                          final newPos =
-                              position + const Duration(seconds: 15);
-                          mediaService.seek(
-                            newPos > duration ? duration : newPos,
-                          );
-                        },
+                        onPressed: () => _seekRelative(
+                          mediaService,
+                          position,
+                          duration,
+                          const Duration(seconds: 15),
+                        ),
                       ),
                     ],
                   ),
@@ -244,6 +242,26 @@ class _MiniPlayerState extends ConsumerState<MiniPlayer> {
         ),
       ),
     );
+  }
+
+  /// A zero duration means the track has not been probed yet. Seeking to the
+  /// end of the track in that state seeks to 0, which looked like the playhead
+  /// jumping to the start; fall back to a no-op instead.
+  Future<void> _seekRelative(
+    MediaService mediaService,
+    Duration position,
+    Duration duration,
+    Duration offset,
+  ) async {
+    if (duration <= Duration.zero) return;
+    final target = position + offset;
+    if (target < Duration.zero) {
+      await mediaService.seek(Duration.zero);
+    } else if (target > duration) {
+      await mediaService.seek(duration);
+    } else {
+      await mediaService.seek(target);
+    }
   }
 
   String _formatDuration(Duration d) => formatDuration(d);
@@ -261,8 +279,13 @@ class _MarqueeText extends StatefulWidget {
 class _MarqueeTextState extends State<_MarqueeText>
     with SingleTickerProviderStateMixin {
   late AnimationController _controller;
-  late Animation<Offset> _animation;
+  late Animation<double> _animation;
   bool _needsScroll = false;
+  double _overflowPx = 0;
+
+  /// Gap left on the right while the text scrolls, so the end of the string is
+  /// fully visible before it wraps back around.
+  static const double _trailingGap = 24;
 
   @override
   void initState() {
@@ -272,10 +295,9 @@ class _MarqueeTextState extends State<_MarqueeText>
       duration: const Duration(seconds: 8),
     );
 
-    _animation = Tween<Offset>(
-      begin: Offset.zero,
-      end: const Offset(-0.5, 0),
-    ).animate(CurvedAnimation(parent: _controller, curve: Curves.linear));
+    _animation = _controller.drive(
+      Tween<double>(begin: 0, end: 1).chain(CurveTween(curve: Curves.linear)),
+    );
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _checkIfNeedsScroll();
@@ -286,22 +308,40 @@ class _MarqueeTextState extends State<_MarqueeText>
     if (!mounted) return;
 
     final renderBox = context.findRenderObject() as RenderBox?;
-    if (renderBox != null) {
-      final width = renderBox.size.width;
+    if (renderBox == null) return;
 
-      final textSpan = TextSpan(text: widget.text, style: widget.style);
-      final textPainter = TextPainter(
-        text: textSpan,
-        textDirection: TextDirection.ltr,
+    final width = renderBox.size.width;
+    if (width <= 0) return;
+
+    final textPainter = TextPainter(
+      text: TextSpan(text: widget.text, style: widget.style),
+      textDirection: TextDirection.ltr,
+      maxLines: 1,
+    )..layout();
+
+    // Scroll distance is the real overflow width plus the trailing gap. The
+    // previous implementation used a fixed 100px sweep, which clipped long
+    // chapter titles and left a dead gap for short ones.
+    final overflow = textPainter.width - width + _trailingGap;
+    final needsScroll = textPainter.width > width;
+
+    if (needsScroll != _needsScroll || overflow != _overflowPx) {
+      setState(() {
+        _needsScroll = needsScroll;
+        _overflowPx = overflow;
+      });
+    }
+
+    if (needsScroll) {
+      // Scale the duration with the distance so the speed is constant rather
+      // than the sweep being time-based.
+      _controller.duration = Duration(
+        milliseconds: (overflow / 30 * 1000).clamp(2000, 30000).toInt(),
       );
-      textPainter.layout();
-
-      if (textPainter.width > width) {
-        setState(() {
-          _needsScroll = true;
-        });
-        _controller.repeat();
-      }
+      _controller.repeat();
+    } else {
+      _controller.stop();
+      _controller.value = 0;
     }
   }
 
@@ -334,11 +374,12 @@ class _MarqueeTextState extends State<_MarqueeText>
               animation: _animation,
               builder: (context, child) {
                 return Transform.translate(
-                  offset: Offset(_animation.value.dx * 200, 0),
+                  offset: Offset(-_animation.value * _overflowPx, 0),
                   child: Text(
                     widget.text,
                     style: widget.style,
                     maxLines: 1,
+                    softWrap: false,
                     overflow: TextOverflow.visible,
                   ),
                 );

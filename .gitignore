@@ -61,3 +61,6 @@ app.*.map.json
 # Exceptions
 !/windows/runner/resources/*.res
 
+# Agent tooling
+.antigravitycli/
+

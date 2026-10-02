@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:math' as math;
 import 'package:fluent_ui/fluent_ui.dart';
 
@@ -18,21 +19,20 @@ class WaveformVisualizer extends StatefulWidget {
   State<WaveformVisualizer> createState() => _WaveformVisualizerState();
 }
 
-class _WaveformVisualizerState extends State<WaveformVisualizer>
-    with SingleTickerProviderStateMixin {
-  late AnimationController _controller;
+class _WaveformVisualizerState extends State<WaveformVisualizer> {
+  /// The visual is a decorative synthetic ripple, so it does not need to
+  /// repaint at the display refresh rate. Ticking at 25fps instead of 60 cut
+  /// the repaint cost by more than half with no perceptible difference.
+  static const Duration _tickInterval = Duration(milliseconds: 40);
+
+  late final ValueNotifier<double> _phase = ValueNotifier(0);
+  Timer? _timer;
+  double _ticks = 0;
 
   @override
   void initState() {
     super.initState();
-    _controller = AnimationController(
-      vsync: this,
-      duration: const Duration(seconds: 2),
-    );
-
-    if (widget.isPlaying) {
-      _controller.repeat();
-    }
+    if (widget.isPlaying) _start();
   }
 
   @override
@@ -40,29 +40,45 @@ class _WaveformVisualizerState extends State<WaveformVisualizer>
     super.didUpdateWidget(oldWidget);
     if (widget.isPlaying != oldWidget.isPlaying) {
       if (widget.isPlaying) {
-        _controller.repeat();
+        _start();
       } else {
-        _controller.stop();
+        _stop();
       }
     }
   }
 
+  void _start() {
+    _timer?.cancel();
+    _timer = Timer.periodic(_tickInterval, (_) {
+      _ticks += _tickInterval.inMilliseconds / 2000.0;
+      _phase.value = _ticks % 1.0;
+    });
+  }
+
+  void _stop() {
+    _timer?.cancel();
+    _timer = null;
+    // Settle on a calm frame rather than freezing mid-ripple.
+    _phase.value = 0;
+  }
+
   @override
   void dispose() {
-    _controller.dispose();
+    _timer?.cancel();
+    _phase.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
     return RepaintBoundary(
-      child: AnimatedBuilder(
-        animation: _controller,
-        builder: (context, child) {
+      child: ValueListenableBuilder<double>(
+        valueListenable: _phase,
+        builder: (context, phase, _) {
           return CustomPaint(
             size: Size(double.infinity, widget.height),
             painter: _WaveformPainter(
-              animationValue: _controller.value,
+              animationValue: phase,
               isPlaying: widget.isPlaying,
               color: widget.color,
               barCount: widget.barCount,

@@ -6,6 +6,7 @@ import 'package:canto_sync/core/utils/logger.dart';
 import 'package:canto_sync/features/library/data/library_service.dart';
 import 'package:canto_sync/features/library/data/book.dart';
 import 'package:canto_sync/features/stats/data/stats_service.dart';
+import 'package:canto_sync/core/constants/app_constants.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
 part 'playback_sync_service.g.dart';
@@ -45,6 +46,29 @@ class PlaybackSyncService {
   bool _pendingSave = false;
   Book? _currentBook;
   int _sessionSeconds = 0;
+  bool _wasPlaying = false;
+
+  /// Flushes any accumulated but unrecorded stats seconds. Called when
+  /// playback pauses so short sessions are not lost.
+  void _flushPendingStats() {
+    if (_sessionSeconds > 0) {
+      final seconds = _sessionSeconds;
+      _sessionSeconds = 0;
+      unawaited(_recordStatsSession(seconds));
+    }
+  }
+
+  Future<void> _startStatsSession() async {
+    final book = _currentBook;
+    if (book == null) return;
+    try {
+      await _ref
+          .read(listeningStatsServiceProvider)
+          .startListeningSession(book);
+    } catch (e, stack) {
+      logger.e('Error starting stats session', error: e, stackTrace: stack);
+    }
+  }
 
   void _init() {
     _subscription = _mediaService.positionStream.listen((position) {
@@ -57,57 +81,106 @@ class PlaybackSyncService {
       }
     });
 
-    // Stats sampling timer: ticks every 10s, records every 30s of playback
+    // Stats sampling timer: ticks every 10s, records every 30s of playback.
+    // A "session" starts when playback resumes after being idle, so pausing
+    // for 25s must not silently drop the accumulated seconds.
     _statsTimer = Timer.periodic(const Duration(seconds: 10), (timer) {
-      if (_currentPath != null && _mediaService.isPlaying) {
-        _sessionSeconds += 10;
-        if (_sessionSeconds >= 30) {
-          unawaited(_recordStatsSession(_sessionSeconds));
-          _sessionSeconds = 0;
-        }
+      if (_currentPath == null || _currentBook == null) return;
+
+      if (!_mediaService.isPlaying) {
+        _flushPendingStats();
+        _wasPlaying = false;
+        return;
+      }
+
+      if (!_wasPlaying) {
+        _wasPlaying = true;
+        unawaited(_startStatsSession());
+      }
+
+      _sessionSeconds += 10;
+      if (_sessionSeconds >= 30) {
+        unawaited(_recordStatsSession(_sessionSeconds));
+        _sessionSeconds = 0;
       }
     });
 
     _completedSubscription = _mediaService.completedStream.listen((completed) {
-      if (completed) {
-        final playlistLength = _currentBook?.audioFiles?.length ?? 1;
-        final currentIndex = _mediaService.currentIndex;
-        if (playlistLength <= 1 || currentIndex >= playlistLength - 1) {
-          unawaited(onPlaybackCompleted());
-        }
-      }
+      if (!completed) return;
+      if (!_isBookFinished()) return;
+      unawaited(onPlaybackCompleted());
     });
 
     _chaptersSubscription = _mediaService.chaptersStream.listen((chapters) {
-      if (_currentBook != null &&
-          chapters.isNotEmpty &&
-          (_currentBook!.audioFiles == null ||
-              _currentBook!.audioFiles!.length <= 1) &&
-          (_currentBook!.internalChapters == null ||
-              _currentBook!.internalChapters!.isEmpty)) {
-        final updatedChapters = chapters
-            .map(
-              (c) => ChapterMetadata(
-                title: c.title,
-                startTime: c.startTime,
-                endTime: c.endTime,
-              ),
-            )
-            .toList();
+      final book = _currentBook;
+      if (book == null || chapters.isEmpty) return;
+      // Only single-file books get chapters persisted from mpv.
+      if ((book.audioFiles?.length ?? 0) > 1) return;
+      if ((book.internalChapters?.isNotEmpty ?? false)) return;
 
-        _currentBook!.internalChapters = updatedChapters;
-        _libraryService
-            .saveBook(_currentBook!)
-            .then((_) {
-              logger.i(
-                'Saved ${chapters.length} chapters from mpv to DB for book: ${_currentBook!.title}',
-              );
-            })
-            .catchError((e) {
-              logger.e('Error updating book chapters from mpv stream', error: e);
-            });
-      }
+      final updatedChapters = chapters
+          .map(
+            (c) => ChapterMetadata(
+              title: c.title,
+              startTime: c.startTime,
+              endTime: c.endTime,
+            ),
+          )
+          .toList();
+
+      // Re-read the book inside the service rather than saving the cached
+      // instance, which was captured at resume time and would otherwise
+      // overwrite progress/lastPlayed updates written since.
+      _libraryService
+          .saveChapters(book.path, updatedChapters)
+          .then((_) {
+            logger.i(
+              'Saved ${chapters.length} chapters from mpv to DB for book: ${book.title}',
+            );
+          })
+          .catchError((e, stack) {
+            logger.e(
+              'Error updating book chapters from mpv stream',
+              error: e,
+              stackTrace: stack,
+            );
+          });
     });
+  }
+
+  /// Whether the whole book (not just the current file) has finished.
+  ///
+  /// Requires the final playlist item to have completed *and* the saved
+  /// position to sit at/after the completion threshold, so scrubbing to the
+  /// end of an early file no longer marks the entire book complete.
+  bool _isBookFinished() {
+    final book = _currentBook;
+    if (book == null) return false;
+
+    final audioFiles = book.audioFiles ?? const <String>[];
+    final playlistLength = audioFiles.isEmpty ? 1 : audioFiles.length;
+    final currentIndex = _mediaService.currentIndex;
+    final isLastItem =
+        playlistLength <= 1 || currentIndex >= playlistLength - 1;
+    if (!isLastItem) return false;
+
+    final total = book.durationSeconds;
+    if (total == null || total <= 0) return true;
+
+    final files = book.filesMetadata;
+    final maxIndex = (files?.length ?? 1) - 1;
+    final trackIndex = (book.lastTrackIndex ?? currentIndex).clamp(0, maxIndex);
+
+    double position = book.positionSeconds ?? 0;
+    if (files != null && files.length > 1) {
+      double cumulative = 0;
+      for (var i = 0; i < trackIndex && i < files.length; i++) {
+        cumulative += files[i].duration ?? 0;
+      }
+      position += cumulative;
+    }
+
+    return (position / total) >= AppConstants.bookCompletionThreshold;
   }
 
   void setCurrentPath(String? path) {
@@ -166,6 +239,11 @@ class PlaybackSyncService {
       audioFiles = book.audioFiles;
       isDirectory = book.isDirectory ?? false;
       lastTrackIndex = book.lastTrackIndex;
+    } else {
+      // The book was deleted or moved. Keeping the previous _currentBook would
+      // attribute this book's listening time and chapters to the old one.
+      logger.w('No book found in library for path: $path');
+      _currentBook = null;
     }
 
     if (isDirectory && audioFiles != null && audioFiles.isNotEmpty) {
@@ -332,22 +410,24 @@ class PlaybackSyncService {
     if (_debounceTimer?.isActive ?? false) return;
 
     _debounceTimer = Timer(const Duration(seconds: 2), () {
-      _performSave();
+      unawaited(_performSave());
     });
   }
 
   Future<void> _performSave() async {
-    if (_currentPath != null) {
-      _pendingSave = false;
-      await _libraryService.updateProgress(
-        _currentPath!,
-        _lastPosition,
-        trackIndex: _lastTrackIndex,
-      );
-    }
+    final path = _currentPath;
+    // Clear the flag unconditionally. Leaving it set when there is nothing to
+    // save made dispose() re-save stale data forever.
+    _pendingSave = false;
+    if (path == null) return;
+    await _libraryService.updateProgress(
+      path,
+      _lastPosition,
+      trackIndex: _lastTrackIndex,
+    );
   }
 
-  /// Forces a save immediately. Used during app shutdown.
+  /// Forces a save immediately. Used during app shutdown and window close.
   Future<void> forceSave() async {
     _debounceTimer?.cancel();
     await _performSave();
@@ -361,9 +441,7 @@ class PlaybackSyncService {
     _statsTimer?.cancel();
 
     // Record any pending stats time
-    if (_sessionSeconds > 0) {
-      unawaited(_recordStatsSession(_sessionSeconds));
-    }
+    _flushPendingStats();
 
     if (_pendingSave && _currentPath != null) {
       // Best effort save on dispose
@@ -392,18 +470,19 @@ class PlaybackSyncService {
         ? file.title!
         : 'Track ${i + 1}';
 
+    final start = currentStartTime;
     if (duration != null) {
+      final end = currentStartTime + duration;
       chapters.add(
-        Chapter(
-          title: title,
-          startTime: currentStartTime,
-          endTime: currentStartTime + duration,
-        ),
+        Chapter(title: title, startTime: start, endTime: end),
       );
-      currentStartTime += duration;
+      currentStartTime = end;
       totalDuration += duration;
     } else {
-      chapters.add(Chapter(title: title, startTime: currentStartTime));
+      // Unknown duration: leave startTime/endTime null-safe and advance by
+      // nothing, but keep the chapter index aligned with the playlist item so
+      // jumping to it still selects the right file.
+      chapters.add(Chapter(title: title, startTime: start));
     }
   }
 

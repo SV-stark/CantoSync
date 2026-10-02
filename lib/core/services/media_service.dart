@@ -20,8 +20,14 @@ class MediaService {
   }
   Player? _player;
   final Ref _ref;
-  bool _isFetchingChapters = false;
   bool _initFailed = false;
+
+  /// In-flight mpv chapter read, de-duplicated by [getChapters].
+  Future<List<Chapter>>? _chapterFetchFuture;
+
+  /// True once the player failed to construct so the UI can surface an error
+  /// instead of silently showing an inert player forever.
+  bool get isInitialised => _player != null && !_initFailed;
 
   Player get _p {
     if (_initFailed) {
@@ -37,13 +43,20 @@ class MediaService {
   int _chapterFetchGeneration = 0;
 
   void _init() {
+    // Guard against re-entry: the _p getter re-invokes _init() whenever the
+    // player is null, which previously leaked a native handle on each call
+    // because the old instance was overwritten without being disposed.
+    if (_player != null || _initialising) return;
+    _initialising = true;
     try {
-      _player = Player();
-      _playerDurationSubscription = _player!.stream.duration.listen((d) {
+      final player = Player();
+      _playerDurationSubscription?.cancel();
+      _playerDurationSubscription = player.stream.duration.listen((d) {
         if (_customTotalDuration == null) {
           _totalDurationController.add(d);
         }
       });
+      _player = player;
       _initFilters();
       _initFailed = false;
     } catch (e, stack) {
@@ -53,8 +66,12 @@ class MediaService {
         error: e,
         stackTrace: stack,
       );
+    } finally {
+      _initialising = false;
     }
   }
+
+  bool _initialising = false;
 
   // State Streams
   Stream<bool> get playingStream =>
@@ -89,7 +106,15 @@ class MediaService {
 
   List<Chapter>? _customChapters;
   List<Chapter>? get customChapters => _customChapters;
+
+  /// Total duration override for multi-file books. Reset to null on every
+  /// open() so the previous book's total never leaks into the next one.
   Duration? _customTotalDuration;
+
+  /// Set by the player so the UI can tell folder-books from single files
+  /// reliably, instead of inferring it from a possibly-stale duration delta.
+  bool _isPlaylistOpen = false;
+  bool get isPlaylistOpen => _isPlaylistOpen;
 
   final StreamController<List<Chapter>> _chaptersController =
       StreamController<List<Chapter>>.broadcast();
@@ -107,9 +132,14 @@ class MediaService {
     _customChapters = chapters;
     _customTotalDuration = totalDuration;
     final generation = ++_chapterFetchGeneration;
+    _isPlaylistOpen = mediaSource is List<String> && mediaSource.length > 1;
 
     if (totalDuration != null) {
       _totalDurationController.add(totalDuration);
+    } else {
+      // Clear the previous book's total immediately. Leaving it in place made
+      // the next book briefly look "multi-file" and corrupted the seek maths.
+      _totalDurationController.add(Duration.zero);
     }
 
     if (chapters != null) {
@@ -118,7 +148,10 @@ class MediaService {
       _chaptersController.add([]);
       unawaited(
         getChapters(generation: generation).then((c) {
-          if (generation == _chapterFetchGeneration) {
+          // Only publish if this is still the book we were asked about, and
+          // only if we actually found chapters -- an empty result from a
+          // superseded fetch must not wipe a good chapter list.
+          if (generation == _chapterFetchGeneration && c.isNotEmpty) {
             _chaptersController.add(c);
           }
         }),
@@ -150,14 +183,22 @@ class MediaService {
     await _p.playOrPause();
   }
 
+  /// Seeks to [position], clamped into the media's valid range.
+  ///
+  /// A negative [position] is invalid for mpv and used to throw when the
+  /// skip-backward shortcut fired within the first 15 seconds of a track.
   Future<void> seek(Duration position) async {
-    await _p.seek(position);
+    var target = position;
+    if (target.isNegative) target = Duration.zero;
+    final total = _player?.state.duration ?? Duration.zero;
+    if (total > Duration.zero && target > total) target = total;
+    await _p.seek(target);
   }
 
   Future<void> setVolume(double volume) async {
-    // Clamp to reasonable max (200)
-    // Note: media_kit volume is 0.0 to 100.0 normally, but can go higher.
-    await _p.setVolume(volume);
+    // media_kit accepts 0-100 (values above 100 are possible but would
+    // desync every volume Slider, which is bounded to 100).
+    await _p.setVolume(volume.clamp(0.0, 100.0));
   }
 
   Future<void> setSkipSilence(bool enabled) async {
@@ -233,56 +274,75 @@ class MediaService {
       return _customChapters!;
     }
 
-    if (_isFetchingChapters) return [];
-    _isFetchingChapters = true;
+    // An in-flight read is de-duplicated by returning the same future rather
+    // than bailing out with an empty list. Bailing out here is what let a
+    // concurrent call report "no chapters" and wipe a good chapter list.
+    final inFlight = _chapterFetchFuture;
+    if (inFlight != null && _chapterFetchGeneration == generation) {
+      return inFlight;
+    }
 
+    final future = _readChapters();
+    _chapterFetchFuture = future;
+    if (generation != null) {
+      _chapterFetchGeneration = generation;
+    }
     try {
-      final platform = _p.platform;
-      if (platform is NativePlayer) {
-        final native = platform;
-        try {
-          // Optimized fast-check retry logic to handle race conditions when metadata is loading.
-          for (int i = 0; i < 10; i++) {
-            if (generation != null && generation != _chapterFetchGeneration) {
-              return [];
-            }
-            final countStr = await native.getProperty('chapters');
-            final count = int.tryParse(countStr) ?? 0;
-
-            if (count > 0) {
-              final resultString = await native.getProperty('chapter-list');
-              if (resultString.isNotEmpty) {
-                final result = jsonDecode(resultString);
-                final chapters = parseMpvChapters(result, _p.state.duration);
-                if (chapters.isNotEmpty) {
-                  logger.d('Found ${chapters.length} chapters internally.');
-                  return chapters;
-                }
-              }
-            }
-
-            final currentDuration = _p.state.duration.inMilliseconds;
-            if (currentDuration > 0 && i > 3) {
-              logger.d('Duration loaded but no chapters found. Likely no internal chapters.');
-              return [];
-            }
-
-            await Future.delayed(const Duration(milliseconds: 150));
-          }
-        } catch (e, stack) {
-          logger.e(
-            'Error fetching/parsing chapters',
-            error: e,
-            stackTrace: stack,
-          );
-        }
-      } else {
-        logger.d(
-          'Player platform is not NativePlayer, cannot fetch internal chapters via mpv properties.',
-        );
-      }
+      return await future;
     } finally {
-      _isFetchingChapters = false;
+      if (identical(_chapterFetchFuture, future)) {
+        _chapterFetchFuture = null;
+      }
+    }
+  }
+
+  Future<List<Chapter>> _readChapters() async {
+    final platform = _p.platform;
+    if (platform is! NativePlayer) {
+      logger.d(
+        'Player platform is not NativePlayer, cannot fetch internal chapters '
+        'via mpv properties.',
+      );
+      return [];
+    }
+
+    final native = platform;
+    try {
+      // Retry briefly to handle the race where mpv has not finished loading
+      // the file's metadata yet.
+      for (var i = 0; i < 10; i++) {
+        final countStr = await native.getProperty('chapters');
+        final count = int.tryParse(countStr) ?? 0;
+
+        if (count > 0) {
+          final resultString = await native.getProperty('chapter-list');
+          if (resultString.isNotEmpty) {
+            final result = jsonDecode(resultString);
+            final chapters = parseMpvChapters(result, _p.state.duration);
+            if (chapters.isNotEmpty) {
+              logger.d('Found ${chapters.length} chapters internally.');
+              return chapters;
+            }
+          }
+        }
+
+        final currentDuration = _p.state.duration.inMilliseconds;
+        if (currentDuration > 0 && i > 3) {
+          logger.d(
+            'Duration loaded but no chapters found. '
+            'Likely no internal chapters.',
+          );
+          return [];
+        }
+
+        await Future.delayed(const Duration(milliseconds: 150));
+      }
+    } catch (e, stack) {
+      logger.e(
+        'Error fetching/parsing chapters',
+        error: e,
+        stackTrace: stack,
+      );
     }
     return [];
   }
@@ -296,9 +356,18 @@ class MediaService {
   Stream<Duration> get totalDurationStream => _totalDurationController.stream;
 
   Future<void> jumpToChapter(int index) async {
-    // If custom chapters exist, it means we are in multi-file mode where
-    // each chapter corresponds to a playlist item.
+    if (index < 0) return;
+
+    // If custom chapters exist, we are in multi-file mode where each chapter
+    // corresponds to a playlist item.
     if (_customChapters != null) {
+      final mediaCount = _p.state.playlist.medias.length;
+      if (index >= mediaCount) {
+        logger.w(
+          'jumpToChapter($index) out of range for $mediaCount media items',
+        );
+        return;
+      }
       await _p.jump(index);
       return;
     }
@@ -310,25 +379,33 @@ class MediaService {
   }
 
   Future<void> jump(int index) async {
+    if (index < 0) return;
     await _p.jump(index);
   }
 
   Future<void> nextChapter() async {
     // If we have a playlist with multiple files (e.g. folder of MP3s),
-    // next/prev usually means next file.
+    // next/prev means next file.
     if (_p.state.playlist.medias.length > 1) {
       await _p.next();
       return;
     }
 
-    // Otherwise, for single files (M4B), we want to navigate internal chapters.
+    // Otherwise, for single files (M4B), navigate internal chapters.
     if (_p.platform is NativePlayer) {
       final native = _p.platform as NativePlayer;
       await native.command(['add', 'chapter', '1']);
     } else {
-      await _p.next();
+      logger.w(
+        'nextChapter: platform is not NativePlayer and only one media is '
+        'loaded; cannot advance chapters.',
+      );
     }
   }
+
+  /// Seconds into the current chapter beyond which "previous" restarts the
+  /// current chapter instead of stepping to the one before it.
+  static const double chapterRestartThresholdSeconds = 3.0;
 
   Future<void> previousChapter() async {
     if (_p.state.playlist.medias.length > 1) {
@@ -338,10 +415,47 @@ class MediaService {
 
     if (_p.platform is NativePlayer) {
       final native = _p.platform as NativePlayer;
+      // Match the familiar media-player behaviour: if we are more than a few
+      // seconds into the chapter, restart it; otherwise step back. mpv's
+      // `add chapter -1` always steps relative to the current chapter.
+      final chapters = _customChapters ?? await getChapters();
+      if (chapters.isNotEmpty) {
+        final position = _p.state.position.inMilliseconds / 1000.0;
+        final chapterIndex = currentChapterIndex(chapters, position);
+        final chapter = chapters[chapterIndex];
+        final intoChapter = position - chapter.startTime;
+        if (chapterIndex > 0 &&
+            intoChapter > chapterRestartThresholdSeconds) {
+          await seek(
+            Duration(milliseconds: (chapter.startTime * 1000).toInt()),
+          );
+          return;
+        }
+      }
       await native.command(['add', 'chapter', '-1']);
     } else {
-      await _p.previous();
+      logger.w(
+        'previousChapter: platform is not NativePlayer and only one media is '
+        'loaded; cannot step back chapters.',
+      );
     }
+  }
+
+  /// Index of the chapter containing [positionSeconds], or 0 if none match.
+  static int currentChapterIndex(
+    List<Chapter> chapters,
+    double positionSeconds,
+  ) {
+    if (chapters.isEmpty) return 0;
+    var index = 0;
+    for (var i = 0; i < chapters.length; i++) {
+      if (chapters[i].startTime <= positionSeconds) {
+        index = i;
+      } else {
+        break;
+      }
+    }
+    return index;
   }
 
   Duration get position => _player != null ? _p.state.position : Duration.zero;
@@ -355,7 +469,9 @@ class MediaService {
 
   void dispose() {
     _playerDurationSubscription?.cancel();
+    _playerDurationSubscription = null;
     _player?.dispose();
+    _player = null;
     _totalDurationController.close();
     _chaptersController.close();
   }

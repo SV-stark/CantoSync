@@ -31,16 +31,68 @@ Future<PackageInfo> packageInfo(Ref ref) async {
 class SettingsScreen extends ConsumerWidget {
   const SettingsScreen({super.key});
 
-  Future<void> _pickFolder(WidgetRef ref) async {
-    final String? result = await FilePicker.getDirectoryPath();
-    if (result != null) {
-      ref.read(appSettingsProvider.notifier).addLibraryPath(result);
-      ref.read(libraryServiceProvider).scanDirectory(result);
+  Future<void> _pickFolder(BuildContext context, WidgetRef ref) async {
+    String? result;
+    try {
+      result = await FilePicker.getDirectoryPath();
+    } catch (e, stack) {
+      logger.e('Folder picker failed', error: e, stackTrace: stack);
+      if (!context.mounted) return;
+      displayInfoBar(
+        context,
+        builder: (context, close) => InfoBar(
+          title: const Text('Could Not Open Folder Picker'),
+          content: const Text('An error occurred while choosing a folder.'),
+          severity: InfoBarSeverity.error,
+          onClose: close,
+        ),
+      );
+      return;
+    }
+
+    if (result == null) return;
+
+    ref.read(appSettingsProvider.notifier).addLibraryPath(result);
+
+    // Await the scan: it used to be a floating future, so any failure (an
+    // unreadable folder, a corrupt audio file) surfaced as an unhandled async
+    // error with no feedback in the UI.
+    try {
+      await ref.read(libraryServiceProvider).scanDirectory(result);
+    } catch (e, stack) {
+      logger.e('Initial scan failed for $result', error: e, stackTrace: stack);
+      if (!context.mounted) return;
+      displayInfoBar(
+        context,
+        builder: (context, close) => InfoBar(
+          title: const Text('Scan Failed'),
+          content: Text(
+            'The folder was added, but some books could not be read.\n$e',
+          ),
+          severity: InfoBarSeverity.warning,
+          onClose: close,
+        ),
+      );
     }
   }
 
   Future<void> _rescanAll(BuildContext context, WidgetRef ref) async {
-    await ref.read(libraryServiceProvider).rescanLibraries();
+    try {
+      await ref.read(libraryServiceProvider).rescanLibraries();
+    } catch (e, stack) {
+      logger.e('Library rescan failed', error: e, stackTrace: stack);
+      if (!context.mounted) return;
+      displayInfoBar(
+        context,
+        builder: (context, close) => InfoBar(
+          title: const Text('Rescan Failed'),
+          content: Text('The library could not be rescanned.\n$e'),
+          severity: InfoBarSeverity.error,
+          onClose: close,
+        ),
+      );
+      return;
+    }
     if (!context.mounted) return;
     displayInfoBar(
       context,
@@ -262,7 +314,7 @@ class SettingsScreen extends ConsumerWidget {
                           Text('Add Folder'),
                         ],
                       ),
-                      onPressed: () => _pickFolder(ref),
+                      onPressed: () => _pickFolder(context, ref),
                     ),
                     Button(
                       child: const Row(

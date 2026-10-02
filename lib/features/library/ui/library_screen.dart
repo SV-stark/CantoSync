@@ -16,6 +16,7 @@ import 'package:canto_sync/core/constants/app_constants.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'package:canto_sync/core/data/keyboard_shortcuts.dart';
 import 'package:canto_sync/core/services/keyboard_shortcuts_service.dart';
+import 'package:canto_sync/core/ui/theme/semantic_colors.dart';
 
 part 'library_screen.g.dart';
 
@@ -42,10 +43,11 @@ class LibraryScreen extends HookConsumerWidget {
       orElse: () => <String>[],
     );
 
-    final searchController = useTextEditingController(
-      text: ref.read(librarySearchQueryProvider),
-    );
+    // Watch first, then seed the controller from the watched value. Reading
+    // the query with ref.read here and re-watching immediately after gave two
+    // sources of truth and violated the no-read-in-build rule.
     final searchQuery = ref.watch(librarySearchQueryProvider);
+    final searchController = useTextEditingController(text: searchQuery);
     useEffect(() {
       if (searchController.text != searchQuery) {
         searchController.text = searchQuery;
@@ -55,12 +57,13 @@ class LibraryScreen extends HookConsumerWidget {
 
     final searchFocusNode = useFocusNode();
     useEffect(() {
+      // Held in a local so the dispose path is guaranteed to unregister the
+      // exact closures that were registered. The previous effect captured
+      // fresh closures on every rebuild while the cleanup list was empty, so
+      // each rebuild appended another live callback and leaked the old ones.
       final callbacks = ref.read(shortcutActionCallbacksProvider);
 
-      void onFocusSearch() {
-        searchFocusNode.requestFocus();
-      }
-
+      void onFocusSearch() => searchFocusNode.requestFocus();
       void onToggleViewMode() {
         ref.read(libraryViewModeProvider.notifier).toggle();
       }
@@ -72,7 +75,7 @@ class LibraryScreen extends HookConsumerWidget {
         callbacks.unregister(ShortcutAction.focusSearch, onFocusSearch);
         callbacks.unregister(ShortcutAction.toggleViewMode, onToggleViewMode);
       };
-    }, []);
+    }, const []);
 
     Future<void> pickFolder() async {
       String? selectedDirectory = await FilePicker.getDirectoryPath();
@@ -131,7 +134,7 @@ class LibraryScreen extends HookConsumerWidget {
               child: TextBox(
                 controller: searchController,
                 focusNode: searchFocusNode,
-                placeholder: 'Search title, author, narrator...',
+                placeholder: 'Search title, author, series...',
                 prefix: const Padding(
                   padding: EdgeInsets.only(left: 8.0),
                   child: Icon(FluentIcons.search, size: 14),
@@ -443,7 +446,9 @@ class _CollectionTileState extends ConsumerState<_CollectionTile> {
                   ),
                   FilledButton(
                     style: ButtonStyle(
-                      backgroundColor: WidgetStatePropertyAll(Colors.red),
+                      backgroundColor: WidgetStatePropertyAll(
+                        context.semanticColors.destructive,
+                      ),
                     ),
                     onPressed: () async {
                       await libraryService.removeCollection(collectionName);
@@ -763,6 +768,7 @@ class _BookCardState extends ConsumerState<BookCard> {
     final hasProgress =
         progress > 0 && progress < AppConstants.bookCompletionThreshold;
     final isCompleted = progress >= AppConstants.bookCompletionThreshold;
+    final semanticColors = context.semanticColors;
 
     return FlyoutTarget(
       controller: _flyoutController,
@@ -829,17 +835,17 @@ class _BookCardState extends ConsumerState<BookCard> {
                               child: Container(
                                 padding: const EdgeInsets.all(4),
                                 decoration: BoxDecoration(
-                                  color: Colors.black.withValues(alpha: 0.7),
+                                  color: semanticColors.overlayScrim,
                                   shape: BoxShape.circle,
                                 ),
                                 child: CircularPercentIndicator(
                                   radius: 12.0,
                                   lineWidth: 3.0,
                                   percent: progress,
-                                  progressColor: Colors.blue,
-                                  backgroundColor: Colors.white.withValues(
-                                    alpha: 0.3,
-                                  ),
+                                  progressColor:
+                                      FluentTheme.of(context).accentColor,
+                                  backgroundColor:
+                                      semanticColors.progressTrack,
                                 ),
                               ),
                             ),
@@ -848,14 +854,14 @@ class _BookCardState extends ConsumerState<BookCard> {
                             _Badge(
                               icon: FluentIcons.check_mark,
                               label: 'Finished',
-                              color: Colors.green,
+                              color: semanticColors.success,
                             ),
 
                           if (hasProgress)
                             _Badge(
                               icon: FluentIcons.play_resume,
                               label: 'Continue',
-                              color: Colors.orange,
+                              color: semanticColors.warning,
                               topOffset: isCompleted ? 36 : 8,
                             ),
 
@@ -869,13 +875,13 @@ class _BookCardState extends ConsumerState<BookCard> {
                                   vertical: 4,
                                 ),
                                 decoration: BoxDecoration(
-                                  color: Colors.black.withValues(alpha: 0.7),
+                                  color: semanticColors.overlayScrim,
                                   borderRadius: BorderRadius.circular(12),
                                 ),
                                 child: Text(
                                   'Book ${book.seriesIndex}${seriesTotal != null ? ' of $seriesTotal' : ''}',
-                                  style: const TextStyle(
-                                    color: Colors.white,
+                                  style: TextStyle(
+                                    color: semanticColors.onOverlay,
                                     fontSize: 11,
                                     fontWeight: FontWeight.w600,
                                   ),
@@ -997,12 +1003,12 @@ class _Badge extends StatelessWidget {
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(icon, size: 12, color: Colors.white),
+            Icon(icon, size: 12, color: context.semanticColors.onOverlay),
             const SizedBox(width: 4),
             Text(
               label,
-              style: const TextStyle(
-                color: Colors.white,
+              style: TextStyle(
+                color: context.semanticColors.onOverlay,
                 fontSize: 11,
                 fontWeight: FontWeight.w600,
               ),
@@ -1072,7 +1078,9 @@ void _showBookContextMenu(
                 ),
                 FilledButton(
                   style: ButtonStyle(
-                    backgroundColor: WidgetStatePropertyAll(Colors.red),
+                    backgroundColor: WidgetStatePropertyAll(
+                      context.semanticColors.destructive,
+                    ),
                   ),
                   onPressed: () {
                     ref.read(libraryServiceProvider).deleteBook(book.path!);

@@ -18,7 +18,15 @@ class TrayService extends TrayListener {
   TrayService(this._ref);
   final Ref _ref;
 
+  /// Whether a usable tray icon was actually registered. The window's
+  /// close-to-tray behaviour depends on this: if the tray failed to
+  /// initialise, hiding the window would leave the app unreachable.
+  bool _isAvailable = false;
+
+  bool get isAvailable => _isAvailable;
+
   Future<void> init() async {
+    _isAvailable = false;
     if (!Platform.isWindows && !Platform.isLinux) return;
     try {
       trayManager.addListener(this);
@@ -37,8 +45,15 @@ class TrayService extends TrayListener {
         MenuItem(key: 'exit_app', label: 'Exit'),
       ];
       await trayManager.setContextMenu(Menu(items: items));
-    } catch (e) {
-      logger.w('Tray initialization failed: $e');
+      _isAvailable = true;
+    } catch (e, stack) {
+      _isAvailable = false;
+      logger.w(
+        'Tray initialization failed; close will destroy the window instead '
+        'of hiding it',
+        error: e,
+        stackTrace: stack,
+      );
     }
   }
 

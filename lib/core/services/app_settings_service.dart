@@ -47,9 +47,16 @@ abstract class AppSettings with _$AppSettings {
   }) = _AppSettings;
 }
 
+/// Id of the single settings document. `0` is a valid explicit Isar id
+/// (the auto-increment sentinel is i64 min), so this row round-trips fine.
+const int kSettingsId = 0;
+
 @collection
 class IsarAppSettings {
-  Id id = 0; // Always 0 for the single settings document
+  IsarAppSettings() : id = kSettingsId;
+
+  /// Always [kSettingsId] for the single settings document.
+  Id id;
 
   @enumerated
   ThemeMode themeMode = ThemeMode.system;
@@ -71,18 +78,26 @@ class IsarAppSettings {
 @riverpod
 class AppSettingsNotifier extends _$AppSettingsNotifier {
   late Isar _isar;
+  bool _loaded = false;
 
   @override
   AppSettings build() {
     _isar = ref.watch(isarProvider);
 
-    final isarSettings = _isar.isarAppSettings.getSync(0);
+    // A synchronous read plus write runs during build() and on the UI thread
+    // during first paint. Do it once, lazily, on the notifier's first use.
+    if (!_loaded) {
+      _loaded = true;
+      final isarSettings = _isar.isarAppSettings.getSync(kSettingsId);
+      if (isarSettings == null) {
+        _isar.writeTxnSync(() {
+          _isar.isarAppSettings.putSync(IsarAppSettings());
+        });
+      }
+    }
 
+    final isarSettings = _isar.isarAppSettings.getSync(kSettingsId);
     if (isarSettings == null) {
-      final defaults = IsarAppSettings();
-      _isar.writeTxnSync(() {
-        _isar.isarAppSettings.putSync(defaults);
-      });
       return const AppSettings();
     }
 
@@ -100,7 +115,8 @@ class AppSettingsNotifier extends _$AppSettingsNotifier {
 
   void _updateIsar(void Function(IsarAppSettings) update) {
     _isar.writeTxnSync(() {
-      final settings = _isar.isarAppSettings.getSync(0) ?? IsarAppSettings();
+      final settings =
+          _isar.isarAppSettings.getSync(kSettingsId) ?? IsarAppSettings();
       update(settings);
       _isar.isarAppSettings.putSync(settings);
     });

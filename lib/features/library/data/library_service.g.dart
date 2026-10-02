@@ -295,7 +295,7 @@ final class LibraryRecentBooksProvider
 }
 
 String _$libraryRecentBooksHash() =>
-    r'3ebcfc3c20a7def5647e10cc772f84d34497a213';
+    r'835e69e4d5b392abd406aec0e5a3b8a22ebe91d8';
 
 @ProviderFor(libraryCollections)
 final libraryCollectionsProvider = LibraryCollectionsProvider._();

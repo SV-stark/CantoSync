@@ -62,41 +62,51 @@ class _PulsingPlayButtonState extends State<PulsingPlayButton>
       width: widget.size * 1.15, // Fixed size to accommodate max pulse
       height: widget.size * 1.15,
       child: Center(
+        // Animate a transform only. Previously the BoxShadow's blurRadius and
+        // spreadRadius were recomputed on every frame, forcing a full repaint
+        // of a 30px-blur shadow 60x a second.
         child: AnimatedBuilder(
           animation: _pulseAnimation,
           builder: (context, child) {
-            return Container(
-              width: widget.size * _pulseAnimation.value,
-              height: widget.size * _pulseAnimation.value,
-              decoration: BoxDecoration(
-                color: Colors.white,
-                shape: BoxShape.circle,
-                boxShadow: [
-                  BoxShadow(
-                    color: widget.isPlaying
-                        ? Colors.white.withValues(alpha: 0.3)
-                        : Colors.transparent,
-                    blurRadius: 30,
-                    spreadRadius: 5,
-                  ),
-                  BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.2),
-                    blurRadius: 20,
-                    offset: const Offset(0, 10),
-                  ),
-                ],
-              ),
-              child: IconButton(
-                icon: Icon(
-                  widget.isPlaying ? FluentIcons.pause : FluentIcons.play,
-                  color: Colors.black,
-                  size: widget.size * 0.4,
-                ),
-                onPressed: widget.onPressed,
-              ),
+            return Transform.scale(
+              scale: _pulseAnimation.value,
+              child: child,
             );
           },
+          child: RepaintBoundary(child: _buildButton(context)),
         ),
+      ),
+    );
+  }
+
+  Widget _buildButton(BuildContext context) {
+    return Container(
+      width: widget.size,
+      height: widget.size,
+      decoration: BoxDecoration(
+        color: Colors.white,
+        shape: BoxShape.circle,
+        boxShadow: [
+          if (widget.isPlaying)
+            BoxShadow(
+              color: Colors.white.withValues(alpha: 0.3),
+              blurRadius: 30,
+              spreadRadius: 5,
+            ),
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.2),
+            blurRadius: 20,
+            offset: const Offset(0, 10),
+          ),
+        ],
+      ),
+      child: IconButton(
+        icon: Icon(
+          widget.isPlaying ? FluentIcons.pause : FluentIcons.play,
+          color: Colors.black,
+          size: widget.size * 0.4,
+        ),
+        onPressed: widget.onPressed,
       ),
     );
   }

@@ -7,7 +7,6 @@ class DailyListeningStats {
   DailyListeningStats({
     required this.date,
     this.totalSecondsListened = 0,
-    this.booksListened = const [],
     this.listeningSessions = 0,
   });
   Id id = Isar.autoIncrement;
@@ -17,7 +16,10 @@ class DailyListeningStats {
 
   int totalSecondsListened;
 
-  List<String> booksListened;
+  /// Grown in place by recordListeningTime. Initialised to a growable list per
+  /// instance -- a `const []` default is a single shared immutable instance and
+  /// threw on the first `.add()`.
+  List<String> booksListened = <String>[];
 
   int listeningSessions;
 
@@ -31,7 +33,6 @@ class AuthorStats {
     this.totalSecondsListened = 0,
     this.booksCompleted = 0,
     this.booksStarted = 0,
-    this.bookTitles = const [],
   });
   Id id = Isar.autoIncrement;
 
@@ -44,7 +45,9 @@ class AuthorStats {
 
   int booksStarted;
 
-  List<String> bookTitles;
+  /// Book *paths*, not titles, so two same-titled books stay distinct and a
+  /// rename does not register as a new book. See stats_service.
+  List<String> bookTitles = <String>[];
 
   double get totalHours => totalSecondsListened / 3600;
 }
@@ -83,11 +86,17 @@ class BookCompletionStats {
 @collection
 class ListeningSpeedPreference {
   ListeningSpeedPreference({
+    this.id = kSpeedPreferenceId,
     this.averageSpeed = 1.0,
     this.totalSessionsAtSpeed = 0,
     this.speedUsageCountJson,
   });
-  Id id = Isar.autoIncrement;
+
+  /// Fixed id so the single-row preferences document is always addressable.
+  /// `Isar.autoIncrement` is a sentinel (i64 min), not a valid lookup key.
+  static const Id kSpeedPreferenceId = 0;
+
+  Id id;
 
   double averageSpeed;
 

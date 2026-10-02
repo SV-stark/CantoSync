@@ -19,7 +19,9 @@ abstract class UpdateInfo with _$UpdateInfo {
 
 @Riverpod(keepAlive: true)
 UpdateService updateService(Ref ref) {
-  return UpdateService();
+  final service = UpdateService();
+  ref.onDispose(service.dispose);
+  return service;
 }
 
 class UpdateService {
@@ -35,8 +37,8 @@ class UpdateService {
 
   Future<UpdateInfo?> checkForUpdates() async {
     try {
-      final currentVersion = currentVersionOverride ??
-          (await PackageInfo.fromPlatform()).version;
+      final currentVersion =
+          currentVersionOverride ?? (await PackageInfo.fromPlatform()).version;
 
       final url = Uri.parse(
         'https://api.github.com/repos/$repoOwner/$repoName/releases/latest',
@@ -48,7 +50,7 @@ class UpdateService {
         if (data is! Map<String, dynamic>) return null;
         final tagName = data['tag_name']?.toString();
         if (tagName == null) return null;
-        final latestVersion = tagName.replaceAll('v', '');
+        final latestVersion = tagName.replaceFirst(RegExp('^v'), '');
 
         if (isNewerVersion(currentVersion, latestVersion)) {
           return UpdateInfo(
@@ -57,24 +59,58 @@ class UpdateService {
             releaseNotes: data['body'] as String?,
           );
         }
+      } else {
+        logger.w('Update check returned HTTP ${response.statusCode}');
       }
-    } catch (e) {
-      logger.e('Error checking for updates', error: e);
+    } catch (e, stack) {
+      logger.e(
+        'Error checking for updates',
+        error: e,
+        stackTrace: stack,
+      );
     }
     return null;
   }
 
+  /// Compares two semver-ish version strings.
+  ///
+  /// Returns false for anything it cannot parse rather than throwing or
+  /// guessing: a pre-release build string such as `1.2.0-beta.3` must not be
+  /// reported as outdated, and a malformed tag must not crash the caller.
   bool isNewerVersion(String current, String latest) {
-    try {
-      final currentParts = current.split('.').map(int.parse).toList();
-      final latestParts = latest.split('.').map(int.parse).toList();
+    final currentParts = _parseVersion(current);
+    final latestParts = _parseVersion(latest);
+    if (currentParts == null || latestParts == null) {
+      logger.w(
+        'Could not compare versions: current=$current latest=$latest',
+      );
+      return false;
+    }
 
-      for (var i = 0; i < latestParts.length; i++) {
-        if (i >= currentParts.length) return true;
-        if (latestParts[i] > currentParts[i]) return true;
-        if (latestParts[i] < currentParts[i]) return false;
-      }
-    } catch (_) {}
+    final length = currentParts.length > latestParts.length
+        ? currentParts.length
+        : latestParts.length;
+    for (var i = 0; i < length; i++) {
+      // A missing component is treated as 0, so 1.2 == 1.2.0.
+      final c = i < currentParts.length ? currentParts[i] : 0;
+      final l = i < latestParts.length ? latestParts[i] : 0;
+      if (l > c) return true;
+      if (l < c) return false;
+    }
     return false;
   }
+
+  /// Extracts the leading dot-separated integers from [version], ignoring any
+  /// pre-release/build suffix. Returns null if there is no leading integer.
+  static List<int>? _parseVersion(String version) {
+    final parts = <int>[];
+    for (final raw in version.trim().split('.')) {
+      final match = RegExp(r'^(\d+)').firstMatch(raw.trim());
+      if (match == null) break;
+      parts.add(int.parse(match.group(1)!));
+    }
+    return parts.isEmpty ? null : parts;
+  }
+
+  void dispose() => _client.close();
 }

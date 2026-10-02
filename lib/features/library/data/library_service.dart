@@ -2,7 +2,6 @@ import 'dart:async';
 import 'dart:io';
 import 'dart:isolate';
 import 'package:isar_community/isar.dart';
-import 'package:media_kit/media_kit.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
 import 'package:metadata_audio/metadata_audio.dart' hide Chapter;
@@ -68,10 +67,14 @@ List<Book> filterBooks(
     final author = book.author?.toLowerCase() ?? '';
     final narrator = book.narrator?.toLowerCase() ?? '';
     final album = book.album?.toLowerCase() ?? '';
+    final series = book.series?.toLowerCase() ?? '';
+    final description = book.description?.toLowerCase() ?? '';
     return title.contains(trimmed) ||
         author.contains(trimmed) ||
         narrator.contains(trimmed) ||
-        album.contains(trimmed);
+        album.contains(trimmed) ||
+        series.contains(trimmed) ||
+        description.contains(trimmed);
   }).toList();
 }
 
@@ -93,13 +96,17 @@ List<Book> libraryRecentBooks(Ref ref) {
   final booksAsync = ref.watch(libraryBooksProvider);
   return booksAsync.maybeWhen(
     data: (books) {
-      final sorted = List<Book>.from(books);
-      sorted.sort(
+      // Only surface books with real progress, otherwise "Continue Listening"
+      // fills with never-opened titles when fewer than 5 books have been played.
+      final played = books
+          .where((b) => b.lastPlayed != null || (b.positionSeconds ?? 0) > 0)
+          .toList();
+      played.sort(
         (a, b) => (b.lastPlayed ?? DateTime(0)).compareTo(
           a.lastPlayed ?? DateTime(0),
         ),
       );
-      return sorted.take(5).toList();
+      return played.take(5).toList();
     },
     orElse: () => [],
   );
@@ -147,14 +154,38 @@ Future<Map<String, List<Book>>> libraryGroupedBooks(Ref ref) async {
 }
 
 String _cleanMetadataString(String str) {
-  return str
-      .replaceAll(RegExp(r'[_\\-]'), ' ')
-      .replaceAll(RegExp(r'\s+'), ' ')
-      .trim();
+  // Only collapse runs of whitespace. Replacing every '-' and '_' mangled real
+  // titles ("Spider-Man" -> "Spider Man", "Sci-Fi" -> "Sci Fi") and the damage
+  // was then persisted over the user's own metadata on every rescan.
+  return str.replaceAll(RegExp(r'\s+'), ' ').trim();
 }
 
 bool isDeletableCover(String coversDirPath, String coverPath) {
-  return p.isWithin(coversDirPath, coverPath);
+  // Normalise both sides: Isar can return paths with '/' separators even on
+  // Windows, and a mixed-separator comparison makes isWithin() return false,
+  // so cached covers were never actually removed.
+  return p.isWithin(
+    p.normalize(p.absolute(coversDirPath)),
+    p.normalize(p.absolute(coverPath)),
+  );
+}
+
+/// Deletes cached cover files that live inside the app-managed covers dir.
+Future<void> _deleteCachedCovers(Iterable<String> coverPaths) async {
+  try {
+    final appDir = await getApplicationDocumentsDirectory();
+    final coversDirPath = p.join(appDir.path, 'canto_sync', 'covers');
+    for (final coverPath in coverPaths) {
+      if (!isDeletableCover(coversDirPath, coverPath)) continue;
+      final file = File(coverPath);
+      if (await file.exists()) {
+        await file.delete();
+        logger.d('Deleted cached cover file: $coverPath');
+      }
+    }
+  } catch (e) {
+    logger.w('Failed to delete cached cover files: $e');
+  }
 }
 
 Future<Map<String, List<String>>> performFileScan(String path) async {
@@ -206,22 +237,24 @@ class LibraryService {
     });
   }
 
+  /// Persists mpv-discovered chapters for a single-file book.
+  ///
+  /// Re-reads the row inside the transaction instead of writing a caller-held
+  /// snapshot, so a concurrent progress update is not clobbered.
+  Future<void> saveChapters(String? path, List<ChapterMetadata> chapters) async {
+    if (path == null || chapters.isEmpty) return;
+    await _isar.writeTxn(() async {
+      final book = await _isar.books.where().pathEqualTo(path).findFirst();
+      if (book == null) return;
+      book.internalChapters = chapters;
+      await _isar.books.put(book);
+    });
+  }
+
   Future<void> deleteBook(String path) async {
     final book = await _isar.books.where().pathEqualTo(path).findFirst();
-    if (book != null && book.coverPath != null) {
-      try {
-        final appDir = await getApplicationDocumentsDirectory();
-        final coversDirPath = p.join(appDir.path, 'canto_sync', 'covers');
-        if (isDeletableCover(coversDirPath, book.coverPath!)) {
-          final file = File(book.coverPath!);
-          if (await file.exists()) {
-            await file.delete();
-            logger.d('Deleted cached cover file: ${book.coverPath}');
-          }
-        }
-      } catch (e) {
-        logger.w('Failed to delete cached cover file: $e');
-      }
+    if (book?.coverPath != null) {
+      await _deleteCachedCovers([book!.coverPath!]);
     }
     await _isar.writeTxn(() async {
       await _isar.books.where().pathEqualTo(path).deleteFirst();
@@ -277,63 +310,74 @@ class LibraryService {
     }
   }
 
+  /// Scans every configured library path and reconciles the database.
   Future<void> rescanLibraries() async {
     final settings = _ref.read(appSettingsProvider);
     final libraryPaths = settings.libraryPaths;
 
-    MediaKit.ensureInitialized(
-      libmpv: Platform.isWindows ? 'libmpv-2.dll' : null,
-    );
-    final probePlayer = Player(
-      configuration: const PlayerConfiguration(vo: 'null'),
-    );
-
+    // No probe Player is created here: metadata is read via parseFile in
+    // isolates, so the native handle was allocated and never used.
     final Set<String> allFoundBookPaths = {};
 
-    try {
-      for (final path in libraryPaths) {
-        if (await Directory(path).exists()) {
-          final found = await _scanDirectory(path, probePlayer);
-          allFoundBookPaths.addAll(found);
-        } else {
-          logger.w('Library folder inaccessible (unmounted/offline): $path');
-        }
+    for (final path in libraryPaths) {
+      if (await Directory(path).exists()) {
+        final found = await _scanDirectory(path);
+        allFoundBookPaths.addAll(found);
+      } else {
+        logger.w('Library folder inaccessible (unmounted/offline): $path');
       }
+    }
 
-      final existingBooks = await getAllBooks();
-      final idsToRemove = <int>[];
+    final existingBooks = await getAllBooks();
+    final idsToRemove = <int>[];
 
-      for (final book in existingBooks) {
-        bool isManaged = false;
-        bool isLibAvailable = false;
-        for (final libPath in libraryPaths) {
-          final bookPath = book.path;
-          if (bookPath != null &&
-              (p.isWithin(libPath, bookPath) || p.equals(libPath, bookPath))) {
-            isManaged = true;
-            if (await Directory(libPath).exists()) {
-              isLibAvailable = true;
-            }
-            break;
-          }
-        }
+    for (final book in existingBooks) {
+      final bookPath = book.path;
+      if (bookPath == null) continue;
 
-        if (isManaged && isLibAvailable && !allFoundBookPaths.contains(book.path)) {
+      // A book outside every configured library path is no longer managed.
+      // Without this, removing a folder in Settings left its books in the
+      // database forever, still showing progress bars and resume positions.
+      final isUnderAnyLibrary = libraryPaths.any(
+        (libPath) =>
+            p.isWithin(libPath, bookPath) || p.equals(libPath, bookPath),
+      );
+      if (!isUnderAnyLibrary) {
+        // Guard: if the user has removed every library, keep the existing rows
+        // rather than wiping the database.
+        if (libraryPaths.isNotEmpty) {
           idsToRemove.add(book.id);
         }
+        continue;
       }
 
-      if (idsToRemove.isNotEmpty) {
-        await _isar.writeTxn(() async {
-          await _isar.books.deleteAll(idsToRemove);
-        });
+      final libPath = libraryPaths.firstWhere(
+        (lib) => p.isWithin(lib, bookPath) || p.equals(lib, bookPath),
+      );
+      // Only prune from a library that is actually mounted: an offline drive
+      // must not delete the whole library from the database.
+      final isLibAvailable = await Directory(libPath).exists();
+      if (isLibAvailable && !allFoundBookPaths.contains(bookPath)) {
+        idsToRemove.add(book.id);
       }
-
-      // After scanning all, update series indices if needed
-      await _updateSeriesIndices();
-    } finally {
-      await probePlayer.dispose();
     }
+
+    if (idsToRemove.isNotEmpty) {
+      // Collect cached covers before deleting so the orphaned files on disk
+      // are cleaned up too, matching what cleanOrphanedBooks() does.
+      final coversToDelete = existingBooks
+          .where((b) => idsToRemove.contains(b.id) && b.coverPath != null)
+          .map((b) => b.coverPath!)
+          .toList();
+
+      await _isar.writeTxn(() async {
+        await _isar.books.deleteAll(idsToRemove);
+      });
+      await _deleteCachedCovers(coversToDelete);
+    }
+
+    // After scanning all, update series indices if needed
+    await _updateSeriesIndices();
   }
 
   Future<void> _updateSeriesIndices() async {
@@ -348,6 +392,10 @@ class LibraryService {
     final updatedBooks = <Book>[];
     for (var entry in seriesGroups.entries) {
       final seriesBooks = entry.value;
+      // Order by explicit index first, then title. Books with no index sort
+      // LAST (not first) so that appending a newly-discovered title to an
+      // existing series yields the next sequential number rather than
+      // colliding with the volumes the user already numbered.
       seriesBooks.sort((a, b) {
         if (a.seriesIndex != null && b.seriesIndex != null) {
           return a.seriesIndex!.compareTo(b.seriesIndex!);
@@ -356,10 +404,17 @@ class LibraryService {
         if (b.seriesIndex != null) return 1;
         return (a.title ?? '').compareTo(b.title ?? '');
       });
-      for (int i = 0; i < seriesBooks.length; i++) {
-        if (seriesBooks[i].seriesIndex == null) {
-          seriesBooks[i].seriesIndex = i + 1;
-          updatedBooks.add(seriesBooks[i]);
+
+      // Number from the highest existing index so explicit user-set values
+      // are preserved and only gaps at the tail get filled in.
+      var next = 1;
+      for (final book in seriesBooks) {
+        if (book.seriesIndex != null) {
+          next = book.seriesIndex! + 1;
+        } else {
+          book.seriesIndex = next;
+          next++;
+          updatedBooks.add(book);
         }
       }
     }
@@ -372,14 +427,7 @@ class LibraryService {
   }
 
   Future<List<String>> scanDirectory(String path, {bool forceUpdate = false}) async {
-    final probePlayer = Player(
-      configuration: const PlayerConfiguration(vo: 'null'),
-    );
-    try {
-      return await _scanDirectory(path, probePlayer, forceUpdate: forceUpdate);
-    } finally {
-      await probePlayer.dispose();
-    }
+    return _scanDirectory(path, forceUpdate: forceUpdate);
   }
 
   Future<void> updateBookCover(Book book, String newCoverFile) async {
@@ -420,26 +468,50 @@ class LibraryService {
           .list(recursive: false, followLinks: false)
           .toList();
 
+      // Common cover filenames, most-specific first. Matching only on the
+      // substring "cover" missed folder.jpg / front.jpg / <title>.jpg.
+      const preferredNames = [
+        'cover',
+        'folder',
+        'front',
+        'albumart',
+        'album',
+        'artwork',
+        'art',
+        'thumb',
+        'image',
+        'img',
+      ];
+
       for (final entity in entities) {
-        if (entity is File) {
-          final name = p.basename(entity.path).toLowerCase();
-          final ext = p.extension(entity.path).toLowerCase();
-          if (imageExtensions.contains(ext) && name.contains('cover')) {
-            return entity.path;
-          }
+        if (entity is! File) continue;
+        final name = p.basename(entity.path).toLowerCase();
+        final ext = p.extension(entity.path).toLowerCase();
+        if (!imageExtensions.contains(ext)) continue;
+
+        final stem = p.basenameWithoutExtension(name);
+        if (preferredNames.contains(stem) || stem.startsWith('cover')) {
+          return entity.path;
         }
       }
+
+      // Fall back to the single image in the folder if there is exactly one.
+      final images = entities
+          .whereType<File>()
+          .where(
+            (f) => imageExtensions.contains(
+              p.extension(f.path).toLowerCase(),
+            ),
+          )
+          .toList();
+      if (images.length == 1) return images.first.path;
     } catch (e) {
       logger.w('Error scanning for local cover image in $bookPath: $e');
     }
     return null;
   }
 
-  Future<List<String>> _scanDirectory(
-    String path,
-    Player probePlayer, {
-    bool forceUpdate = false,
-  }) async {
+  Future<List<String>> _scanDirectory(String path, {bool forceUpdate = false}) async {
     final groups = await Isolate.run(() => performFileScan(path));
     final List<String> foundBookPaths = [];
 
@@ -453,7 +525,6 @@ class LibraryService {
         parentPath,
         isDirectory: true,
         audioFiles: filePaths,
-        probePlayer: probePlayer,
         forceUpdate: forceUpdate,
       );
       foundBookPaths.add(parentPath);
@@ -465,7 +536,6 @@ class LibraryService {
     String path, {
     required bool isDirectory,
     List<String>? audioFiles,
-    required Player probePlayer,
     bool forceUpdate = false,
   }) async {
     final existingBook = await _isar.books
@@ -519,13 +589,19 @@ class LibraryService {
         narrator = _cleanMetadataString(composers.first);
       }
 
-      // Robust cover selection: try selectCover, then fallback to first picture
+      // selectCover picks the largest embedded picture. The previous
+      // try/catch around it was unreachable dead code and swallowed errors.
       final pictures = metadata.common.picture;
       Picture? cover;
       if (pictures != null && pictures.isNotEmpty) {
         try {
           cover = selectCover(pictures);
-        } catch (_) {
+        } catch (e, stack) {
+          logger.w(
+            'selectCover failed for $metadataSourcePath, using first picture',
+            error: e,
+            stackTrace: stack,
+          );
           cover = pictures.first;
         }
         cover ??= pictures.first;
@@ -637,21 +713,28 @@ class LibraryService {
     }
 
     if (existingBook != null) {
-      existingBook.title = title ?? _cleanMetadataString(folderName);
-      existingBook.author = author;
-      existingBook.album = album;
+      // Preserve anything the user has overridden by hand in the metadata
+      // editor. Only refresh a field when the file actually supplies a value,
+      // otherwise a rescan would revert the user's edits (e.g. a cleaned-up
+      // title, a hand-written series, a chosen cover art).
+      final mergedTitle = title;
+      existingBook.title = (mergedTitle != null && mergedTitle.isNotEmpty)
+          ? mergedTitle
+          : existingBook.title ?? _cleanMetadataString(folderName);
+      existingBook.author = author ?? existingBook.author;
+      existingBook.album = album ?? existingBook.album;
       existingBook.narrator = narrator ?? existingBook.narrator;
       existingBook.durationSeconds = duration > 0 ? duration : null;
       existingBook.coverPath = coverPath ?? existingBook.coverPath;
       existingBook.audioFiles = audioFiles;
       existingBook.isDirectory = isDirectory;
-      existingBook.description = description;
+      existingBook.description = description ?? existingBook.description;
       existingBook.filesMetadata = fileMetaList.isNotEmpty
           ? fileMetaList
-          : null;
+          : existingBook.filesMetadata;
       existingBook.internalChapters = internalChapters.isNotEmpty
           ? internalChapters
-          : null;
+          : existingBook.internalChapters;
       await saveBook(existingBook);
     } else {
       final book = Book(
@@ -722,9 +805,13 @@ class LibraryService {
           ? audioFiles.first
           : path;
 
-      final metadata = await parseFile(
-        sourcePath,
-        options: const ParseOptions(duration: false, includeChapters: false),
+      // Run in an isolate: this is file I/O and was blocking the UI thread on
+      // every non-forced rescan, unlike every other parseFile call here.
+      final metadata = await Isolate.run(
+        () => parseFile(
+          sourcePath,
+          options: const ParseOptions(duration: false, includeChapters: false),
+        ),
       );
 
       final pictures = metadata.common.picture;
@@ -733,7 +820,12 @@ class LibraryService {
       Picture? cover;
       try {
         cover = selectCover(pictures);
-      } catch (_) {
+      } catch (e, stack) {
+        logger.w(
+          'selectCover failed for $sourcePath, using first picture',
+          error: e,
+          stackTrace: stack,
+        );
         cover = pictures.first;
       }
       cover ??= pictures.first;
@@ -755,15 +847,19 @@ class LibraryService {
     int? trackIndex,
   }) async {
     try {
-      final book = await _isar.books.where().pathEqualTo(path).findFirst();
-      if (book != null) {
+      // Read-modify-write inside a single transaction. Loading the book outside
+      // the txn and then putting it back meant a concurrent write (e.g. the
+      // chapter metadata write) could be clobbered by a stale snapshot.
+      await _isar.writeTxn(() async {
+        final book = await _isar.books.where().pathEqualTo(path).findFirst();
+        if (book == null) return;
         book.positionSeconds = positionSeconds;
         book.lastPlayed = DateTime.now();
         if (trackIndex != null) {
           book.lastTrackIndex = trackIndex;
         }
-        await saveBook(book);
-      }
+        await _isar.books.put(book);
+      });
     } catch (e, stack) {
       logger.e('Update progress failed', error: e, stackTrace: stack);
     }
@@ -771,12 +867,13 @@ class LibraryService {
 
   Future<void> addBookmark(String path, Bookmark bookmark) async {
     try {
-      final book = await _isar.books.where().pathEqualTo(path).findFirst();
-      if (book != null) {
+      await _isar.writeTxn(() async {
+        final book = await _isar.books.where().pathEqualTo(path).findFirst();
+        if (book == null) return;
         book.bookmarks ??= [];
         book.bookmarks!.add(bookmark);
-        await saveBook(book);
-      }
+        await _isar.books.put(book);
+      });
     } catch (e, stack) {
       logger.e('Error adding bookmark', error: e, stackTrace: stack);
     }
@@ -784,13 +881,16 @@ class LibraryService {
 
   Future<void> removeBookmark(String path, int index) async {
     try {
-      final book = await _isar.books.where().pathEqualTo(path).findFirst();
-      if (book != null &&
-          book.bookmarks != null &&
-          index < book.bookmarks!.length) {
-        book.bookmarks!.removeAt(index);
-        await saveBook(book);
-      }
+      await _isar.writeTxn(() async {
+        final book = await _isar.books.where().pathEqualTo(path).findFirst();
+        if (book == null) return;
+        final bookmarks = book.bookmarks;
+        if (bookmarks == null || index < 0 || index >= bookmarks.length) {
+          return;
+        }
+        bookmarks.removeAt(index);
+        await _isar.books.put(book);
+      });
     } catch (e, stack) {
       logger.e('Error removing bookmark', error: e, stackTrace: stack);
     }
@@ -833,21 +933,7 @@ class LibraryService {
       await _isar.writeTxn(() async {
         await _isar.books.deleteAll(idsToRemove);
       });
-
-      try {
-        final appDir = await getApplicationDocumentsDirectory();
-        final coversDirPath = p.join(appDir.path, 'canto_sync', 'covers');
-        for (final coverPath in coverPathsToDelete) {
-          if (isDeletableCover(coversDirPath, coverPath)) {
-            final file = File(coverPath);
-            if (await file.exists()) {
-              await file.delete();
-            }
-          }
-        }
-      } catch (e) {
-        logger.w('Failed to delete orphaned cover files: $e');
-      }
+      await _deleteCachedCovers(coverPathsToDelete);
       logger.i('Cleaned ${idsToRemove.length} orphaned book(s) from database.');
     }
 

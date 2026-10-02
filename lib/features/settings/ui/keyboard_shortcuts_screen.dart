@@ -15,6 +15,9 @@ class _KeyboardShortcutsScreenState
     extends ConsumerState<KeyboardShortcutsScreen> {
   @override
   Widget build(BuildContext context) {
+    // Watch the provider for rebuilds, but read the notifier for method calls.
+    // Reading the notifier alone meant edits elsewhere in the tree never
+    // rebuilt this screen, so conflicts shown here could go stale.
     ref.watch(keyboardShortcutsProvider);
     final shortcutsNotifier = ref.read(keyboardShortcutsProvider.notifier);
     final conflicts = shortcutsNotifier.getConflicts();

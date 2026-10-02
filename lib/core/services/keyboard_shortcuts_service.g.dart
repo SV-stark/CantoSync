@@ -41,7 +41,7 @@ final class KeyboardShortcutsProvider
   }
 }
 
-String _$keyboardShortcutsHash() => r'00582c213bc73b3da0b54e92b9743d1a88e832d8';
+String _$keyboardShortcutsHash() => r'35cc8eec1f9ab747b6da8037ac6ab6c359cd0c4d';
 
 abstract class _$KeyboardShortcuts extends $Notifier<List<KeyboardShortcut>> {
   List<KeyboardShortcut> build();

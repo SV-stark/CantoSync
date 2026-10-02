@@ -34,33 +34,30 @@ class KeyboardShortcuts extends _$KeyboardShortcuts {
     }
   }
 
-  Future<void> loadShortcuts() async {
-    try {
-      final shortcuts = await _isar.keyboardShortcuts.where().findAll();
-      if (shortcuts.isEmpty) {
-        await resetToDefaults();
-        return;
-      }
-      state = shortcuts;
-    } catch (e) {
-      logger.e('Error loading shortcuts', error: e);
-      state = getDefaultShortcuts();
-    }
-  }
-
   Future<void> updateShortcut(KeyboardShortcut shortcut) async {
     try {
       final index = state.indexWhere((s) => s.action == shortcut.action);
-      if (index != -1) {
-        final newState = [...state];
-        newState[index] = shortcut;
-        state = newState;
-        await _isar.writeTxn(() async {
-          await _isar.keyboardShortcuts.put(shortcut);
-        });
-      }
-    } catch (e) {
-      logger.e('Error updating shortcut', error: e);
+      if (index == -1) return;
+
+      // Isar is keyed on `action` via a unique replace index, so the row to
+      // update must carry the *existing* id. The incoming object came from the
+      // editor and has the auto-increment sentinel, so putting it inserted a
+      // duplicate row on every edit.
+      final existing = state[index];
+      shortcut.id = existing.id;
+
+      final newState = [...state];
+      newState[index] = shortcut;
+      state = newState;
+      await _isar.writeTxn(() async {
+        await _isar.keyboardShortcuts.put(shortcut);
+      });
+    } catch (e, stack) {
+      logger.e(
+        'Error updating shortcut',
+        error: e,
+        stackTrace: stack,
+      );
     }
   }
 
@@ -114,11 +111,11 @@ class KeyboardShortcuts extends _$KeyboardShortcuts {
   }
 
   KeyboardShortcut? findShortcut(String action) {
-    try {
-      return state.firstWhere((s) => s.action == action);
-    } catch (e) {
-      return null;
+    // No exception-based lookup for a routine miss.
+    for (final shortcut in state) {
+      if (shortcut.action == action) return shortcut;
     }
+    return null;
   }
 
   bool hasConflicts(KeyboardShortcut shortcut) {

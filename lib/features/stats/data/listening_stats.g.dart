@@ -107,11 +107,11 @@ DailyListeningStats _dailyListeningStatsDeserialize(
   Map<Type, List<int>> allOffsets,
 ) {
   final object = DailyListeningStats(
-    booksListened: reader.readStringList(offsets[0]) ?? const [],
     date: reader.readString(offsets[1]),
     listeningSessions: reader.readLongOrNull(offsets[2]) ?? 0,
     totalSecondsListened: reader.readLongOrNull(offsets[4]) ?? 0,
   );
+  object.booksListened = reader.readStringList(offsets[0]) ?? [];
   object.id = id;
   return object;
 }
@@ -124,7 +124,7 @@ P _dailyListeningStatsDeserializeProp<P>(
 ) {
   switch (propertyId) {
     case 0:
-      return (reader.readStringList(offset) ?? const []) as P;
+      return (reader.readStringList(offset) ?? []) as P;
     case 1:
       return (reader.readString(offset)) as P;
     case 2:
@@ -1270,11 +1270,11 @@ AuthorStats _authorStatsDeserialize(
 ) {
   final object = AuthorStats(
     authorName: reader.readString(offsets[0]),
-    bookTitles: reader.readStringList(offsets[1]) ?? const [],
     booksCompleted: reader.readLongOrNull(offsets[2]) ?? 0,
     booksStarted: reader.readLongOrNull(offsets[3]) ?? 0,
     totalSecondsListened: reader.readLongOrNull(offsets[5]) ?? 0,
   );
+  object.bookTitles = reader.readStringList(offsets[1]) ?? [];
   object.id = id;
   return object;
 }
@@ -1289,7 +1289,7 @@ P _authorStatsDeserializeProp<P>(
     case 0:
       return (reader.readString(offset)) as P;
     case 1:
-      return (reader.readStringList(offset) ?? const []) as P;
+      return (reader.readStringList(offset) ?? []) as P;
     case 2:
       return (reader.readLongOrNull(offset) ?? 0) as P;
     case 3:
@@ -4013,10 +4013,10 @@ ListeningSpeedPreference _listeningSpeedPreferenceDeserialize(
 ) {
   final object = ListeningSpeedPreference(
     averageSpeed: reader.readDoubleOrNull(offsets[0]) ?? 1.0,
+    id: id,
     speedUsageCountJson: reader.readStringOrNull(offsets[1]),
     totalSessionsAtSpeed: reader.readLongOrNull(offsets[2]) ?? 0,
   );
-  object.id = id;
   return object;
 }
 

@@ -131,7 +131,7 @@ class SettingsScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final settings = ref.watch(appSettingsProvider);
 
-    return ScaffoldPage.withPadding(
+    return ScaffoldPage(
       header: const PageHeader(title: Text('Settings')),
       content: ListView(
         padding: const EdgeInsets.only(bottom: 40),

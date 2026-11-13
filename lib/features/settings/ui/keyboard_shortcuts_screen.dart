@@ -22,7 +22,7 @@ class _KeyboardShortcutsScreenState
     final shortcutsNotifier = ref.read(keyboardShortcutsProvider.notifier);
     final conflicts = shortcutsNotifier.getConflicts();
 
-    return ScaffoldPage.withPadding(
+    return ScaffoldPage(
       header: PageHeader(
         title: const Text('Keyboard Shortcuts'),
         commandBar: Button(

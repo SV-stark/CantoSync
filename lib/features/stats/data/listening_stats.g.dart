@@ -7,7 +7,7 @@ part of 'listening_stats.dart';
 // **************************************************************************
 
 // coverage:ignore-file
-// ignore_for_file: duplicate_ignore, non_constant_identifier_names, constant_identifier_names, invalid_use_of_protected_member, unnecessary_cast, prefer_const_constructors, lines_longer_than_80_chars, require_trailing_commas, inference_failure_on_function_invocation, unnecessary_parenthesis, unnecessary_raw_strings, unnecessary_null_checks, join_return_with_assignment, prefer_final_locals, avoid_js_rounded_ints, avoid_positional_boolean_parameters, always_specify_types
+// ignore_for_file: duplicate_ignore, non_constant_identifier_names, constant_identifier_names, invalid_use_of_protected_member, unnecessary_cast, prefer_const_constructors, lines_longer_than_80_chars, require_trailing_commas, inference_failure_on_function_invocation, unnecessary_parenthesis, unnecessary_raw_strings, unnecessary_null_checks, join_return_with_assignment, prefer_final_locals, avoid_js_rounded_ints, avoid_positional_boolean_parameters, always_specify_types, experimental_member_use
 
 extension GetDailyListeningStatsCollection on Isar {
   IsarCollection<DailyListeningStats> get dailyListeningStats =>
@@ -67,7 +67,7 @@ const DailyListeningStatsSchema = CollectionSchema(
   getId: _dailyListeningStatsGetId,
   getLinks: _dailyListeningStatsGetLinks,
   attach: _dailyListeningStatsAttach,
-  version: '3.3.2',
+  version: '3.4.1',
 );
 
 int _dailyListeningStatsEstimateSize(
@@ -1160,7 +1160,7 @@ extension DailyListeningStatsQueryProperty
 }
 
 // coverage:ignore-file
-// ignore_for_file: duplicate_ignore, non_constant_identifier_names, constant_identifier_names, invalid_use_of_protected_member, unnecessary_cast, prefer_const_constructors, lines_longer_than_80_chars, require_trailing_commas, inference_failure_on_function_invocation, unnecessary_parenthesis, unnecessary_raw_strings, unnecessary_null_checks, join_return_with_assignment, prefer_final_locals, avoid_js_rounded_ints, avoid_positional_boolean_parameters, always_specify_types
+// ignore_for_file: duplicate_ignore, non_constant_identifier_names, constant_identifier_names, invalid_use_of_protected_member, unnecessary_cast, prefer_const_constructors, lines_longer_than_80_chars, require_trailing_commas, inference_failure_on_function_invocation, unnecessary_parenthesis, unnecessary_raw_strings, unnecessary_null_checks, join_return_with_assignment, prefer_final_locals, avoid_js_rounded_ints, avoid_positional_boolean_parameters, always_specify_types, experimental_member_use
 
 extension GetAuthorStatsCollection on Isar {
   IsarCollection<AuthorStats> get authorStats => this.collection();
@@ -1228,7 +1228,7 @@ const AuthorStatsSchema = CollectionSchema(
   getId: _authorStatsGetId,
   getLinks: _authorStatsGetLinks,
   attach: _authorStatsAttach,
-  version: '3.3.2',
+  version: '3.4.1',
 );
 
 int _authorStatsEstimateSize(
@@ -2393,7 +2393,7 @@ extension AuthorStatsQueryProperty
 }
 
 // coverage:ignore-file
-// ignore_for_file: duplicate_ignore, non_constant_identifier_names, constant_identifier_names, invalid_use_of_protected_member, unnecessary_cast, prefer_const_constructors, lines_longer_than_80_chars, require_trailing_commas, inference_failure_on_function_invocation, unnecessary_parenthesis, unnecessary_raw_strings, unnecessary_null_checks, join_return_with_assignment, prefer_final_locals, avoid_js_rounded_ints, avoid_positional_boolean_parameters, always_specify_types
+// ignore_for_file: duplicate_ignore, non_constant_identifier_names, constant_identifier_names, invalid_use_of_protected_member, unnecessary_cast, prefer_const_constructors, lines_longer_than_80_chars, require_trailing_commas, inference_failure_on_function_invocation, unnecessary_parenthesis, unnecessary_raw_strings, unnecessary_null_checks, join_return_with_assignment, prefer_final_locals, avoid_js_rounded_ints, avoid_positional_boolean_parameters, always_specify_types, experimental_member_use
 
 extension GetBookCompletionStatsCollection on Isar {
   IsarCollection<BookCompletionStats> get bookCompletionStats =>
@@ -2468,7 +2468,7 @@ const BookCompletionStatsSchema = CollectionSchema(
   getId: _bookCompletionStatsGetId,
   getLinks: _bookCompletionStatsGetLinks,
   attach: _bookCompletionStatsAttach,
-  version: '3.3.2',
+  version: '3.4.1',
 );
 
 int _bookCompletionStatsEstimateSize(
@@ -3936,7 +3936,7 @@ extension BookCompletionStatsQueryProperty
 }
 
 // coverage:ignore-file
-// ignore_for_file: duplicate_ignore, non_constant_identifier_names, constant_identifier_names, invalid_use_of_protected_member, unnecessary_cast, prefer_const_constructors, lines_longer_than_80_chars, require_trailing_commas, inference_failure_on_function_invocation, unnecessary_parenthesis, unnecessary_raw_strings, unnecessary_null_checks, join_return_with_assignment, prefer_final_locals, avoid_js_rounded_ints, avoid_positional_boolean_parameters, always_specify_types
+// ignore_for_file: duplicate_ignore, non_constant_identifier_names, constant_identifier_names, invalid_use_of_protected_member, unnecessary_cast, prefer_const_constructors, lines_longer_than_80_chars, require_trailing_commas, inference_failure_on_function_invocation, unnecessary_parenthesis, unnecessary_raw_strings, unnecessary_null_checks, join_return_with_assignment, prefer_final_locals, avoid_js_rounded_ints, avoid_positional_boolean_parameters, always_specify_types, experimental_member_use
 
 extension GetListeningSpeedPreferenceCollection on Isar {
   IsarCollection<ListeningSpeedPreference> get listeningSpeedPreferences =>
@@ -3976,7 +3976,7 @@ const ListeningSpeedPreferenceSchema = CollectionSchema(
   getId: _listeningSpeedPreferenceGetId,
   getLinks: _listeningSpeedPreferenceGetLinks,
   attach: _listeningSpeedPreferenceAttach,
-  version: '3.3.2',
+  version: '3.4.1',
 );
 
 int _listeningSpeedPreferenceEstimateSize(

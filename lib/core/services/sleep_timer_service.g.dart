@@ -47,7 +47,7 @@ abstract class _$SleepTimer extends $Notifier<SleepTimerState> {
   SleepTimerState build();
   @$mustCallSuper
   @override
-  void runBuild() {
+  WhenComplete runBuild() {
     final ref = this.ref as $Ref<SleepTimerState, SleepTimerState>;
     final element =
         ref.element
@@ -57,6 +57,6 @@ abstract class _$SleepTimer extends $Notifier<SleepTimerState> {
               Object?,
               Object?
             >;
-    element.handleCreate(ref, build);
+    return element.handleCreate(ref, build);
   }
 }

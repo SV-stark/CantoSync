@@ -47,7 +47,7 @@ abstract class _$KeyboardShortcuts extends $Notifier<List<KeyboardShortcut>> {
   List<KeyboardShortcut> build();
   @$mustCallSuper
   @override
-  void runBuild() {
+  WhenComplete runBuild() {
     final ref =
         this.ref as $Ref<List<KeyboardShortcut>, List<KeyboardShortcut>>;
     final element =
@@ -58,7 +58,7 @@ abstract class _$KeyboardShortcuts extends $Notifier<List<KeyboardShortcut>> {
               Object?,
               Object?
             >;
-    element.handleCreate(ref, build);
+    return element.handleCreate(ref, build);
   }
 }
 

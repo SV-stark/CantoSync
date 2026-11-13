@@ -21,7 +21,6 @@ import 'package:canto_sync/features/player/ui/widgets/mini_player.dart';
 import 'package:canto_sync/features/settings/ui/settings_screen.dart';
 import 'package:canto_sync/features/stats/ui/stats_screen.dart';
 import 'package:canto_sync/core/ui/window_buttons.dart';
-import 'package:canto_sync/core/ui/theme/semantic_colors.dart';
 import 'package:canto_sync/core/utils/logger.dart';
 import 'package:canto_sync/features/stats/data/listening_stats.dart';
 import 'package:canto_sync/core/data/keyboard_shortcuts.dart';
@@ -252,13 +251,11 @@ class _CantoSyncAppState extends ConsumerState<CantoSyncApp>
       theme: FluentThemeData(
         accentColor: SystemTheme.accentColor.accent.toAccentColor(),
         visualDensity: VisualDensity.standard,
-        extensions: const [SemanticColors.light],
       ),
       darkTheme: FluentThemeData(
         brightness: Brightness.dark,
         accentColor: SystemTheme.accentColor.accent.toAccentColor(),
         visualDensity: VisualDensity.standard,
-        extensions: const [SemanticColors.dark],
       ),
       home: Stack(
         children: [

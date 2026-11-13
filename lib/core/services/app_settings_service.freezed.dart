@@ -1,6 +1,6 @@
 // GENERATED CODE - DO NOT MODIFY BY HAND
 // coverage:ignore-file
-// ignore_for_file: type=lint
+// ignore_for_file: type=lint, type=warning, deprecated_member_use, deprecated_member_use_from_same_package
 // ignore_for_file: unused_element, deprecated_member_use, deprecated_member_use_from_same_package, use_function_type_syntax_for_parameters, unnecessary_const, avoid_init_to_null, invalid_override_different_default_values_named, prefer_expression_function_bodies, annotate_overrides, invalid_annotation_target, unnecessary_question_mark
 
 part of 'app_settings_service.dart';
@@ -9,6 +9,7 @@ part of 'app_settings_service.dart';
 // FreezedGenerator
 // **************************************************************************
 
+// GENERATED CODE - DO NOT MODIFY BY HAND
 // dart format off
 T _$identity<T>(T value) => value;
 /// @nodoc
@@ -25,16 +26,21 @@ $AppSettingsCopyWith<AppSettings> get copyWith => _$AppSettingsCopyWithImpl<AppS
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is AppSettings&&(identical(other.themeMode, themeMode) || other.themeMode == themeMode)&&(identical(other.audioPreset, audioPreset) || other.audioPreset == audioPreset)&&const DeepCollectionEquality().equals(other.libraryPaths, libraryPaths)&&(identical(other.skipSilence, skipSilence) || other.skipSilence == skipSilence)&&(identical(other.loudnessNormalization, loudnessNormalization) || other.loudnessNormalization == loudnessNormalization)&&(identical(other.playerThemeMode, playerThemeMode) || other.playerThemeMode == playerThemeMode)&&(identical(other.showWaveform, showWaveform) || other.showWaveform == showWaveform)&&(identical(other.showCoverReflection, showCoverReflection) || other.showCoverReflection == showCoverReflection));
+  final _this = this as AppSettings;
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is AppSettings&&(identical(other.themeMode, _this.themeMode) || other.themeMode == _this.themeMode)&&(identical(other.audioPreset, _this.audioPreset) || other.audioPreset == _this.audioPreset)&&const DeepCollectionEquality().equals(other.libraryPaths, _this.libraryPaths)&&(identical(other.skipSilence, _this.skipSilence) || other.skipSilence == _this.skipSilence)&&(identical(other.loudnessNormalization, _this.loudnessNormalization) || other.loudnessNormalization == _this.loudnessNormalization)&&(identical(other.playerThemeMode, _this.playerThemeMode) || other.playerThemeMode == _this.playerThemeMode)&&(identical(other.showWaveform, _this.showWaveform) || other.showWaveform == _this.showWaveform)&&(identical(other.showCoverReflection, _this.showCoverReflection) || other.showCoverReflection == _this.showCoverReflection));
 }
 
 
 @override
-int get hashCode => Object.hash(runtimeType,themeMode,audioPreset,const DeepCollectionEquality().hash(libraryPaths),skipSilence,loudnessNormalization,playerThemeMode,showWaveform,showCoverReflection);
+int get hashCode {
+  final _this = this as AppSettings;
+  return Object.hash(runtimeType,_this.themeMode,_this.audioPreset,const DeepCollectionEquality().hash(_this.libraryPaths),_this.skipSilence,_this.loudnessNormalization,_this.playerThemeMode,_this.showWaveform,_this.showCoverReflection);
+}
 
 @override
 String toString() {
-  return 'AppSettings(themeMode: $themeMode, audioPreset: $audioPreset, libraryPaths: $libraryPaths, skipSilence: $skipSilence, loudnessNormalization: $loudnessNormalization, playerThemeMode: $playerThemeMode, showWaveform: $showWaveform, showCoverReflection: $showCoverReflection)';
+  final _this = this as AppSettings;
+  return 'AppSettings(themeMode: ${_this.themeMode}, audioPreset: ${_this.audioPreset}, libraryPaths: ${_this.libraryPaths}, skipSilence: ${_this.skipSilence}, loudnessNormalization: ${_this.loudnessNormalization}, playerThemeMode: ${_this.playerThemeMode}, showWaveform: ${_this.showWaveform}, showCoverReflection: ${_this.showCoverReflection})';
 }
 
 
@@ -63,7 +69,7 @@ class _$AppSettingsCopyWithImpl<$Res>
 /// Create a copy of AppSettings
 /// with the given fields replaced by the non-null parameter values.
 @pragma('vm:prefer-inline') @override $Res call({Object? themeMode = null,Object? audioPreset = null,Object? libraryPaths = null,Object? skipSilence = null,Object? loudnessNormalization = null,Object? playerThemeMode = null,Object? showWaveform = null,Object? showCoverReflection = null,}) {
-  return _then(_self.copyWith(
+  return _then(AppSettings(
 themeMode: null == themeMode ? _self.themeMode : themeMode // ignore: cast_nullable_to_non_nullable
 as ThemeMode,audioPreset: null == audioPreset ? _self.audioPreset : audioPreset // ignore: cast_nullable_to_non_nullable
 as AudioPreset,libraryPaths: null == libraryPaths ? _self.libraryPaths : libraryPaths // ignore: cast_nullable_to_non_nullable
@@ -213,7 +219,7 @@ return $default(_that.themeMode,_that.audioPreset,_that.libraryPaths,_that.skipS
 
 
 class _AppSettings implements AppSettings {
-  const _AppSettings({this.themeMode = ThemeMode.system, this.audioPreset = AudioPreset.flat, final  List<String> libraryPaths = const [], this.skipSilence = false, this.loudnessNormalization = false, this.playerThemeMode = PlayerThemeMode.standard, this.showWaveform = true, this.showCoverReflection = true}): _libraryPaths = libraryPaths;
+  const _AppSettings({this.themeMode = ThemeMode.system, this.audioPreset = AudioPreset.flat,  List<String> libraryPaths = const [], this.skipSilence = false, this.loudnessNormalization = false, this.playerThemeMode = PlayerThemeMode.standard, this.showWaveform = true, this.showCoverReflection = true}): _libraryPaths = libraryPaths;
   
 
 @override@JsonKey() final  ThemeMode themeMode;
@@ -241,16 +247,18 @@ _$AppSettingsCopyWith<_AppSettings> get copyWith => __$AppSettingsCopyWithImpl<_
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _AppSettings&&(identical(other.themeMode, themeMode) || other.themeMode == themeMode)&&(identical(other.audioPreset, audioPreset) || other.audioPreset == audioPreset)&&const DeepCollectionEquality().equals(other._libraryPaths, _libraryPaths)&&(identical(other.skipSilence, skipSilence) || other.skipSilence == skipSilence)&&(identical(other.loudnessNormalization, loudnessNormalization) || other.loudnessNormalization == loudnessNormalization)&&(identical(other.playerThemeMode, playerThemeMode) || other.playerThemeMode == playerThemeMode)&&(identical(other.showWaveform, showWaveform) || other.showWaveform == showWaveform)&&(identical(other.showCoverReflection, showCoverReflection) || other.showCoverReflection == showCoverReflection));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is _AppSettings&&(identical(other.themeMode, themeMode) || other.themeMode == themeMode)&&(identical(other.audioPreset, audioPreset) || other.audioPreset == audioPreset)&&const DeepCollectionEquality().equals(other.libraryPaths, _libraryPaths)&&(identical(other.skipSilence, skipSilence) || other.skipSilence == skipSilence)&&(identical(other.loudnessNormalization, loudnessNormalization) || other.loudnessNormalization == loudnessNormalization)&&(identical(other.playerThemeMode, playerThemeMode) || other.playerThemeMode == playerThemeMode)&&(identical(other.showWaveform, showWaveform) || other.showWaveform == showWaveform)&&(identical(other.showCoverReflection, showCoverReflection) || other.showCoverReflection == showCoverReflection));
 }
 
 
 @override
-int get hashCode => Object.hash(runtimeType,themeMode,audioPreset,const DeepCollectionEquality().hash(_libraryPaths),skipSilence,loudnessNormalization,playerThemeMode,showWaveform,showCoverReflection);
+int get hashCode {
+    return Object.hash(runtimeType,themeMode,audioPreset,const DeepCollectionEquality().hash(_libraryPaths),skipSilence,loudnessNormalization,playerThemeMode,showWaveform,showCoverReflection);
+}
 
 @override
 String toString() {
-  return 'AppSettings(themeMode: $themeMode, audioPreset: $audioPreset, libraryPaths: $libraryPaths, skipSilence: $skipSilence, loudnessNormalization: $loudnessNormalization, playerThemeMode: $playerThemeMode, showWaveform: $showWaveform, showCoverReflection: $showCoverReflection)';
+    return 'AppSettings(themeMode: $themeMode, audioPreset: $audioPreset, libraryPaths: $libraryPaths, skipSilence: $skipSilence, loudnessNormalization: $loudnessNormalization, playerThemeMode: $playerThemeMode, showWaveform: $showWaveform, showCoverReflection: $showCoverReflection)';
 }
 
 

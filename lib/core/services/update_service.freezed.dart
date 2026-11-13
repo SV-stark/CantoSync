@@ -1,6 +1,6 @@
 // GENERATED CODE - DO NOT MODIFY BY HAND
 // coverage:ignore-file
-// ignore_for_file: type=lint
+// ignore_for_file: type=lint, type=warning, deprecated_member_use, deprecated_member_use_from_same_package
 // ignore_for_file: unused_element, deprecated_member_use, deprecated_member_use_from_same_package, use_function_type_syntax_for_parameters, unnecessary_const, avoid_init_to_null, invalid_override_different_default_values_named, prefer_expression_function_bodies, annotate_overrides, invalid_annotation_target, unnecessary_question_mark
 
 part of 'update_service.dart';
@@ -9,6 +9,7 @@ part of 'update_service.dart';
 // FreezedGenerator
 // **************************************************************************
 
+// GENERATED CODE - DO NOT MODIFY BY HAND
 // dart format off
 T _$identity<T>(T value) => value;
 /// @nodoc
@@ -25,16 +26,21 @@ $UpdateInfoCopyWith<UpdateInfo> get copyWith => _$UpdateInfoCopyWithImpl<UpdateI
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is UpdateInfo&&(identical(other.latestVersion, latestVersion) || other.latestVersion == latestVersion)&&(identical(other.downloadUrl, downloadUrl) || other.downloadUrl == downloadUrl)&&(identical(other.releaseNotes, releaseNotes) || other.releaseNotes == releaseNotes));
+  final _this = this as UpdateInfo;
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is UpdateInfo&&(identical(other.latestVersion, _this.latestVersion) || other.latestVersion == _this.latestVersion)&&(identical(other.downloadUrl, _this.downloadUrl) || other.downloadUrl == _this.downloadUrl)&&(identical(other.releaseNotes, _this.releaseNotes) || other.releaseNotes == _this.releaseNotes));
 }
 
 
 @override
-int get hashCode => Object.hash(runtimeType,latestVersion,downloadUrl,releaseNotes);
+int get hashCode {
+  final _this = this as UpdateInfo;
+  return Object.hash(runtimeType,_this.latestVersion,_this.downloadUrl,_this.releaseNotes);
+}
 
 @override
 String toString() {
-  return 'UpdateInfo(latestVersion: $latestVersion, downloadUrl: $downloadUrl, releaseNotes: $releaseNotes)';
+  final _this = this as UpdateInfo;
+  return 'UpdateInfo(latestVersion: ${_this.latestVersion}, downloadUrl: ${_this.downloadUrl}, releaseNotes: ${_this.releaseNotes})';
 }
 
 
@@ -63,7 +69,7 @@ class _$UpdateInfoCopyWithImpl<$Res>
 /// Create a copy of UpdateInfo
 /// with the given fields replaced by the non-null parameter values.
 @pragma('vm:prefer-inline') @override $Res call({Object? latestVersion = null,Object? downloadUrl = null,Object? releaseNotes = freezed,}) {
-  return _then(_self.copyWith(
+  return _then(UpdateInfo(
 latestVersion: null == latestVersion ? _self.latestVersion : latestVersion // ignore: cast_nullable_to_non_nullable
 as String,downloadUrl: null == downloadUrl ? _self.downloadUrl : downloadUrl // ignore: cast_nullable_to_non_nullable
 as String,releaseNotes: freezed == releaseNotes ? _self.releaseNotes : releaseNotes // ignore: cast_nullable_to_non_nullable
@@ -225,16 +231,18 @@ _$UpdateInfoCopyWith<_UpdateInfo> get copyWith => __$UpdateInfoCopyWithImpl<_Upd
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _UpdateInfo&&(identical(other.latestVersion, latestVersion) || other.latestVersion == latestVersion)&&(identical(other.downloadUrl, downloadUrl) || other.downloadUrl == downloadUrl)&&(identical(other.releaseNotes, releaseNotes) || other.releaseNotes == releaseNotes));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is _UpdateInfo&&(identical(other.latestVersion, latestVersion) || other.latestVersion == latestVersion)&&(identical(other.downloadUrl, downloadUrl) || other.downloadUrl == downloadUrl)&&(identical(other.releaseNotes, releaseNotes) || other.releaseNotes == releaseNotes));
 }
 
 
 @override
-int get hashCode => Object.hash(runtimeType,latestVersion,downloadUrl,releaseNotes);
+int get hashCode {
+    return Object.hash(runtimeType,latestVersion,downloadUrl,releaseNotes);
+}
 
 @override
 String toString() {
-  return 'UpdateInfo(latestVersion: $latestVersion, downloadUrl: $downloadUrl, releaseNotes: $releaseNotes)';
+    return 'UpdateInfo(latestVersion: $latestVersion, downloadUrl: $downloadUrl, releaseNotes: $releaseNotes)';
 }
 
 

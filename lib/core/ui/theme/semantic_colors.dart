@@ -7,7 +7,7 @@ import 'package:fluent_ui/fluent_ui.dart';
 /// from this extension instead. Light and dark variants are defined so the
 /// same widget code reads correctly in both modes.
 @immutable
-class SemanticColors extends ThemeExtension<SemanticColors> {
+class SemanticColors {
   const SemanticColors({
     required this.destructive,
     required this.success,
@@ -90,7 +90,6 @@ class SemanticColors extends ThemeExtension<SemanticColors> {
     return ramp[level.clamp(0, ramp.length - 1)];
   }
 
-  @override
   SemanticColors copyWith({
     Color? destructive,
     Color? success,
@@ -113,7 +112,6 @@ class SemanticColors extends ThemeExtension<SemanticColors> {
     );
   }
 
-  @override
   SemanticColors lerp(covariant SemanticColors? other, double t) {
     if (other == null) return this;
     return SemanticColors(
@@ -130,10 +128,9 @@ class SemanticColors extends ThemeExtension<SemanticColors> {
 }
 
 extension SemanticColorsContext on BuildContext {
-  /// Resolves [SemanticColors] from the nearest [FluentTheme].
-  ///
-  /// Falls back to the light palette so a missing extension degrades to a
-  /// usable colour instead of throwing during build.
+  /// Resolves [SemanticColors] from the nearest [FluentTheme] brightness.
   SemanticColors get semanticColors =>
-      FluentTheme.of(this).extension<SemanticColors>() ?? SemanticColors.light;
+      FluentTheme.of(this).brightness == Brightness.dark
+          ? SemanticColors.dark
+          : SemanticColors.light;
 }

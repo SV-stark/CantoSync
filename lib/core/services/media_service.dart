@@ -18,6 +18,10 @@ class MediaService {
   MediaService(this._ref) {
     _init();
   }
+
+  /// Maximum volume percentage supported natively by mpv (`volume-max=200`).
+  static const double maxVolume = 200.0;
+
   Player? _player;
   final Ref _ref;
   bool _initFailed = false;
@@ -88,6 +92,18 @@ class MediaService {
       await platform.setProperty('gapless-audio', 'yes');
       await platform.setProperty('replaygain', 'track');
       await platform.setProperty('audio-pitch-correction', 'yes');
+      await platform.setProperty('hr-seek', 'yes');
+      await platform.setProperty('prefetch-playlist', 'yes');
+      await platform.setProperty('cache', 'yes');
+      await platform.setProperty('demuxer-max-bytes', '33554432');
+      await platform.setProperty('volume-max', maxVolume.toInt().toString());
+      await platform.setProperty(
+        'audio-channels',
+        _monoAudio ? 'mono' : 'auto',
+      );
+      if (_audioDevice.isNotEmpty && _audioDevice != 'auto') {
+        await platform.setProperty('audio-device', _audioDevice);
+      }
 
       await platform.observeProperty('chapter-list', (value) async {
         if (_isDisposed || _customChapters != null || value.isEmpty) return;
@@ -111,6 +127,18 @@ class MediaService {
             stackTrace: stack,
           );
         }
+      });
+
+      await platform.observeProperty('chapter', (value) async {
+        if (_isDisposed) return;
+        final parsed = int.tryParse(value.trim());
+        _emitChapterIndex(parsed != null && parsed >= 0 ? parsed : -1);
+      });
+
+      await platform.observeProperty('eof-reached', (value) async {
+        if (_isDisposed) return;
+        final normalized = value.trim().toLowerCase();
+        _emitEofReached(normalized == 'yes' || normalized == 'true');
       });
     } catch (e, stack) {
       logger.w(
@@ -139,10 +167,14 @@ class MediaService {
 
   void _initFilters() {
     try {
-      // Initialize filters from settings
+      // Initialize filters and native audio options from settings
       final settings = _ref.read(appSettingsProvider);
       _skipSilence = settings.skipSilence;
       _loudnessNormalization = settings.loudnessNormalization;
+      _dynamicNormalization = settings.dynamicNormalization;
+      _voiceClarity = settings.voiceClarity;
+      _monoAudio = settings.monoAudio;
+      _audioDevice = settings.audioDevice;
       _activePresetFilter = settings.audioPreset.filter;
       _applyFilters();
     } catch (e, stack) {
@@ -172,10 +204,30 @@ class MediaService {
   List<Chapter> _lastChapters = const [];
   List<Chapter> get lastChapters => _lastChapters;
 
+  final StreamController<int> _chapterIndexController =
+      StreamController<int>.broadcast();
+  Stream<int> get currentChapterIndexStream => _chapterIndexController.stream;
+
+  final StreamController<bool> _eofReachedController =
+      StreamController<bool>.broadcast();
+  Stream<bool> get eofReachedStream => _eofReachedController.stream;
+
   void _emitChapters(List<Chapter> chapters) {
     _lastChapters = chapters;
     if (!_isDisposed && !_chaptersController.isClosed) {
       _chaptersController.add(chapters);
+    }
+  }
+
+  void _emitChapterIndex(int index) {
+    if (!_isDisposed && !_chapterIndexController.isClosed) {
+      _chapterIndexController.add(index);
+    }
+  }
+
+  void _emitEofReached(bool reached) {
+    if (!_isDisposed && !_eofReachedController.isClosed) {
+      _eofReachedController.add(reached);
     }
   }
 
@@ -218,6 +270,8 @@ class MediaService {
     } else {
       _emitChapters(const []);
     }
+    _emitChapterIndex(-1);
+    _emitEofReached(false);
 
     if (mediaSource is String) {
       await _p.open(Media(mediaSource), play: autoPlay);
@@ -268,13 +322,17 @@ class MediaService {
     if (target.isNegative) target = Duration.zero;
     final total = _player?.state.duration ?? Duration.zero;
     if (total > Duration.zero && target > total) target = total;
-    await _p.seek(target);
+    final platform = _p.platform;
+    if (platform is NativePlayer) {
+      final seconds = (target.inMilliseconds / 1000.0).toStringAsFixed(3);
+      await platform.command(['seek', seconds, 'absolute+exact']);
+    } else {
+      await _p.seek(target);
+    }
   }
 
   Future<void> setVolume(double volume) async {
-    // media_kit accepts 0-100 (values above 100 are possible but would
-    // desync every volume Slider, which is bounded to 100).
-    await _p.setVolume(volume.clamp(0.0, 100.0));
+    await _p.setVolume(volume.clamp(0.0, maxVolume));
   }
 
   Future<void> setSkipSilence(bool enabled) async {
@@ -287,8 +345,70 @@ class MediaService {
     await _applyFilters();
   }
 
+  Future<void> setDynamicNormalization(bool enabled) async {
+    _dynamicNormalization = enabled;
+    await _applyFilters();
+  }
+
+  Future<void> setVoiceClarity(bool enabled) async {
+    _voiceClarity = enabled;
+    await _applyFilters();
+  }
+
+  Future<void> setMonoAudio(bool enabled) async {
+    _monoAudio = enabled;
+    final platform = _p.platform;
+    if (platform is NativePlayer) {
+      await platform.setProperty('audio-channels', enabled ? 'mono' : 'auto');
+    }
+  }
+
+  Future<void> setAudioDevice(String device) async {
+    _audioDevice = device.isEmpty ? 'auto' : device;
+    final platform = _p.platform;
+    if (platform is NativePlayer) {
+      await platform.setProperty('audio-device', _audioDevice);
+    }
+  }
+
+  /// Queries mpv's `audio-device-list` property for available audio outputs.
+  Future<List<AudioOutputDevice>> getAudioDevices() async {
+    final platform = _player?.platform;
+    if (platform is! NativePlayer) return const [];
+    try {
+      final raw = await platform.getProperty('audio-device-list');
+      if (raw.isEmpty) return const [];
+      return parseAudioDeviceList(jsonDecode(raw));
+    } catch (e, stack) {
+      logger.w(
+        'Error reading mpv audio-device-list',
+        error: e,
+        stackTrace: stack,
+      );
+      return const [];
+    }
+  }
+
+  /// Parses mpv's JSON `audio-device-list` array into typed [AudioOutputDevice]s.
+  static List<AudioOutputDevice> parseAudioDeviceList(dynamic decoded) {
+    if (decoded is! List) return const [];
+    final devices = <AudioOutputDevice>[];
+    for (final entry in decoded) {
+      if (entry is! Map) continue;
+      final name = entry['name']?.toString() ?? '';
+      if (name.isEmpty) continue;
+      final description = entry['description']?.toString() ?? name;
+      devices.add(AudioOutputDevice(name: name, description: description));
+    }
+    return devices;
+  }
+
   bool _skipSilence = false;
   bool _loudnessNormalization = false;
+  bool _dynamicNormalization = false;
+  bool _voiceClarity = false;
+  bool _monoAudio = false;
+  String _audioDevice = 'auto';
   String _activePresetFilter = '';
 
   Future<void> setAudioFilter(String filter) async {
@@ -296,31 +416,63 @@ class MediaService {
     await _applyFilters();
   }
 
+  /// Builds a labeled mpv `af` filter chain from the enabled audio options.
+  static String buildAudioFilterChain({
+    String presetFilter = '',
+    bool skipSilence = false,
+    bool loudnessNormalization = false,
+    bool dynamicNormalization = false,
+    bool voiceClarity = false,
+  }) {
+    final filters = <String>[];
+
+    if (presetFilter.isNotEmpty) {
+      final parts = presetFilter
+          .split(',')
+          .map((p) => p.trim())
+          .where((p) => p.isNotEmpty);
+      var idx = 0;
+      for (final part in parts) {
+        filters.add(part.startsWith('@') ? part : '@eq${idx++}:$part');
+      }
+    }
+
+    if (voiceClarity) {
+      filters.add('@highpass:highpass=f=80');
+      filters.add('@comp:acompressor=threshold=-20dB:ratio=3:attack=5:release=50');
+    }
+
+    if (skipSilence) {
+      filters.add(
+        '@silence:silenceremove=stop_periods=-1:stop_duration=0.5:stop_threshold=-50dB',
+      );
+    }
+
+    if (loudnessNormalization) {
+      filters.add('@loudnorm:loudnorm');
+    }
+
+    if (dynamicNormalization) {
+      filters.add('@dynaudnorm:dynaudnorm=f=150:g=15');
+    }
+
+    return filters.join(',');
+  }
+
   Future<void> _applyFilters() async {
     try {
       final platform = _p.platform;
       if (platform is NativePlayer) {
-        final List<String> filters = [];
-
-        if (_activePresetFilter.isNotEmpty) {
-          filters.add(_activePresetFilter);
-        }
-
-        if (_skipSilence) {
-          // Robust silence removal: removes silences longer than 0.5s with -50dB threshold
-          filters.add(
-            'silenceremove=stop_periods=-1:stop_duration=0.5:stop_threshold=-50dB',
-          );
-        }
-
-        if (_loudnessNormalization) {
-          filters.add('loudnorm');
-        }
-
-        final filterString = filters.join(',');
+        final filterString = buildAudioFilterChain(
+          presetFilter: _activePresetFilter,
+          skipSilence: _skipSilence,
+          loudnessNormalization: _loudnessNormalization,
+          dynamicNormalization: _dynamicNormalization,
+          voiceClarity: _voiceClarity,
+        );
         logger.d('Applying audio filters: "$filterString"');
 
-        // We use 'af' property to set audio filters in mpv
+        // We use 'af' property to set labeled audio filters in mpv
         await platform.setProperty('af', filterString);
       }
     } catch (e, stack) {
@@ -560,6 +712,8 @@ class MediaService {
     final platform = _player?.platform;
     if (platform is NativePlayer) {
       unawaited(platform.unobserveProperty('chapter-list').catchError((_) {}));
+      unawaited(platform.unobserveProperty('chapter').catchError((_) {}));
+      unawaited(platform.unobserveProperty('eof-reached').catchError((_) {}));
     }
     _playerDurationSubscription?.cancel();
     _playerDurationSubscription = null;
@@ -567,7 +721,16 @@ class MediaService {
     _player = null;
     _totalDurationController.close();
     _chaptersController.close();
+    _chapterIndexController.close();
+    _eofReachedController.close();
   }
+}
+
+class AudioOutputDevice {
+  const AudioOutputDevice({required this.name, required this.description});
+
+  final String name;
+  final String description;
 }
 
 class Chapter {

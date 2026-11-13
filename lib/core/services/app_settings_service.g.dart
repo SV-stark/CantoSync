@@ -17,48 +17,68 @@ const IsarAppSettingsSchema = CollectionSchema(
   name: r'IsarAppSettings',
   id: -9223260734181630302,
   properties: {
-    r'audioPreset': PropertySchema(
+    r'audioDevice': PropertySchema(
       id: 0,
+      name: r'audioDevice',
+      type: IsarType.string,
+    ),
+    r'audioPreset': PropertySchema(
+      id: 1,
       name: r'audioPreset',
       type: IsarType.byte,
       enumMap: _IsarAppSettingsaudioPresetEnumValueMap,
     ),
+    r'dynamicNormalization': PropertySchema(
+      id: 2,
+      name: r'dynamicNormalization',
+      type: IsarType.bool,
+    ),
     r'libraryPaths': PropertySchema(
-      id: 1,
+      id: 3,
       name: r'libraryPaths',
       type: IsarType.stringList,
     ),
     r'loudnessNormalization': PropertySchema(
-      id: 2,
+      id: 4,
       name: r'loudnessNormalization',
       type: IsarType.bool,
     ),
+    r'monoAudio': PropertySchema(
+      id: 5,
+      name: r'monoAudio',
+      type: IsarType.bool,
+    ),
     r'playerThemeMode': PropertySchema(
-      id: 3,
+      id: 6,
       name: r'playerThemeMode',
       type: IsarType.byte,
       enumMap: _IsarAppSettingsplayerThemeModeEnumValueMap,
     ),
     r'showCoverReflection': PropertySchema(
-      id: 4,
+      id: 7,
       name: r'showCoverReflection',
       type: IsarType.bool,
     ),
     r'showWaveform': PropertySchema(
-      id: 5,
+      id: 8,
       name: r'showWaveform',
       type: IsarType.bool,
     ),
     r'skipSilence': PropertySchema(
-      id: 6,
+      id: 9,
       name: r'skipSilence',
       type: IsarType.bool,
     ),
     r'themeMode': PropertySchema(
-      id: 7,
+      id: 10,
       name: r'themeMode',
       type: IsarType.byte,
       enumMap: _IsarAppSettingsthemeModeEnumValueMap,
+    ),
+    r'voiceClarity': PropertySchema(
+      id: 11,
+      name: r'voiceClarity',
+      type: IsarType.bool,
     ),
   },
 
@@ -83,6 +103,7 @@ int _isarAppSettingsEstimateSize(
   Map<Type, List<int>> allOffsets,
 ) {
   var bytesCount = offsets.last;
+  bytesCount += 3 + object.audioDevice.length * 3;
   bytesCount += 3 + object.libraryPaths.length * 3;
   {
     for (var i = 0; i < object.libraryPaths.length; i++) {
@@ -99,14 +120,18 @@ void _isarAppSettingsSerialize(
   List<int> offsets,
   Map<Type, List<int>> allOffsets,
 ) {
-  writer.writeByte(offsets[0], object.audioPreset.index);
-  writer.writeStringList(offsets[1], object.libraryPaths);
-  writer.writeBool(offsets[2], object.loudnessNormalization);
-  writer.writeByte(offsets[3], object.playerThemeMode.index);
-  writer.writeBool(offsets[4], object.showCoverReflection);
-  writer.writeBool(offsets[5], object.showWaveform);
-  writer.writeBool(offsets[6], object.skipSilence);
-  writer.writeByte(offsets[7], object.themeMode.index);
+  writer.writeString(offsets[0], object.audioDevice);
+  writer.writeByte(offsets[1], object.audioPreset.index);
+  writer.writeBool(offsets[2], object.dynamicNormalization);
+  writer.writeStringList(offsets[3], object.libraryPaths);
+  writer.writeBool(offsets[4], object.loudnessNormalization);
+  writer.writeBool(offsets[5], object.monoAudio);
+  writer.writeByte(offsets[6], object.playerThemeMode.index);
+  writer.writeBool(offsets[7], object.showCoverReflection);
+  writer.writeBool(offsets[8], object.showWaveform);
+  writer.writeBool(offsets[9], object.skipSilence);
+  writer.writeByte(offsets[10], object.themeMode.index);
+  writer.writeBool(offsets[11], object.voiceClarity);
 }
 
 IsarAppSettings _isarAppSettingsDeserialize(
@@ -116,27 +141,31 @@ IsarAppSettings _isarAppSettingsDeserialize(
   Map<Type, List<int>> allOffsets,
 ) {
   final object = IsarAppSettings();
+  object.audioDevice = reader.readString(offsets[0]);
   object.audioPreset =
       _IsarAppSettingsaudioPresetValueEnumMap[reader.readByteOrNull(
-        offsets[0],
+        offsets[1],
       )] ??
       AudioPreset.flat;
+  object.dynamicNormalization = reader.readBool(offsets[2]);
   object.id = id;
-  object.libraryPaths = reader.readStringList(offsets[1]) ?? [];
-  object.loudnessNormalization = reader.readBool(offsets[2]);
+  object.libraryPaths = reader.readStringList(offsets[3]) ?? [];
+  object.loudnessNormalization = reader.readBool(offsets[4]);
+  object.monoAudio = reader.readBool(offsets[5]);
   object.playerThemeMode =
       _IsarAppSettingsplayerThemeModeValueEnumMap[reader.readByteOrNull(
-        offsets[3],
+        offsets[6],
       )] ??
       PlayerThemeMode.standard;
-  object.showCoverReflection = reader.readBool(offsets[4]);
-  object.showWaveform = reader.readBool(offsets[5]);
-  object.skipSilence = reader.readBool(offsets[6]);
+  object.showCoverReflection = reader.readBool(offsets[7]);
+  object.showWaveform = reader.readBool(offsets[8]);
+  object.skipSilence = reader.readBool(offsets[9]);
   object.themeMode =
       _IsarAppSettingsthemeModeValueEnumMap[reader.readByteOrNull(
-        offsets[7],
+        offsets[10],
       )] ??
       ThemeMode.system;
+  object.voiceClarity = reader.readBool(offsets[11]);
   return object;
 }
 
@@ -148,33 +177,41 @@ P _isarAppSettingsDeserializeProp<P>(
 ) {
   switch (propertyId) {
     case 0:
+      return (reader.readString(offset)) as P;
+    case 1:
       return (_IsarAppSettingsaudioPresetValueEnumMap[reader.readByteOrNull(
                 offset,
               )] ??
               AudioPreset.flat)
           as P;
-    case 1:
-      return (reader.readStringList(offset) ?? []) as P;
     case 2:
       return (reader.readBool(offset)) as P;
     case 3:
-      return (_IsarAppSettingsplayerThemeModeValueEnumMap[reader.readByteOrNull(
-                offset,
-              )] ??
-              PlayerThemeMode.standard)
-          as P;
+      return (reader.readStringList(offset) ?? []) as P;
     case 4:
       return (reader.readBool(offset)) as P;
     case 5:
       return (reader.readBool(offset)) as P;
     case 6:
-      return (reader.readBool(offset)) as P;
+      return (_IsarAppSettingsplayerThemeModeValueEnumMap[reader.readByteOrNull(
+                offset,
+              )] ??
+              PlayerThemeMode.standard)
+          as P;
     case 7:
+      return (reader.readBool(offset)) as P;
+    case 8:
+      return (reader.readBool(offset)) as P;
+    case 9:
+      return (reader.readBool(offset)) as P;
+    case 10:
       return (_IsarAppSettingsthemeModeValueEnumMap[reader.readByteOrNull(
                 offset,
               )] ??
               ThemeMode.system)
           as P;
+    case 11:
+      return (reader.readBool(offset)) as P;
     default:
       throw IsarError('Unknown property with id $propertyId');
   }
@@ -313,6 +350,147 @@ extension IsarAppSettingsQueryWhere
 extension IsarAppSettingsQueryFilter
     on QueryBuilder<IsarAppSettings, IsarAppSettings, QFilterCondition> {
   QueryBuilder<IsarAppSettings, IsarAppSettings, QAfterFilterCondition>
+  audioDeviceEqualTo(String value, {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.equalTo(
+          property: r'audioDevice',
+          value: value,
+          caseSensitive: caseSensitive,
+        ),
+      );
+    });
+  }
+
+  QueryBuilder<IsarAppSettings, IsarAppSettings, QAfterFilterCondition>
+  audioDeviceGreaterThan(
+    String value, {
+    bool include = false,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.greaterThan(
+          include: include,
+          property: r'audioDevice',
+          value: value,
+          caseSensitive: caseSensitive,
+        ),
+      );
+    });
+  }
+
+  QueryBuilder<IsarAppSettings, IsarAppSettings, QAfterFilterCondition>
+  audioDeviceLessThan(
+    String value, {
+    bool include = false,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.lessThan(
+          include: include,
+          property: r'audioDevice',
+          value: value,
+          caseSensitive: caseSensitive,
+        ),
+      );
+    });
+  }
+
+  QueryBuilder<IsarAppSettings, IsarAppSettings, QAfterFilterCondition>
+  audioDeviceBetween(
+    String lower,
+    String upper, {
+    bool includeLower = true,
+    bool includeUpper = true,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.between(
+          property: r'audioDevice',
+          lower: lower,
+          includeLower: includeLower,
+          upper: upper,
+          includeUpper: includeUpper,
+          caseSensitive: caseSensitive,
+        ),
+      );
+    });
+  }
+
+  QueryBuilder<IsarAppSettings, IsarAppSettings, QAfterFilterCondition>
+  audioDeviceStartsWith(String value, {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.startsWith(
+          property: r'audioDevice',
+          value: value,
+          caseSensitive: caseSensitive,
+        ),
+      );
+    });
+  }
+
+  QueryBuilder<IsarAppSettings, IsarAppSettings, QAfterFilterCondition>
+  audioDeviceEndsWith(String value, {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.endsWith(
+          property: r'audioDevice',
+          value: value,
+          caseSensitive: caseSensitive,
+        ),
+      );
+    });
+  }
+
+  QueryBuilder<IsarAppSettings, IsarAppSettings, QAfterFilterCondition>
+  audioDeviceContains(String value, {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.contains(
+          property: r'audioDevice',
+          value: value,
+          caseSensitive: caseSensitive,
+        ),
+      );
+    });
+  }
+
+  QueryBuilder<IsarAppSettings, IsarAppSettings, QAfterFilterCondition>
+  audioDeviceMatches(String pattern, {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.matches(
+          property: r'audioDevice',
+          wildcard: pattern,
+          caseSensitive: caseSensitive,
+        ),
+      );
+    });
+  }
+
+  QueryBuilder<IsarAppSettings, IsarAppSettings, QAfterFilterCondition>
+  audioDeviceIsEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.equalTo(property: r'audioDevice', value: ''),
+      );
+    });
+  }
+
+  QueryBuilder<IsarAppSettings, IsarAppSettings, QAfterFilterCondition>
+  audioDeviceIsNotEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.greaterThan(property: r'audioDevice', value: ''),
+      );
+    });
+  }
+
+  QueryBuilder<IsarAppSettings, IsarAppSettings, QAfterFilterCondition>
   audioPresetEqualTo(AudioPreset value) {
     return QueryBuilder.apply(this, (query) {
       return query.addFilterCondition(
@@ -362,6 +540,18 @@ extension IsarAppSettingsQueryFilter
           includeLower: includeLower,
           upper: upper,
           includeUpper: includeUpper,
+        ),
+      );
+    });
+  }
+
+  QueryBuilder<IsarAppSettings, IsarAppSettings, QAfterFilterCondition>
+  dynamicNormalizationEqualTo(bool value) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.equalTo(
+          property: r'dynamicNormalization',
+          value: value,
         ),
       );
     });
@@ -629,6 +819,15 @@ extension IsarAppSettingsQueryFilter
   }
 
   QueryBuilder<IsarAppSettings, IsarAppSettings, QAfterFilterCondition>
+  monoAudioEqualTo(bool value) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.equalTo(property: r'monoAudio', value: value),
+      );
+    });
+  }
+
+  QueryBuilder<IsarAppSettings, IsarAppSettings, QAfterFilterCondition>
   playerThemeModeEqualTo(PlayerThemeMode value) {
     return QueryBuilder.apply(this, (query) {
       return query.addFilterCondition(
@@ -764,6 +963,15 @@ extension IsarAppSettingsQueryFilter
       );
     });
   }
+
+  QueryBuilder<IsarAppSettings, IsarAppSettings, QAfterFilterCondition>
+  voiceClarityEqualTo(bool value) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.equalTo(property: r'voiceClarity', value: value),
+      );
+    });
+  }
 }
 
 extension IsarAppSettingsQueryObject
@@ -774,6 +982,20 @@ extension IsarAppSettingsQueryLinks
 
 extension IsarAppSettingsQuerySortBy
     on QueryBuilder<IsarAppSettings, IsarAppSettings, QSortBy> {
+  QueryBuilder<IsarAppSettings, IsarAppSettings, QAfterSortBy>
+  sortByAudioDevice() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'audioDevice', Sort.asc);
+    });
+  }
+
+  QueryBuilder<IsarAppSettings, IsarAppSettings, QAfterSortBy>
+  sortByAudioDeviceDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'audioDevice', Sort.desc);
+    });
+  }
+
   QueryBuilder<IsarAppSettings, IsarAppSettings, QAfterSortBy>
   sortByAudioPreset() {
     return QueryBuilder.apply(this, (query) {
@@ -789,6 +1011,20 @@ extension IsarAppSettingsQuerySortBy
   }
 
   QueryBuilder<IsarAppSettings, IsarAppSettings, QAfterSortBy>
+  sortByDynamicNormalization() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'dynamicNormalization', Sort.asc);
+    });
+  }
+
+  QueryBuilder<IsarAppSettings, IsarAppSettings, QAfterSortBy>
+  sortByDynamicNormalizationDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'dynamicNormalization', Sort.desc);
+    });
+  }
+
+  QueryBuilder<IsarAppSettings, IsarAppSettings, QAfterSortBy>
   sortByLoudnessNormalization() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'loudnessNormalization', Sort.asc);
@@ -799,6 +1035,20 @@ extension IsarAppSettingsQuerySortBy
   sortByLoudnessNormalizationDesc() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'loudnessNormalization', Sort.desc);
+    });
+  }
+
+  QueryBuilder<IsarAppSettings, IsarAppSettings, QAfterSortBy>
+  sortByMonoAudio() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'monoAudio', Sort.asc);
+    });
+  }
+
+  QueryBuilder<IsarAppSettings, IsarAppSettings, QAfterSortBy>
+  sortByMonoAudioDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'monoAudio', Sort.desc);
     });
   }
 
@@ -871,10 +1121,38 @@ extension IsarAppSettingsQuerySortBy
       return query.addSortBy(r'themeMode', Sort.desc);
     });
   }
+
+  QueryBuilder<IsarAppSettings, IsarAppSettings, QAfterSortBy>
+  sortByVoiceClarity() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'voiceClarity', Sort.asc);
+    });
+  }
+
+  QueryBuilder<IsarAppSettings, IsarAppSettings, QAfterSortBy>
+  sortByVoiceClarityDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'voiceClarity', Sort.desc);
+    });
+  }
 }
 
 extension IsarAppSettingsQuerySortThenBy
     on QueryBuilder<IsarAppSettings, IsarAppSettings, QSortThenBy> {
+  QueryBuilder<IsarAppSettings, IsarAppSettings, QAfterSortBy>
+  thenByAudioDevice() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'audioDevice', Sort.asc);
+    });
+  }
+
+  QueryBuilder<IsarAppSettings, IsarAppSettings, QAfterSortBy>
+  thenByAudioDeviceDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'audioDevice', Sort.desc);
+    });
+  }
+
   QueryBuilder<IsarAppSettings, IsarAppSettings, QAfterSortBy>
   thenByAudioPreset() {
     return QueryBuilder.apply(this, (query) {
@@ -886,6 +1164,20 @@ extension IsarAppSettingsQuerySortThenBy
   thenByAudioPresetDesc() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'audioPreset', Sort.desc);
+    });
+  }
+
+  QueryBuilder<IsarAppSettings, IsarAppSettings, QAfterSortBy>
+  thenByDynamicNormalization() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'dynamicNormalization', Sort.asc);
+    });
+  }
+
+  QueryBuilder<IsarAppSettings, IsarAppSettings, QAfterSortBy>
+  thenByDynamicNormalizationDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'dynamicNormalization', Sort.desc);
     });
   }
 
@@ -912,6 +1204,20 @@ extension IsarAppSettingsQuerySortThenBy
   thenByLoudnessNormalizationDesc() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'loudnessNormalization', Sort.desc);
+    });
+  }
+
+  QueryBuilder<IsarAppSettings, IsarAppSettings, QAfterSortBy>
+  thenByMonoAudio() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'monoAudio', Sort.asc);
+    });
+  }
+
+  QueryBuilder<IsarAppSettings, IsarAppSettings, QAfterSortBy>
+  thenByMonoAudioDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'monoAudio', Sort.desc);
     });
   }
 
@@ -984,14 +1290,42 @@ extension IsarAppSettingsQuerySortThenBy
       return query.addSortBy(r'themeMode', Sort.desc);
     });
   }
+
+  QueryBuilder<IsarAppSettings, IsarAppSettings, QAfterSortBy>
+  thenByVoiceClarity() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'voiceClarity', Sort.asc);
+    });
+  }
+
+  QueryBuilder<IsarAppSettings, IsarAppSettings, QAfterSortBy>
+  thenByVoiceClarityDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'voiceClarity', Sort.desc);
+    });
+  }
 }
 
 extension IsarAppSettingsQueryWhereDistinct
     on QueryBuilder<IsarAppSettings, IsarAppSettings, QDistinct> {
   QueryBuilder<IsarAppSettings, IsarAppSettings, QDistinct>
+  distinctByAudioDevice({bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addDistinctBy(r'audioDevice', caseSensitive: caseSensitive);
+    });
+  }
+
+  QueryBuilder<IsarAppSettings, IsarAppSettings, QDistinct>
   distinctByAudioPreset() {
     return QueryBuilder.apply(this, (query) {
       return query.addDistinctBy(r'audioPreset');
+    });
+  }
+
+  QueryBuilder<IsarAppSettings, IsarAppSettings, QDistinct>
+  distinctByDynamicNormalization() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addDistinctBy(r'dynamicNormalization');
     });
   }
 
@@ -1006,6 +1340,13 @@ extension IsarAppSettingsQueryWhereDistinct
   distinctByLoudnessNormalization() {
     return QueryBuilder.apply(this, (query) {
       return query.addDistinctBy(r'loudnessNormalization');
+    });
+  }
+
+  QueryBuilder<IsarAppSettings, IsarAppSettings, QDistinct>
+  distinctByMonoAudio() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addDistinctBy(r'monoAudio');
     });
   }
 
@@ -1043,6 +1384,13 @@ extension IsarAppSettingsQueryWhereDistinct
       return query.addDistinctBy(r'themeMode');
     });
   }
+
+  QueryBuilder<IsarAppSettings, IsarAppSettings, QDistinct>
+  distinctByVoiceClarity() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addDistinctBy(r'voiceClarity');
+    });
+  }
 }
 
 extension IsarAppSettingsQueryProperty
@@ -1053,10 +1401,24 @@ extension IsarAppSettingsQueryProperty
     });
   }
 
+  QueryBuilder<IsarAppSettings, String, QQueryOperations>
+  audioDeviceProperty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addPropertyName(r'audioDevice');
+    });
+  }
+
   QueryBuilder<IsarAppSettings, AudioPreset, QQueryOperations>
   audioPresetProperty() {
     return QueryBuilder.apply(this, (query) {
       return query.addPropertyName(r'audioPreset');
+    });
+  }
+
+  QueryBuilder<IsarAppSettings, bool, QQueryOperations>
+  dynamicNormalizationProperty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addPropertyName(r'dynamicNormalization');
     });
   }
 
@@ -1071,6 +1433,12 @@ extension IsarAppSettingsQueryProperty
   loudnessNormalizationProperty() {
     return QueryBuilder.apply(this, (query) {
       return query.addPropertyName(r'loudnessNormalization');
+    });
+  }
+
+  QueryBuilder<IsarAppSettings, bool, QQueryOperations> monoAudioProperty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addPropertyName(r'monoAudio');
     });
   }
 
@@ -1104,6 +1472,12 @@ extension IsarAppSettingsQueryProperty
   themeModeProperty() {
     return QueryBuilder.apply(this, (query) {
       return query.addPropertyName(r'themeMode');
+    });
+  }
+
+  QueryBuilder<IsarAppSettings, bool, QQueryOperations> voiceClarityProperty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addPropertyName(r'voiceClarity');
     });
   }
 }
@@ -1148,7 +1522,7 @@ final class AppSettingsNotifierProvider
 }
 
 String _$appSettingsNotifierHash() =>
-    r'8f205d09e71adcf8a00cb3c31f25d894239ab833';
+    r'03ba48f17b4c37529f0db055d4ab352207e14a0b';
 
 abstract class _$AppSettingsNotifier extends $Notifier<AppSettings> {
   AppSettings build();

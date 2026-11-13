@@ -520,24 +520,41 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
               children: [
                 const Icon(FluentIcons.ringer, size: 16, color: Colors.white),
                 const SizedBox(width: 8),
-                SizedBox(
-                  width: 100,
-                  child: StreamBuilder<double>(
-                    stream: mediaService.volumeStream,
-                    initialData: mediaService.volume,
-                    builder: (context, snapshot) {
-                      final vol = snapshot.data ?? 100.0;
-                      return Slider(
-                        value: vol,
-                        min: 0,
-                        max: 100,
-                        onChanged: (v) => mediaService.setVolume(v),
-                        style: SliderThemeData(
-                          thumbRadius: WidgetStateProperty.all(6),
+                StreamBuilder<double>(
+                  stream: mediaService.volumeStream,
+                  initialData: mediaService.volume,
+                  builder: (context, snapshot) {
+                    final vol =
+                        (snapshot.data ?? 100.0).clamp(0.0, MediaService.maxVolume);
+                    return Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        SizedBox(
+                          width: 100,
+                          child: Slider(
+                            value: vol,
+                            min: 0,
+                            max: MediaService.maxVolume,
+                            onChanged: (v) => mediaService.setVolume(v),
+                            style: SliderThemeData(
+                              thumbRadius: WidgetStateProperty.all(6),
+                            ),
+                          ),
                         ),
-                      );
-                    },
-                  ),
+                        const SizedBox(width: 4),
+                        SizedBox(
+                          width: 36,
+                          child: Text(
+                            '${vol.round()}%',
+                            style: const TextStyle(
+                              fontSize: 11,
+                              color: Colors.white,
+                            ),
+                          ),
+                        ),
+                      ],
+                    );
+                  },
                 ),
               ],
             ),

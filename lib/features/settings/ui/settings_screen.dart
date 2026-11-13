@@ -3,6 +3,7 @@ import 'package:fluent_ui/fluent_ui.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:canto_sync/core/services/app_settings_service.dart';
+import 'package:canto_sync/core/services/media_service.dart';
 import 'package:canto_sync/core/services/update_service.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:canto_sync/features/library/data/library_service.dart';
@@ -21,6 +22,11 @@ Future<String> appVersion(Ref ref) async {
     logger.w('Error getting app version: $e');
     return 'v1.0.0';
   }
+}
+
+@riverpod
+Future<List<AudioOutputDevice>> audioOutputDevices(Ref ref) {
+  return ref.read(mediaServiceProvider).getAudioDevices();
 }
 
 @riverpod
@@ -248,6 +254,46 @@ class SettingsScreen extends ConsumerWidget {
                         .setLoudnessNormalization(v);
                   },
                 ),
+                const Divider(),
+                _buildToggleItem(
+                  context,
+                  title: 'Dynamic Volume Leveling',
+                  subtitle:
+                      'Real-time leveling for quiet narration and loud effects',
+                  icon: FluentIcons.volume3,
+                  value: settings.dynamicNormalization,
+                  onChanged: (v) {
+                    ref
+                        .read(appSettingsProvider.notifier)
+                        .setDynamicNormalization(v);
+                  },
+                ),
+                const Divider(),
+                _buildToggleItem(
+                  context,
+                  title: 'Voice Clarity',
+                  subtitle:
+                      'Reduce low rumble and compress dynamic range for speech',
+                  icon: FluentIcons.microphone,
+                  value: settings.voiceClarity,
+                  onChanged: (v) {
+                    ref.read(appSettingsProvider.notifier).setVoiceClarity(v);
+                  },
+                ),
+                const Divider(),
+                _buildToggleItem(
+                  context,
+                  title: 'Mono Audio',
+                  subtitle:
+                      'Combine stereo channels for single-ear or panned audio',
+                  icon: FluentIcons.headset,
+                  value: settings.monoAudio,
+                  onChanged: (v) {
+                    ref.read(appSettingsProvider.notifier).setMonoAudio(v);
+                  },
+                ),
+                const Divider(),
+                _buildAudioDeviceItem(context, ref, settings.audioDevice),
               ],
             ),
           ),
@@ -576,6 +622,62 @@ class SettingsScreen extends ConsumerWidget {
 
           // About Section
           _buildAboutSection(context),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildAudioDeviceItem(
+    BuildContext context,
+    WidgetRef ref,
+    String selectedDevice,
+  ) {
+    final devicesAsync = ref.watch(audioOutputDevicesProvider);
+    final devices = devicesAsync.value ?? const <AudioOutputDevice>[];
+    final items = <ComboBoxItem<String>>[
+      const ComboBoxItem(value: 'auto', child: Text('System Default')),
+      ...devices
+          .where((d) => d.name != 'auto')
+          .map(
+            (d) => ComboBoxItem(
+              value: d.name,
+              child: Text(
+                d.description,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+          ),
+    ];
+    final hasSelected = items.any((item) => item.value == selectedDevice);
+    final currentValue = hasSelected ? selectedDevice : 'auto';
+
+    return _buildSettingItem(
+      context,
+      title: 'Audio Output Device',
+      subtitle: 'Select the playback device used by mpv',
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 220),
+            child: ComboBox<String>(
+              value: currentValue,
+              items: items,
+              onChanged: (device) {
+                if (device != null) {
+                  ref.read(appSettingsProvider.notifier).setAudioDevice(device);
+                }
+              },
+            ),
+          ),
+          const SizedBox(width: 8),
+          Tooltip(
+            message: 'Refresh audio devices',
+            child: IconButton(
+              icon: const Icon(FluentIcons.refresh, size: 16),
+              onPressed: () => ref.invalidate(audioOutputDevicesProvider),
+            ),
+          ),
         ],
       ),
     );

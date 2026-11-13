@@ -41,6 +41,10 @@ abstract class AppSettings with _$AppSettings {
     @Default([]) List<String> libraryPaths,
     @Default(false) bool skipSilence,
     @Default(false) bool loudnessNormalization,
+    @Default(false) bool dynamicNormalization,
+    @Default(false) bool voiceClarity,
+    @Default(false) bool monoAudio,
+    @Default('auto') String audioDevice,
     @Default(PlayerThemeMode.standard) PlayerThemeMode playerThemeMode,
     @Default(true) bool showWaveform,
     @Default(true) bool showCoverReflection,
@@ -67,6 +71,10 @@ class IsarAppSettings {
   List<String> libraryPaths = [];
   bool skipSilence = false;
   bool loudnessNormalization = false;
+  bool dynamicNormalization = false;
+  bool voiceClarity = false;
+  bool monoAudio = false;
+  String audioDevice = 'auto';
 
   @enumerated
   PlayerThemeMode playerThemeMode = PlayerThemeMode.standard;
@@ -107,6 +115,10 @@ class AppSettingsNotifier extends _$AppSettingsNotifier {
       libraryPaths: isarSettings.libraryPaths,
       skipSilence: isarSettings.skipSilence,
       loudnessNormalization: isarSettings.loudnessNormalization,
+      dynamicNormalization: isarSettings.dynamicNormalization,
+      voiceClarity: isarSettings.voiceClarity,
+      monoAudio: isarSettings.monoAudio,
+      audioDevice: isarSettings.audioDevice,
       playerThemeMode: isarSettings.playerThemeMode,
       showWaveform: isarSettings.showWaveform,
       showCoverReflection: isarSettings.showCoverReflection,
@@ -145,6 +157,30 @@ class AppSettingsNotifier extends _$AppSettingsNotifier {
     state = state.copyWith(loudnessNormalization: enabled);
     _updateIsar((s) => s.loudnessNormalization = enabled);
     ref.read(mediaServiceProvider).setLoudnessNormalization(enabled);
+  }
+
+  void setDynamicNormalization(bool enabled) {
+    state = state.copyWith(dynamicNormalization: enabled);
+    _updateIsar((s) => s.dynamicNormalization = enabled);
+    ref.read(mediaServiceProvider).setDynamicNormalization(enabled);
+  }
+
+  void setVoiceClarity(bool enabled) {
+    state = state.copyWith(voiceClarity: enabled);
+    _updateIsar((s) => s.voiceClarity = enabled);
+    ref.read(mediaServiceProvider).setVoiceClarity(enabled);
+  }
+
+  void setMonoAudio(bool enabled) {
+    state = state.copyWith(monoAudio: enabled);
+    _updateIsar((s) => s.monoAudio = enabled);
+    ref.read(mediaServiceProvider).setMonoAudio(enabled);
+  }
+
+  void setAudioDevice(String device) {
+    state = state.copyWith(audioDevice: device);
+    _updateIsar((s) => s.audioDevice = device);
+    ref.read(mediaServiceProvider).setAudioDevice(device);
   }
 
   void addLibraryPath(String path) {

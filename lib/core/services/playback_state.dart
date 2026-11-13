@@ -22,6 +22,8 @@ abstract class PlaybackState with _$PlaybackState {
     @Default(1.0) double rate,
     @Default(100.0) double volume,
     @Default(0) int currentIndex,
+    @Default(-1) int currentChapterIndex,
+    @Default(false) bool eofReached,
     @Default(false) bool isPlaylistOpen,
     @Default(<Chapter>[]) List<Chapter> chapters,
   }) = _PlaybackState;
@@ -40,11 +42,15 @@ abstract class PlaybackState with _$PlaybackState {
   }
 
   /// Active chapter for the current position (single-file) or playlist index
-  /// (multi-file).
+  /// (multi-file). Uses mpv's observed `chapter` index for single-file books
+  /// when available, falling back to position matching.
   Chapter? get currentChapter {
     if (chapters.isEmpty) return null;
     if (isPlaylistOpen) {
       return currentIndex < chapters.length ? chapters[currentIndex] : null;
+    }
+    if (currentChapterIndex >= 0 && currentChapterIndex < chapters.length) {
+      return chapters[currentChapterIndex];
     }
     final posSeconds = position.inMilliseconds / 1000.0;
     return chapters.lastWhere(
@@ -139,6 +145,12 @@ class PlaybackStateNotifier extends _$PlaybackStateNotifier {
           chapters: chapters,
           isPlaylistOpen: mediaService.isPlaylistOpen,
         );
+      }),
+      mediaService.currentChapterIndexStream.listen((chapterIndex) {
+        state = state.copyWith(currentChapterIndex: chapterIndex);
+      }),
+      mediaService.eofReachedStream.listen((eof) {
+        state = state.copyWith(eofReached: eof);
       }),
     ]);
 

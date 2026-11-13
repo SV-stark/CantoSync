@@ -15,7 +15,7 @@ T _$identity<T>(T value) => value;
 /// @nodoc
 mixin _$PlaybackState {
 
- Book? get currentBook; String? get currentPath; bool get isPlaying; Duration get position; Duration get duration; Duration get totalDuration; double get rate; double get volume; int get currentIndex; bool get isPlaylistOpen; List<Chapter> get chapters;
+ Book? get currentBook; String? get currentPath; bool get isPlaying; Duration get position; Duration get duration; Duration get totalDuration; double get rate; double get volume; int get currentIndex; int get currentChapterIndex; bool get eofReached; bool get isPlaylistOpen; List<Chapter> get chapters;
 /// Create a copy of PlaybackState
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -27,20 +27,20 @@ $PlaybackStateCopyWith<PlaybackState> get copyWith => _$PlaybackStateCopyWithImp
 @override
 bool operator ==(Object other) {
   final _this = this as PlaybackState;
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is PlaybackState&&(identical(other.currentBook, _this.currentBook) || other.currentBook == _this.currentBook)&&(identical(other.currentPath, _this.currentPath) || other.currentPath == _this.currentPath)&&(identical(other.isPlaying, _this.isPlaying) || other.isPlaying == _this.isPlaying)&&(identical(other.position, _this.position) || other.position == _this.position)&&(identical(other.duration, _this.duration) || other.duration == _this.duration)&&(identical(other.totalDuration, _this.totalDuration) || other.totalDuration == _this.totalDuration)&&(identical(other.rate, _this.rate) || other.rate == _this.rate)&&(identical(other.volume, _this.volume) || other.volume == _this.volume)&&(identical(other.currentIndex, _this.currentIndex) || other.currentIndex == _this.currentIndex)&&(identical(other.isPlaylistOpen, _this.isPlaylistOpen) || other.isPlaylistOpen == _this.isPlaylistOpen)&&const DeepCollectionEquality().equals(other.chapters, _this.chapters));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is PlaybackState&&(identical(other.currentBook, _this.currentBook) || other.currentBook == _this.currentBook)&&(identical(other.currentPath, _this.currentPath) || other.currentPath == _this.currentPath)&&(identical(other.isPlaying, _this.isPlaying) || other.isPlaying == _this.isPlaying)&&(identical(other.position, _this.position) || other.position == _this.position)&&(identical(other.duration, _this.duration) || other.duration == _this.duration)&&(identical(other.totalDuration, _this.totalDuration) || other.totalDuration == _this.totalDuration)&&(identical(other.rate, _this.rate) || other.rate == _this.rate)&&(identical(other.volume, _this.volume) || other.volume == _this.volume)&&(identical(other.currentIndex, _this.currentIndex) || other.currentIndex == _this.currentIndex)&&(identical(other.currentChapterIndex, _this.currentChapterIndex) || other.currentChapterIndex == _this.currentChapterIndex)&&(identical(other.eofReached, _this.eofReached) || other.eofReached == _this.eofReached)&&(identical(other.isPlaylistOpen, _this.isPlaylistOpen) || other.isPlaylistOpen == _this.isPlaylistOpen)&&const DeepCollectionEquality().equals(other.chapters, _this.chapters));
 }
 
 
 @override
 int get hashCode {
   final _this = this as PlaybackState;
-  return Object.hash(runtimeType,_this.currentBook,_this.currentPath,_this.isPlaying,_this.position,_this.duration,_this.totalDuration,_this.rate,_this.volume,_this.currentIndex,_this.isPlaylistOpen,const DeepCollectionEquality().hash(_this.chapters));
+  return Object.hash(runtimeType,_this.currentBook,_this.currentPath,_this.isPlaying,_this.position,_this.duration,_this.totalDuration,_this.rate,_this.volume,_this.currentIndex,_this.currentChapterIndex,_this.eofReached,_this.isPlaylistOpen,const DeepCollectionEquality().hash(_this.chapters));
 }
 
 @override
 String toString() {
   final _this = this as PlaybackState;
-  return 'PlaybackState(currentBook: ${_this.currentBook}, currentPath: ${_this.currentPath}, isPlaying: ${_this.isPlaying}, position: ${_this.position}, duration: ${_this.duration}, totalDuration: ${_this.totalDuration}, rate: ${_this.rate}, volume: ${_this.volume}, currentIndex: ${_this.currentIndex}, isPlaylistOpen: ${_this.isPlaylistOpen}, chapters: ${_this.chapters})';
+  return 'PlaybackState(currentBook: ${_this.currentBook}, currentPath: ${_this.currentPath}, isPlaying: ${_this.isPlaying}, position: ${_this.position}, duration: ${_this.duration}, totalDuration: ${_this.totalDuration}, rate: ${_this.rate}, volume: ${_this.volume}, currentIndex: ${_this.currentIndex}, currentChapterIndex: ${_this.currentChapterIndex}, eofReached: ${_this.eofReached}, isPlaylistOpen: ${_this.isPlaylistOpen}, chapters: ${_this.chapters})';
 }
 
 
@@ -51,7 +51,7 @@ abstract mixin class $PlaybackStateCopyWith<$Res>  {
   factory $PlaybackStateCopyWith(PlaybackState value, $Res Function(PlaybackState) _then) = _$PlaybackStateCopyWithImpl;
 @useResult
 $Res call({
- Book? currentBook, String? currentPath, bool isPlaying, Duration position, Duration duration, Duration totalDuration, double rate, double volume, int currentIndex, bool isPlaylistOpen, List<Chapter> chapters
+ Book? currentBook, String? currentPath, bool isPlaying, Duration position, Duration duration, Duration totalDuration, double rate, double volume, int currentIndex, int currentChapterIndex, bool eofReached, bool isPlaylistOpen, List<Chapter> chapters
 });
 
 
@@ -68,7 +68,7 @@ class _$PlaybackStateCopyWithImpl<$Res>
 
 /// Create a copy of PlaybackState
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? currentBook = freezed,Object? currentPath = freezed,Object? isPlaying = null,Object? position = null,Object? duration = null,Object? totalDuration = null,Object? rate = null,Object? volume = null,Object? currentIndex = null,Object? isPlaylistOpen = null,Object? chapters = null,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? currentBook = freezed,Object? currentPath = freezed,Object? isPlaying = null,Object? position = null,Object? duration = null,Object? totalDuration = null,Object? rate = null,Object? volume = null,Object? currentIndex = null,Object? currentChapterIndex = null,Object? eofReached = null,Object? isPlaylistOpen = null,Object? chapters = null,}) {
   return _then(PlaybackState(
 currentBook: freezed == currentBook ? _self.currentBook : currentBook // ignore: cast_nullable_to_non_nullable
 as Book?,currentPath: freezed == currentPath ? _self.currentPath : currentPath // ignore: cast_nullable_to_non_nullable
@@ -79,7 +79,9 @@ as Duration,totalDuration: null == totalDuration ? _self.totalDuration : totalDu
 as Duration,rate: null == rate ? _self.rate : rate // ignore: cast_nullable_to_non_nullable
 as double,volume: null == volume ? _self.volume : volume // ignore: cast_nullable_to_non_nullable
 as double,currentIndex: null == currentIndex ? _self.currentIndex : currentIndex // ignore: cast_nullable_to_non_nullable
-as int,isPlaylistOpen: null == isPlaylistOpen ? _self.isPlaylistOpen : isPlaylistOpen // ignore: cast_nullable_to_non_nullable
+as int,currentChapterIndex: null == currentChapterIndex ? _self.currentChapterIndex : currentChapterIndex // ignore: cast_nullable_to_non_nullable
+as int,eofReached: null == eofReached ? _self.eofReached : eofReached // ignore: cast_nullable_to_non_nullable
+as bool,isPlaylistOpen: null == isPlaylistOpen ? _self.isPlaylistOpen : isPlaylistOpen // ignore: cast_nullable_to_non_nullable
 as bool,chapters: null == chapters ? _self.chapters : chapters // ignore: cast_nullable_to_non_nullable
 as List<Chapter>,
   ));
@@ -166,10 +168,10 @@ return $default(_that);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( Book? currentBook,  String? currentPath,  bool isPlaying,  Duration position,  Duration duration,  Duration totalDuration,  double rate,  double volume,  int currentIndex,  bool isPlaylistOpen,  List<Chapter> chapters)?  $default,{required TResult orElse(),}) {final _that = this;
+@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( Book? currentBook,  String? currentPath,  bool isPlaying,  Duration position,  Duration duration,  Duration totalDuration,  double rate,  double volume,  int currentIndex,  int currentChapterIndex,  bool eofReached,  bool isPlaylistOpen,  List<Chapter> chapters)?  $default,{required TResult orElse(),}) {final _that = this;
 switch (_that) {
 case _PlaybackState() when $default != null:
-return $default(_that.currentBook,_that.currentPath,_that.isPlaying,_that.position,_that.duration,_that.totalDuration,_that.rate,_that.volume,_that.currentIndex,_that.isPlaylistOpen,_that.chapters);case _:
+return $default(_that.currentBook,_that.currentPath,_that.isPlaying,_that.position,_that.duration,_that.totalDuration,_that.rate,_that.volume,_that.currentIndex,_that.currentChapterIndex,_that.eofReached,_that.isPlaylistOpen,_that.chapters);case _:
   return orElse();
 
 }
@@ -187,10 +189,10 @@ return $default(_that.currentBook,_that.currentPath,_that.isPlaying,_that.positi
 /// }
 /// ```
 
-@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( Book? currentBook,  String? currentPath,  bool isPlaying,  Duration position,  Duration duration,  Duration totalDuration,  double rate,  double volume,  int currentIndex,  bool isPlaylistOpen,  List<Chapter> chapters)  $default,) {final _that = this;
+@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( Book? currentBook,  String? currentPath,  bool isPlaying,  Duration position,  Duration duration,  Duration totalDuration,  double rate,  double volume,  int currentIndex,  int currentChapterIndex,  bool eofReached,  bool isPlaylistOpen,  List<Chapter> chapters)  $default,) {final _that = this;
 switch (_that) {
 case _PlaybackState():
-return $default(_that.currentBook,_that.currentPath,_that.isPlaying,_that.position,_that.duration,_that.totalDuration,_that.rate,_that.volume,_that.currentIndex,_that.isPlaylistOpen,_that.chapters);case _:
+return $default(_that.currentBook,_that.currentPath,_that.isPlaying,_that.position,_that.duration,_that.totalDuration,_that.rate,_that.volume,_that.currentIndex,_that.currentChapterIndex,_that.eofReached,_that.isPlaylistOpen,_that.chapters);case _:
   throw StateError('Unexpected subclass');
 
 }
@@ -207,10 +209,10 @@ return $default(_that.currentBook,_that.currentPath,_that.isPlaying,_that.positi
 /// }
 /// ```
 
-@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( Book? currentBook,  String? currentPath,  bool isPlaying,  Duration position,  Duration duration,  Duration totalDuration,  double rate,  double volume,  int currentIndex,  bool isPlaylistOpen,  List<Chapter> chapters)?  $default,) {final _that = this;
+@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( Book? currentBook,  String? currentPath,  bool isPlaying,  Duration position,  Duration duration,  Duration totalDuration,  double rate,  double volume,  int currentIndex,  int currentChapterIndex,  bool eofReached,  bool isPlaylistOpen,  List<Chapter> chapters)?  $default,) {final _that = this;
 switch (_that) {
 case _PlaybackState() when $default != null:
-return $default(_that.currentBook,_that.currentPath,_that.isPlaying,_that.position,_that.duration,_that.totalDuration,_that.rate,_that.volume,_that.currentIndex,_that.isPlaylistOpen,_that.chapters);case _:
+return $default(_that.currentBook,_that.currentPath,_that.isPlaying,_that.position,_that.duration,_that.totalDuration,_that.rate,_that.volume,_that.currentIndex,_that.currentChapterIndex,_that.eofReached,_that.isPlaylistOpen,_that.chapters);case _:
   return null;
 
 }
@@ -222,7 +224,7 @@ return $default(_that.currentBook,_that.currentPath,_that.isPlaying,_that.positi
 
 
 class _PlaybackState extends PlaybackState {
-  const _PlaybackState({this.currentBook, this.currentPath, this.isPlaying = false, this.position = Duration.zero, this.duration = Duration.zero, this.totalDuration = Duration.zero, this.rate = 1.0, this.volume = 100.0, this.currentIndex = 0, this.isPlaylistOpen = false,  List<Chapter> chapters = const <Chapter>[]}): _chapters = chapters,super._();
+  const _PlaybackState({this.currentBook, this.currentPath, this.isPlaying = false, this.position = Duration.zero, this.duration = Duration.zero, this.totalDuration = Duration.zero, this.rate = 1.0, this.volume = 100.0, this.currentIndex = 0, this.currentChapterIndex = -1, this.eofReached = false, this.isPlaylistOpen = false,  List<Chapter> chapters = const <Chapter>[]}): _chapters = chapters,super._();
   
 
 @override final  Book? currentBook;
@@ -234,6 +236,8 @@ class _PlaybackState extends PlaybackState {
 @override@JsonKey() final  double rate;
 @override@JsonKey() final  double volume;
 @override@JsonKey() final  int currentIndex;
+@override@JsonKey() final  int currentChapterIndex;
+@override@JsonKey() final  bool eofReached;
 @override@JsonKey() final  bool isPlaylistOpen;
  final  List<Chapter> _chapters;
 @override@JsonKey() List<Chapter> get chapters {
@@ -253,18 +257,18 @@ _$PlaybackStateCopyWith<_PlaybackState> get copyWith => __$PlaybackStateCopyWith
 
 @override
 bool operator ==(Object other) {
-    return identical(this, other) || (other.runtimeType == runtimeType&&other is _PlaybackState&&(identical(other.currentBook, currentBook) || other.currentBook == currentBook)&&(identical(other.currentPath, currentPath) || other.currentPath == currentPath)&&(identical(other.isPlaying, isPlaying) || other.isPlaying == isPlaying)&&(identical(other.position, position) || other.position == position)&&(identical(other.duration, duration) || other.duration == duration)&&(identical(other.totalDuration, totalDuration) || other.totalDuration == totalDuration)&&(identical(other.rate, rate) || other.rate == rate)&&(identical(other.volume, volume) || other.volume == volume)&&(identical(other.currentIndex, currentIndex) || other.currentIndex == currentIndex)&&(identical(other.isPlaylistOpen, isPlaylistOpen) || other.isPlaylistOpen == isPlaylistOpen)&&const DeepCollectionEquality().equals(other.chapters, _chapters));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is _PlaybackState&&(identical(other.currentBook, currentBook) || other.currentBook == currentBook)&&(identical(other.currentPath, currentPath) || other.currentPath == currentPath)&&(identical(other.isPlaying, isPlaying) || other.isPlaying == isPlaying)&&(identical(other.position, position) || other.position == position)&&(identical(other.duration, duration) || other.duration == duration)&&(identical(other.totalDuration, totalDuration) || other.totalDuration == totalDuration)&&(identical(other.rate, rate) || other.rate == rate)&&(identical(other.volume, volume) || other.volume == volume)&&(identical(other.currentIndex, currentIndex) || other.currentIndex == currentIndex)&&(identical(other.currentChapterIndex, currentChapterIndex) || other.currentChapterIndex == currentChapterIndex)&&(identical(other.eofReached, eofReached) || other.eofReached == eofReached)&&(identical(other.isPlaylistOpen, isPlaylistOpen) || other.isPlaylistOpen == isPlaylistOpen)&&const DeepCollectionEquality().equals(other.chapters, _chapters));
 }
 
 
 @override
 int get hashCode {
-    return Object.hash(runtimeType,currentBook,currentPath,isPlaying,position,duration,totalDuration,rate,volume,currentIndex,isPlaylistOpen,const DeepCollectionEquality().hash(_chapters));
+    return Object.hash(runtimeType,currentBook,currentPath,isPlaying,position,duration,totalDuration,rate,volume,currentIndex,currentChapterIndex,eofReached,isPlaylistOpen,const DeepCollectionEquality().hash(_chapters));
 }
 
 @override
 String toString() {
-    return 'PlaybackState(currentBook: $currentBook, currentPath: $currentPath, isPlaying: $isPlaying, position: $position, duration: $duration, totalDuration: $totalDuration, rate: $rate, volume: $volume, currentIndex: $currentIndex, isPlaylistOpen: $isPlaylistOpen, chapters: $chapters)';
+    return 'PlaybackState(currentBook: $currentBook, currentPath: $currentPath, isPlaying: $isPlaying, position: $position, duration: $duration, totalDuration: $totalDuration, rate: $rate, volume: $volume, currentIndex: $currentIndex, currentChapterIndex: $currentChapterIndex, eofReached: $eofReached, isPlaylistOpen: $isPlaylistOpen, chapters: $chapters)';
 }
 
 
@@ -275,7 +279,7 @@ abstract mixin class _$PlaybackStateCopyWith<$Res> implements $PlaybackStateCopy
   factory _$PlaybackStateCopyWith(_PlaybackState value, $Res Function(_PlaybackState) _then) = __$PlaybackStateCopyWithImpl;
 @override @useResult
 $Res call({
- Book? currentBook, String? currentPath, bool isPlaying, Duration position, Duration duration, Duration totalDuration, double rate, double volume, int currentIndex, bool isPlaylistOpen, List<Chapter> chapters
+ Book? currentBook, String? currentPath, bool isPlaying, Duration position, Duration duration, Duration totalDuration, double rate, double volume, int currentIndex, int currentChapterIndex, bool eofReached, bool isPlaylistOpen, List<Chapter> chapters
 });
 
 
@@ -292,7 +296,7 @@ class __$PlaybackStateCopyWithImpl<$Res>
 
 /// Create a copy of PlaybackState
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? currentBook = freezed,Object? currentPath = freezed,Object? isPlaying = null,Object? position = null,Object? duration = null,Object? totalDuration = null,Object? rate = null,Object? volume = null,Object? currentIndex = null,Object? isPlaylistOpen = null,Object? chapters = null,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? currentBook = freezed,Object? currentPath = freezed,Object? isPlaying = null,Object? position = null,Object? duration = null,Object? totalDuration = null,Object? rate = null,Object? volume = null,Object? currentIndex = null,Object? currentChapterIndex = null,Object? eofReached = null,Object? isPlaylistOpen = null,Object? chapters = null,}) {
   return _then(_PlaybackState(
 currentBook: freezed == currentBook ? _self.currentBook : currentBook // ignore: cast_nullable_to_non_nullable
 as Book?,currentPath: freezed == currentPath ? _self.currentPath : currentPath // ignore: cast_nullable_to_non_nullable
@@ -303,7 +307,9 @@ as Duration,totalDuration: null == totalDuration ? _self.totalDuration : totalDu
 as Duration,rate: null == rate ? _self.rate : rate // ignore: cast_nullable_to_non_nullable
 as double,volume: null == volume ? _self.volume : volume // ignore: cast_nullable_to_non_nullable
 as double,currentIndex: null == currentIndex ? _self.currentIndex : currentIndex // ignore: cast_nullable_to_non_nullable
-as int,isPlaylistOpen: null == isPlaylistOpen ? _self.isPlaylistOpen : isPlaylistOpen // ignore: cast_nullable_to_non_nullable
+as int,currentChapterIndex: null == currentChapterIndex ? _self.currentChapterIndex : currentChapterIndex // ignore: cast_nullable_to_non_nullable
+as int,eofReached: null == eofReached ? _self.eofReached : eofReached // ignore: cast_nullable_to_non_nullable
+as bool,isPlaylistOpen: null == isPlaylistOpen ? _self.isPlaylistOpen : isPlaylistOpen // ignore: cast_nullable_to_non_nullable
 as bool,chapters: null == chapters ? _self._chapters : chapters // ignore: cast_nullable_to_non_nullable
 as List<Chapter>,
   ));

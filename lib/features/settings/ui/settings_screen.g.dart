@@ -42,6 +42,48 @@ final class AppVersionProvider
 
 String _$appVersionHash() => r'd69e13be1520e27ae1c9827c4d77156ed26551a6';
 
+@ProviderFor(audioOutputDevices)
+final audioOutputDevicesProvider = AudioOutputDevicesProvider._();
+
+final class AudioOutputDevicesProvider
+    extends
+        $FunctionalProvider<
+          AsyncValue<List<AudioOutputDevice>>,
+          List<AudioOutputDevice>,
+          FutureOr<List<AudioOutputDevice>>
+        >
+    with
+        $FutureModifier<List<AudioOutputDevice>>,
+        $FutureProvider<List<AudioOutputDevice>> {
+  AudioOutputDevicesProvider._()
+    : super(
+        from: null,
+        argument: null,
+        retry: null,
+        name: r'audioOutputDevicesProvider',
+        isAutoDispose: true,
+        dependencies: null,
+        $allTransitiveDependencies: null,
+      );
+
+  @override
+  String debugGetCreateSourceHash() => _$audioOutputDevicesHash();
+
+  @$internal
+  @override
+  $FutureProviderElement<List<AudioOutputDevice>> $createElement(
+    $ProviderPointer pointer,
+  ) => $FutureProviderElement(pointer);
+
+  @override
+  FutureOr<List<AudioOutputDevice>> create(Ref ref) {
+    return audioOutputDevices(ref);
+  }
+}
+
+String _$audioOutputDevicesHash() =>
+    r'11262fa4d935bb501886a040f71c9e416218d7dd';
+
 @ProviderFor(packageInfo)
 final packageInfoProvider = PackageInfoProvider._();
 

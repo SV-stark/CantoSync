@@ -152,10 +152,14 @@ class KeyboardShortcuts extends _$KeyboardShortcuts {
         );
         break;
       case ShortcutAction.volumeUp:
-        await mediaService.setVolume((mediaService.volume + 5).clamp(0.0, 100.0));
+        await mediaService.setVolume(
+          (mediaService.volume + 5).clamp(0.0, MediaService.maxVolume),
+        );
         break;
       case ShortcutAction.volumeDown:
-        await mediaService.setVolume((mediaService.volume - 5).clamp(0.0, 100.0));
+        await mediaService.setVolume(
+          (mediaService.volume - 5).clamp(0.0, MediaService.maxVolume),
+        );
         break;
       case ShortcutAction.volumeMute:
         await mediaService.setVolume(0);

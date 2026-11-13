@@ -27,7 +27,7 @@
 
 | Feature | Description |
 | :--- | :--- |
-| 🚀 **High-Performance** | Powered by `media_kit` (libmpv) for smooth playback and broad format support (`.m4b`, `.m4a`, `.mp3`, `.flac`, `.ogg`, `.wav`, `.opus`). |
+| 🚀 **High-Performance** | Powered by `media_kit` (libmpv) with gapless playback, playlist prefetching, sample-accurate seeking (`hr-seek`), ReplayGain, pitch-corrected speed control, and broad format support (`.m4b`, `.m4a`, `.mp3`, `.flac`, `.ogg`, `.wav`, `.opus`). |
 | 🔖 **Chapters & Multi-File** | Parses embedded M4B/ID3 chapters and automatically groups multi-file audiobook folders into chaptered playlists. |
 | 🧠 **Smart Resume** | Remembers the exact track and second where you left off for every audiobook in your library. |
 | 📑 **Bookmarks** | Save custom timestamped bookmarks to jump back to key moments across single-file and multi-file books. |
@@ -39,7 +39,7 @@
 | ⌨️ **Keyboard Shortcuts** | Customizable in-app and global hotkeys with conflict detection. |
 | 📊 **Listening Statistics** | Track daily listening activity, streaks, author analytics, average playback speed, and completion tracking. |
 | 📝 **Metadata Editor** | Edit book titles, authors, series, descriptions, and custom cover art directly in the app. |
-| 🎚️ **Audio Processing** | Playback speed control, equalizer presets (Flat, Voice Enhance, Bass Boost, Treble Boost), skip silence, and loudness normalization. |
+| 🎚️ **Audio Processing** | Playback speed control, equalizer presets (Flat, Spoken Word, Bass Boost, Treble Boost), skip silence, loudness & dynamic volume normalization, voice clarity, mono downmix, 200% volume boost, and output device selection. |
 | 🧹 **Orphaned File Cleaner** | Scan and purge database records for missing or deleted audio files. |
 | 🔄 **Update Checker** | Built-in GitHub Releases update checker that notifies you when a new version is available. |
 
@@ -147,7 +147,7 @@ flutter build linux --release
 - [x] **Listening Statistics**: Track daily stats, author analytics, and completion rates.
 - [x] **Mini-Player**: Persistent playback controls across all screens.
 - [x] **Metadata Editor**: Edit titles, authors, descriptions, and cover art.
-- [x] **Equalizer & Audio Filters**: Built-in audio presets, skip silence, and loudness normalization.
+- [x] **Equalizer & Audio Filters**: Built-in audio presets, skip silence, loudness & dynamic normalization, voice clarity, mono downmix, 200% volume boost, and output device switching.
 - [x] **Library Grouping & Search**: Group by Author, Series, or Collections with search and Grid/List views.
 - [x] **Auto-Updater**: Automatic update checking and notifications.
 - [ ] **Cloud Sync**: Cross-device progress synchronization (NextCloud/WebDAV).

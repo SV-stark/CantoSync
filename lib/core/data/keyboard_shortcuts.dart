@@ -112,14 +112,14 @@ class KeyboardShortcut {
 
     // Single character keys
     if (key.length == 1) {
-      final upperKey = key.toUpperCase();
-      final codePoint = upperKey.codeUnitAt(0);
-      if (codePoint >= 65 && codePoint <= 90) {
-        // A-Z
-        return LogicalKeyboardKey(0x00070004 + (codePoint - 65));
+      final lowerKey = key.toLowerCase();
+      final codePoint = lowerKey.codeUnitAt(0);
+      if (codePoint >= 97 && codePoint <= 122) {
+        // a-z (LogicalKeyboardKey uses lowercase Unicode code points)
+        return LogicalKeyboardKey(codePoint);
       } else if (codePoint >= 48 && codePoint <= 57) {
-        // 0-9
-        return LogicalKeyboardKey(0x0007001e + (codePoint - 48));
+        // 0-9 (LogicalKeyboardKey uses Unicode code points 0x30-0x39)
+        return LogicalKeyboardKey(codePoint);
       }
     }
 

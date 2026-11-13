@@ -23,14 +23,25 @@ HotkeyService hotkeyService(Ref ref) {
 class HotkeyService {
   HotkeyService(this._ref);
   final Ref _ref;
+  int _registerGeneration = 0;
+  Future<void> _registerQueue = Future.value();
 
   Future<void> init() async {
     await registerShortcuts();
   }
 
-  Future<void> registerShortcuts() async {
+  Future<void> registerShortcuts() {
+    final generation = ++_registerGeneration;
+    _registerQueue = _registerQueue.then(
+      (_) => _registerShortcutsImpl(generation),
+    );
+    return _registerQueue;
+  }
+
+  Future<void> _registerShortcutsImpl(int generation) async {
     if (kIsWeb) return;
     if (!Platform.isWindows && !Platform.isLinux) return;
+    if (generation != _registerGeneration) return;
 
     try {
       await hotKeyManager.unregisterAll();
@@ -38,9 +49,12 @@ class HotkeyService {
       logger.w('Error unregistering hotkeys: $e');
     }
 
+    if (generation != _registerGeneration) return;
+
     final shortcuts = _ref.read(keyboardShortcutsProvider);
 
     for (final shortcut in shortcuts) {
+      if (generation != _registerGeneration) return;
       await _registerHotKeyFromShortcut(shortcut, () {
         // Never steal keystrokes from an editable field, whether or not the
         // shortcut uses a modifier. The old guard only ran for unmodified

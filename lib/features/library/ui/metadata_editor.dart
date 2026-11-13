@@ -52,7 +52,10 @@ class _MetadataEditorState extends ConsumerState<MetadataEditor> {
     super.dispose();
   }
 
+  bool _isSaving = false;
+
   Future<void> _save() async {
+    if (_isSaving) return;
     setState(() {
       _titleError = null;
       _seriesIndexError = null;
@@ -81,32 +84,37 @@ class _MetadataEditorState extends ConsumerState<MetadataEditor> {
 
     if (hasError) return;
 
-    final libraryService = ref.read(libraryServiceProvider);
-    final bookPath = widget.book.path;
-    final bookToSave = (bookPath != null
-            ? await libraryService.getBookByPath(bookPath)
-            : null) ??
-        widget.book;
+    _isSaving = true;
+    try {
+      final libraryService = ref.read(libraryServiceProvider);
+      final bookPath = widget.book.path;
+      final bookToSave = (bookPath != null
+              ? await libraryService.getBookByPath(bookPath)
+              : null) ??
+          widget.book;
 
-    bookToSave.title = titleText;
-    bookToSave.author = _authorController.text;
-    bookToSave.album = _albumController.text;
-    bookToSave.series = _seriesController.text.isNotEmpty
-        ? _seriesController.text
-        : null;
-    bookToSave.narrator = _narratorController.text;
-    bookToSave.description = _descriptionController.text;
+      bookToSave.title = titleText;
+      bookToSave.author = _authorController.text;
+      bookToSave.album = _albumController.text;
+      bookToSave.series = _seriesController.text.isNotEmpty
+          ? _seriesController.text
+          : null;
+      bookToSave.narrator = _narratorController.text;
+      bookToSave.description = _descriptionController.text;
 
-    // Parse series index if provided
-    if (seriesIndexText.isNotEmpty) {
-      final index = int.tryParse(seriesIndexText);
-      bookToSave.seriesIndex = index;
-    } else {
-      bookToSave.seriesIndex = null;
+      // Parse series index if provided
+      if (seriesIndexText.isNotEmpty) {
+        final index = int.tryParse(seriesIndexText);
+        bookToSave.seriesIndex = index;
+      } else {
+        bookToSave.seriesIndex = null;
+      }
+
+      await libraryService.saveBook(bookToSave);
+      if (mounted) Navigator.pop(context);
+    } finally {
+      _isSaving = false;
     }
-
-    await libraryService.saveBook(bookToSave);
-    if (mounted) Navigator.pop(context);
   }
 
   @override
@@ -131,6 +139,7 @@ class _MetadataEditorState extends ConsumerState<MetadataEditor> {
                       image: DecorationImage(
                         image: FileImage(File(widget.book.coverPath!)),
                         fit: BoxFit.cover,
+                        onError: (exception, stackTrace) {},
                       ),
                     ),
                   ),

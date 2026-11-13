@@ -48,6 +48,10 @@ class SleepTimer extends _$SleepTimer {
     final generation = ++_fadeGeneration;
 
     final mediaService = ref.read(mediaServiceProvider);
+    if (mediaService.isDisposed) {
+      _isFadingOut = false;
+      return;
+    }
     final originalVolume = mediaService.volume;
     final startVol = originalVolume;
 
@@ -56,29 +60,38 @@ class SleepTimer extends _$SleepTimer {
     const interval = Duration(milliseconds: 250);
     final volumeStep = startVol / steps;
 
-    double currentVol = startVol;
-    for (int i = 0; i < steps; i++) {
-      // Abort if the user cancelled while we were fading.
-      if (generation != _fadeGeneration) {
-        await mediaService.setVolume(startVol);
-        _isFadingOut = false;
+    try {
+      double currentVol = startVol;
+      for (int i = 0; i < steps; i++) {
+        // Abort if the user cancelled or a newer fade started.
+        if (generation != _fadeGeneration || mediaService.isDisposed) {
+          if (!mediaService.isDisposed && !_isFadingOut) {
+            await mediaService.setVolume(startVol);
+          }
+          return;
+        }
+        currentVol = (currentVol - volumeStep).clamp(0.0, startVol);
+        await mediaService.setVolume(currentVol);
+        await Future.delayed(interval);
+      }
+
+      if (generation != _fadeGeneration || mediaService.isDisposed) {
+        if (!mediaService.isDisposed && !_isFadingOut) {
+          await mediaService.setVolume(startVol);
+        }
         return;
       }
-      currentVol = (currentVol - volumeStep).clamp(0.0, startVol);
-      await mediaService.setVolume(currentVol);
-      await Future.delayed(interval);
-    }
 
-    if (generation != _fadeGeneration) {
-      await mediaService.setVolume(startVol);
-      _isFadingOut = false;
-      return;
+      await mediaService.pause();
+      // Restore original volume after pausing
+      if (!mediaService.isDisposed) {
+        await mediaService.setVolume(startVol);
+      }
+    } finally {
+      if (generation == _fadeGeneration) {
+        _isFadingOut = false;
+      }
     }
-
-    await mediaService.pause();
-    // Restore original volume after pausing
-    await mediaService.setVolume(startVol);
-    _isFadingOut = false;
   }
 
   void startTimer(Duration duration) {
@@ -109,9 +122,11 @@ class SleepTimer extends _$SleepTimer {
         final remaining = calculateEndOfChapterRemaining(
           position: position,
           trackDuration: mediaService.duration,
-          hasCustomChapters: mediaService.customChapters != null &&
-              mediaService.customChapters!.isNotEmpty,
-          customChapters: mediaService.customChapters,
+          hasCustomChapters: mediaService.isPlaylistOpen,
+          customChapters: mediaService.customChapters ??
+              (mediaService.lastChapters.isNotEmpty
+                  ? mediaService.lastChapters
+                  : null),
           currentIndex: mediaService.currentIndex,
         );
 
@@ -126,13 +141,8 @@ class SleepTimer extends _$SleepTimer {
 
   void cancelTimer() {
     _teardown();
-    if (!_isFadingOut) {
-      state = const SleepTimerState();
-    } else {
-      // A fade is in flight; it will observe the generation change, restore
-      // the original volume and reset the state itself.
-      state = state.copyWith(remainingTime: null, isEndOfChapter: false);
-    }
+    _isFadingOut = false;
+    state = const SleepTimerState();
   }
 }
 
@@ -186,13 +196,10 @@ Duration calculateEndOfChapterRemaining({
   var chapterEndTime = trackDuration;
   if (customChapters != null && customChapters.isNotEmpty) {
     final positionSeconds = position.inMilliseconds / 1000.0;
-    var index = currentIndex;
-    if (index < 0 || index >= customChapters.length) {
-      index = MediaService.currentChapterIndex(
-        customChapters,
-        positionSeconds,
-      );
-    }
+    final index = MediaService.currentChapterIndex(
+      customChapters,
+      positionSeconds,
+    );
     final endTime = customChapters[index].endTime;
     if (endTime != null) {
       chapterEndTime = Duration(milliseconds: (endTime * 1000).toInt());

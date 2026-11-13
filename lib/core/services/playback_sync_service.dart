@@ -168,10 +168,11 @@ class PlaybackSyncService {
     if (total == null || total <= 0) return true;
 
     final files = book.filesMetadata;
-    final maxIndex = (files?.length ?? 1) - 1;
-    final trackIndex = (book.lastTrackIndex ?? currentIndex).clamp(0, maxIndex);
+    final maxIndex = (files != null && files.isNotEmpty) ? files.length - 1 : 0;
+    final trackIndex = currentIndex.clamp(0, maxIndex);
 
-    double position = book.positionSeconds ?? 0;
+    final livePosition = _mediaService.position.inMilliseconds / 1000.0;
+    double position = livePosition > 0 ? livePosition : (book.positionSeconds ?? 0);
     if (files != null && files.length > 1) {
       double cumulative = 0;
       for (var i = 0; i < trackIndex && i < files.length; i++) {
@@ -216,7 +217,17 @@ class PlaybackSyncService {
     }
   }
 
+  int _resumeGeneration = 0;
+
   Future<void> resumeBook(String path) async {
+    final generation = ++_resumeGeneration;
+    _flushPendingStats();
+    _wasPlaying = false;
+    _debounceTimer?.cancel();
+    if (_pendingSave && _currentPath != null) {
+      unawaited(_performSave());
+    }
+
     _currentPath = path;
     _ref.read(currentBookPathProvider.notifier).update(path);
 
@@ -230,6 +241,7 @@ class PlaybackSyncService {
     int? lastTrackIndex;
 
     final book = await _libraryService.getBookByPath(path);
+    if (generation != _resumeGeneration) return;
     if (book != null) {
       _currentBook = book;
       title = book.title;
@@ -298,6 +310,7 @@ class PlaybackSyncService {
             }).toList();
 
             fileDataList = await Future.wait(futures);
+            if (generation != _resumeGeneration) return;
 
             if (bookObj != null) {
               bookObj.filesMetadata = fileDataList
@@ -310,6 +323,7 @@ class PlaybackSyncService {
                   )
                   .toList();
               await _libraryService.saveBook(bookObj);
+              if (generation != _resumeGeneration) return;
             }
           }
 
@@ -345,16 +359,19 @@ class PlaybackSyncService {
               ? Duration(milliseconds: (totalDurationSeconds * 1000).toInt())
               : null,
         );
+        if (generation != _resumeGeneration) return;
 
         if (lastTrackIndex != null &&
             lastTrackIndex >= 0 &&
             lastTrackIndex < audioFiles.length) {
           await _mediaService.jump(lastTrackIndex);
+          if (generation != _resumeGeneration) return;
         }
 
         // Fix: Also seek to last position within the track for multi-file books
         if (lastPosition != null && lastPosition > 0.1) {
           await Future.delayed(const Duration(milliseconds: 500));
+          if (generation != _resumeGeneration) return;
           try {
             await _mediaService.seek(
               Duration(milliseconds: (lastPosition * 1000).toInt()),
@@ -392,6 +409,7 @@ class PlaybackSyncService {
 
     if (lastPosition != null && lastPosition > 0.1) {
       await Future.delayed(const Duration(milliseconds: 500));
+      if (generation != _resumeGeneration) return;
       try {
         await _mediaService.seek(
           Duration(milliseconds: (lastPosition * 1000).toInt()),
@@ -420,6 +438,10 @@ class PlaybackSyncService {
     // save made dispose() re-save stale data forever.
     _pendingSave = false;
     if (path == null) return;
+    if (_currentBook?.path == path) {
+      _currentBook!.positionSeconds = _lastPosition;
+      _currentBook!.lastTrackIndex = _lastTrackIndex;
+    }
     await _libraryService.updateProgress(
       path,
       _lastPosition,

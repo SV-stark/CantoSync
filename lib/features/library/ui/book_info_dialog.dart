@@ -21,9 +21,11 @@ class _BookInfoDialogState extends ConsumerState<BookInfoDialog> {
     final result = await FilePicker.pickFiles(type: FileType.image);
 
     if (result.isNotEmpty && result.first.path != null) {
+      if (!mounted) return;
       await ref
           .read(libraryServiceProvider)
           .updateBookCover(widget.book, result.first.path!);
+      if (!mounted) return;
       setState(() {}); // Refresh UI
     }
   }

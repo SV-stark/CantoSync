@@ -41,7 +41,12 @@ final playerPlayingProvider = StreamProvider.autoDispose<bool>((ref) {
 
 final playerTotalDurationProvider = StreamProvider.autoDispose<Duration>((ref) {
   final service = ref.watch(mediaServiceProvider);
-  return service.totalDurationStream;
+  return service.totalDurationStream.startWith(service.lastTotalDuration);
+});
+
+final playerRateProvider = StreamProvider.autoDispose<double>((ref) {
+  final service = ref.watch(mediaServiceProvider);
+  return service.rateStream.startWith(service.playRate);
 });
 
 final currentBookProvider = FutureProvider.autoDispose<Book?>((ref) async {
@@ -58,7 +63,7 @@ final playlistProvider = StreamProvider.autoDispose<Playlist>((ref) {
 
 final playerChaptersProvider = StreamProvider.autoDispose<List<Chapter>>((ref) {
   final service = ref.watch(mediaServiceProvider);
-  return service.chaptersStream;
+  return service.chaptersStream.startWith(service.lastChapters);
 });
 
 class PlayerPlaybackProgress {
@@ -107,9 +112,7 @@ final playerPlaybackProgressProvider =
         }
       }
 
-      final isMultiFile =
-          totalDuration.inSeconds > (duration.inSeconds + 10) ||
-          currentIndex > 0;
+      final isMultiFile = mediaService.isPlaylistOpen;
 
       // Determine current chapter
       Chapter? currentChapter;
@@ -341,13 +344,12 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
         ),
 
         // 3. Sleep Timer Overlay (if active)
-        if (remainingTimer.remainingTime != null)
-          Positioned.fill(
-            child: SleepTimerOverlay(
-              remainingTime: remainingTimer.remainingTime,
-              opacity: 0.25,
-            ),
+        Positioned.fill(
+          child: SleepTimerOverlay(
+            remainingTime: remainingTimer.remainingTime,
+            opacity: 0.25,
           ),
+        ),
       ],
     );
   }
@@ -403,7 +405,9 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
                       context,
                       ref,
                       currentBook,
-                      Duration(milliseconds: sliderValue.toInt()),
+                      Duration(
+                        milliseconds: (globalPositionSeconds * 1000).round(),
+                      ),
                       currentChapter,
                       isMultiPlaylist,
                     ),
@@ -662,12 +666,15 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
           children: [
             _FooterButton(
               icon: FluentIcons.playback_rate1x,
-              label: '${mediaService.playRate.toStringAsFixed(2)}x',
+              label:
+                  '${(ref.watch(playerRateProvider).value ?? mediaService.playRate).toStringAsFixed(2)}x',
               onTap: () {
+                final currentRate =
+                    ref.read(playerRateProvider).value ?? mediaService.playRate;
                 showDialog(
                   context: context,
                   builder: (context) => _SpeedControlDialog(
-                    initialRate: mediaService.playRate,
+                    initialRate: currentRate,
                     onRateChanged: (rate) => mediaService.setRate(rate),
                   ),
                 );
@@ -844,9 +851,33 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
                           if (context.mounted) Navigator.pop(dialogContext);
                         },
                       ),
-                      onPressed: () {
-                        ref.read(mediaServiceProvider).seek(time);
+                      onPressed: () async {
+                        final media = ref.read(mediaServiceProvider);
                         Navigator.pop(dialogContext);
+                        if (media.isPlaylistOpen) {
+                          final chapters =
+                              media.customChapters ?? media.lastChapters;
+                          final timeSec = time.inMilliseconds / 1000.0;
+                          final trackIndex = MediaService.currentChapterIndex(
+                            chapters,
+                            timeSec,
+                          );
+                          await media.jumpToChapter(trackIndex);
+                          final chapterStart = trackIndex < chapters.length
+                              ? chapters[trackIndex].startTime
+                              : 0.0;
+                          final trackOffset = (timeSec - chapterStart).clamp(
+                            0.0,
+                            double.infinity,
+                          );
+                          await media.seek(
+                            Duration(
+                              milliseconds: (trackOffset * 1000).round(),
+                            ),
+                          );
+                        } else {
+                          await media.seek(time);
+                        }
                       },
                     );
                   },
@@ -898,25 +929,22 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
                   ? 'Bookmark at ${_formatDuration(position)}'
                   : textController.text.trim();
 
-              book.bookmarks ??= [];
-              book.bookmarks!.add(
-                Bookmark(
-                  label: label,
-                  timestampSeconds: globalPositionSecondsWrapper(
-                    ref,
-                    position,
-                    currentChapter,
-                    isMultiFile,
-                  ),
-                ),
-              );
-              await ref.read(libraryServiceProvider).saveBook(book);
+              final timestampSeconds = position.inMilliseconds / 1000.0;
+              if (book.path != null) {
+                await ref.read(libraryServiceProvider).addBookmark(
+                      book.path!,
+                      Bookmark(
+                        label: label,
+                        timestampSeconds: timestampSeconds,
+                      ),
+                    );
+              }
               if (context.mounted) Navigator.pop(context);
             },
           ),
         ],
       ),
-    );
+    ).whenComplete(textController.dispose);
   }
 
   double globalPositionSecondsWrapper(
@@ -1039,10 +1067,10 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
                 child: Button(
                   onPressed: () {
                     Navigator.pop(context); // Close menu first
+                    final controller = TextEditingController();
                     showDialog(
                       context: context,
                       builder: (context) {
-                        final controller = TextEditingController();
                         return ContentDialog(
                           title: const Text('Set Sleep Timer'),
                           content: TextBox(
@@ -1069,7 +1097,7 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
                           ],
                         );
                       },
-                    );
+                    ).whenComplete(controller.dispose);
                   },
                   child: const Align(
                     alignment: Alignment.centerLeft,

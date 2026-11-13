@@ -458,25 +458,25 @@ class _ContributionCalendar extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // Day labels
+        // Week start labels aligned to each week column
         Row(
-          children: [
-            const SizedBox(width: 32),
-            ...['Mon', 'Wed', 'Fri'].map(
-              (day) => Expanded(
-                child: Text(
-                  day,
-                  style: FluentTheme.of(context).typography.caption?.copyWith(
-                    color: FluentTheme.of(
-                      context,
-                    ).resources.textFillColorSecondary,
-                    fontSize: 10,
-                  ),
-                  textAlign: TextAlign.center,
+          children: weeks.map((week) {
+            final label = week.isNotEmpty
+                ? DateFormat('M/d').format(DateTime.parse(week.first.date))
+                : '';
+            return Expanded(
+              child: Text(
+                label,
+                style: FluentTheme.of(context).typography.caption?.copyWith(
+                  color: FluentTheme.of(
+                    context,
+                  ).resources.textFillColorSecondary,
+                  fontSize: 10,
                 ),
+                textAlign: TextAlign.center,
               ),
-            ),
-          ],
+            );
+          }).toList(),
         ),
         const SizedBox(height: 4),
         // Calendar grid

@@ -21,15 +21,21 @@ class MediaService {
   Player? _player;
   final Ref _ref;
   bool _initFailed = false;
+  bool _isDisposed = false;
 
   /// In-flight mpv chapter read, de-duplicated by [getChapters].
   Future<List<Chapter>>? _chapterFetchFuture;
+  int _chapterFetchInFlightGeneration = -1;
 
   /// True once the player failed to construct so the UI can surface an error
   /// instead of silently showing an inert player forever.
-  bool get isInitialised => _player != null && !_initFailed;
+  bool get isInitialised => _player != null && !_initFailed && !_isDisposed;
+  bool get isDisposed => _isDisposed;
 
   Player get _p {
+    if (_isDisposed) {
+      throw StateError('MediaService has been disposed');
+    }
     if (_initFailed) {
       throw StateError('MediaKit Player failed to initialize');
     }
@@ -46,14 +52,14 @@ class MediaService {
     // Guard against re-entry: the _p getter re-invokes _init() whenever the
     // player is null, which previously leaked a native handle on each call
     // because the old instance was overwritten without being disposed.
-    if (_player != null || _initialising) return;
+    if (_isDisposed || _player != null || _initialising) return;
     _initialising = true;
     try {
       final player = Player();
       _playerDurationSubscription?.cancel();
       _playerDurationSubscription = player.stream.duration.listen((d) {
         if (_customTotalDuration == null) {
-          _totalDurationController.add(d);
+          _emitTotalDuration(d);
         }
       });
       _player = player;
@@ -119,6 +125,22 @@ class MediaService {
   final StreamController<List<Chapter>> _chaptersController =
       StreamController<List<Chapter>>.broadcast();
   Stream<List<Chapter>> get chaptersStream => _chaptersController.stream;
+  List<Chapter> _lastChapters = const [];
+  List<Chapter> get lastChapters => _lastChapters;
+
+  void _emitChapters(List<Chapter> chapters) {
+    _lastChapters = chapters;
+    if (!_isDisposed && !_chaptersController.isClosed) {
+      _chaptersController.add(chapters);
+    }
+  }
+
+  void _emitTotalDuration(Duration duration) {
+    _lastTotalDuration = duration;
+    if (!_isDisposed && !_totalDurationController.isClosed) {
+      _totalDurationController.add(duration);
+    }
+  }
 
   Future<void> open(
     Object mediaSource, {
@@ -132,30 +154,21 @@ class MediaService {
     _customChapters = chapters;
     _customTotalDuration = totalDuration;
     final generation = ++_chapterFetchGeneration;
+    _chapterFetchFuture = null;
     _isPlaylistOpen = mediaSource is List<String> && mediaSource.length > 1;
 
     if (totalDuration != null) {
-      _totalDurationController.add(totalDuration);
+      _emitTotalDuration(totalDuration);
     } else {
       // Clear the previous book's total immediately. Leaving it in place made
       // the next book briefly look "multi-file" and corrupted the seek maths.
-      _totalDurationController.add(Duration.zero);
+      _emitTotalDuration(Duration.zero);
     }
 
     if (chapters != null) {
-      _chaptersController.add(chapters);
+      _emitChapters(chapters);
     } else {
-      _chaptersController.add([]);
-      unawaited(
-        getChapters(generation: generation).then((c) {
-          // Only publish if this is still the book we were asked about, and
-          // only if we actually found chapters -- an empty result from a
-          // superseded fetch must not wipe a good chapter list.
-          if (generation == _chapterFetchGeneration && c.isNotEmpty) {
-            _chaptersController.add(c);
-          }
-        }),
-      );
+      _emitChapters(const []);
     }
 
     if (mediaSource is String) {
@@ -165,6 +178,21 @@ class MediaService {
         mediaSource.map((path) => Media(path)).toList(),
       );
       await _p.open(playlist, play: autoPlay);
+    }
+
+    if (chapters == null && !_isDisposed && generation == _chapterFetchGeneration) {
+      unawaited(
+        getChapters(generation: generation).then((c) {
+          // Only publish if this is still the book we were asked about, and
+          // only if we actually found chapters -- an empty result from a
+          // superseded fetch must not wipe a good chapter list.
+          if (!_isDisposed &&
+              generation == _chapterFetchGeneration &&
+              c.isNotEmpty) {
+            _emitChapters(c);
+          }
+        }),
+      );
     }
 
     // Ensure filters are applied to the new media
@@ -264,6 +292,8 @@ class MediaService {
       _player != null ? _p.stream.tracks : Stream.value(const Tracks());
   Stream<Track> get trackStream =>
       _player != null ? _p.stream.track : Stream.value(const Track());
+  Stream<double> get rateStream =>
+      _player != null ? _p.stream.rate : Stream.value(1.0);
 
   // ... (constructor) ...
 
@@ -277,16 +307,15 @@ class MediaService {
     // An in-flight read is de-duplicated by returning the same future rather
     // than bailing out with an empty list. Bailing out here is what let a
     // concurrent call report "no chapters" and wipe a good chapter list.
+    final targetGeneration = generation ?? _chapterFetchGeneration;
     final inFlight = _chapterFetchFuture;
-    if (inFlight != null && _chapterFetchGeneration == generation) {
+    if (inFlight != null && _chapterFetchInFlightGeneration == targetGeneration) {
       return inFlight;
     }
 
-    final future = _readChapters();
+    final future = _readChapters(targetGeneration);
     _chapterFetchFuture = future;
-    if (generation != null) {
-      _chapterFetchGeneration = generation;
-    }
+    _chapterFetchInFlightGeneration = targetGeneration;
     try {
       return await future;
     } finally {
@@ -296,7 +325,8 @@ class MediaService {
     }
   }
 
-  Future<List<Chapter>> _readChapters() async {
+  Future<List<Chapter>> _readChapters(int generation) async {
+    if (_isDisposed || _player == null) return [];
     final platform = _p.platform;
     if (platform is! NativePlayer) {
       logger.d(
@@ -311,11 +341,26 @@ class MediaService {
       // Retry briefly to handle the race where mpv has not finished loading
       // the file's metadata yet.
       for (var i = 0; i < 10; i++) {
+        if (_isDisposed ||
+            _player == null ||
+            generation != _chapterFetchGeneration) {
+          return [];
+        }
         final countStr = await native.getProperty('chapters');
+        if (_isDisposed ||
+            _player == null ||
+            generation != _chapterFetchGeneration) {
+          return [];
+        }
         final count = int.tryParse(countStr) ?? 0;
 
         if (count > 0) {
           final resultString = await native.getProperty('chapter-list');
+          if (_isDisposed ||
+              _player == null ||
+              generation != _chapterFetchGeneration) {
+            return [];
+          }
           if (resultString.isNotEmpty) {
             final result = jsonDecode(resultString);
             final chapters = parseMpvChapters(result, _p.state.duration);
@@ -349,6 +394,8 @@ class MediaService {
 
   final StreamController<Duration> _totalDurationController =
       StreamController<Duration>.broadcast();
+  Duration _lastTotalDuration = Duration.zero;
+  Duration get lastTotalDuration => _lastTotalDuration;
 
   /// Returns the total duration of the book.
   /// If it's a multi-file book, this is the sum of all files.
@@ -358,9 +405,8 @@ class MediaService {
   Future<void> jumpToChapter(int index) async {
     if (index < 0) return;
 
-    // If custom chapters exist, we are in multi-file mode where each chapter
-    // corresponds to a playlist item.
-    if (_customChapters != null) {
+    // Only treat chapters as playlist indices when a multi-file playlist is open.
+    if (_isPlaylistOpen) {
       final mediaCount = _p.state.playlist.medias.length;
       if (index >= mediaCount) {
         logger.w(
@@ -468,6 +514,7 @@ class MediaService {
   Track get track => _player != null ? _p.state.track : const Track();
 
   void dispose() {
+    _isDisposed = true;
     _playerDurationSubscription?.cancel();
     _playerDurationSubscription = null;
     _player?.dispose();

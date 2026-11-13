@@ -148,7 +148,11 @@ class ListeningStatsService {
 
       while (datesWithActivity.contains(_formatDate(checkDate))) {
         currentStreak++;
-        checkDate = checkDate.subtract(const Duration(days: 1));
+        checkDate = DateTime(
+          checkDate.year,
+          checkDate.month,
+          checkDate.day - 1,
+        );
       }
     }
 
@@ -161,7 +165,11 @@ class ListeningStatsService {
         streakStart = currentDate;
         currentCount = 1;
       } else {
-        final expectedDate = streakStart.add(Duration(days: currentCount));
+        final expectedDate = DateTime(
+          streakStart.year,
+          streakStart.month,
+          streakStart.day + currentCount,
+        );
         if (_formatDate(expectedDate) == sortedDates[i]) {
           currentCount++;
         } else {

@@ -104,8 +104,13 @@ class LibraryScreen extends HookConsumerWidget {
         ),
       );
 
-      await ref.read(libraryServiceProvider).rescanLibraries();
-      isScanning.value = false;
+      try {
+        await ref.read(libraryServiceProvider).rescanLibraries();
+      } finally {
+        if (context.mounted) {
+          isScanning.value = false;
+        }
+      }
 
       if (context.mounted) {
         displayInfoBar(
@@ -217,12 +222,20 @@ class LibraryScreen extends HookConsumerWidget {
               onDragDone: (detail) async {
                 final files = detail.files;
                 if (files.isEmpty) return;
+                final libraryService = ref.read(libraryServiceProvider);
+                final settingsNotifier = ref.read(
+                  appSettingsProvider.notifier,
+                );
                 int totalAdded = 0;
                 for (final file in files) {
-                  final added = await ref
-                      .read(libraryServiceProvider)
-                      .scanDirectory(file.path);
-                  totalAdded += added.length;
+                  if (await Directory(file.path).exists()) {
+                    settingsNotifier.addLibraryPath(file.path);
+                    final added = await libraryService.scanDirectory(file.path);
+                    totalAdded += added.length;
+                  } else if (await File(file.path).exists()) {
+                    await libraryService.importSingleFile(file.path);
+                    totalAdded++;
+                  }
                 }
                 if (context.mounted) {
                   if (totalAdded > 0) {
@@ -400,6 +413,7 @@ class _CollectionTileState extends ConsumerState<_CollectionTile> {
             text: const Text('Play All'),
             onPressed: () async {
               final books = await libraryService.getAllBooks();
+              if (!context.mounted) return;
               final collectionBooks = books
                   .where(
                     (b) => b.collections?.contains(collectionName) ?? false,
@@ -592,6 +606,8 @@ class _BookListTileState extends ConsumerState<_BookListTile> {
                     width: 40,
                     height: 40,
                     fit: BoxFit.cover,
+                    errorBuilder: (context, error, stackTrace) =>
+                        const Icon(FluentIcons.music_note),
                   )
                 : const Icon(FluentIcons.music_note),
           ),
@@ -626,8 +642,9 @@ class _BookListTileState extends ConsumerState<_BookListTile> {
                   ),
                 )
               : null,
-          onPressed: () =>
-              ref.read(playbackSyncProvider).resumeBook(book.path!),
+          onPressed: book.path == null
+              ? null
+              : () => ref.read(playbackSyncProvider).resumeBook(book.path!),
         ),
       ),
     );
@@ -726,7 +743,10 @@ double calculateBookProgress(Book book) {
   final dur = book.durationSeconds ?? 0;
   if (dur <= 0) return 0.0;
   final pos = book.positionSeconds ?? 0;
-  if (book.audioFiles != null && book.audioFiles!.length > 1 && book.filesMetadata != null) {
+  if (book.audioFiles != null &&
+      book.audioFiles!.length > 1 &&
+      book.filesMetadata != null &&
+      book.filesMetadata!.isNotEmpty) {
     final trackIndex = (book.lastTrackIndex ?? 0).clamp(0, book.filesMetadata!.length - 1);
     double cumulativeBefore = 0;
     for (int i = 0; i < trackIndex; i++) {
@@ -781,7 +801,9 @@ class _BookCardState extends ConsumerState<BookCard> {
           _flyoutController,
         ),
         child: HoverButton(
-          onPressed: () => ref.read(playbackSyncProvider).resumeBook(book.path!),
+          onPressed: book.path == null
+              ? null
+              : () => ref.read(playbackSyncProvider).resumeBook(book.path!),
           builder: (context, states) => Card(
             padding: EdgeInsets.zero,
             borderRadius: BorderRadius.circular(8),
@@ -1034,8 +1056,9 @@ void _showBookContextMenu(
         MenuFlyoutItem(
           leading: const Icon(FluentIcons.play),
           text: const Text('Play'),
-          onPressed: () =>
-              ref.read(playbackSyncProvider).resumeBook(book.path!),
+          onPressed: book.path == null
+              ? null
+              : () => ref.read(playbackSyncProvider).resumeBook(book.path!),
         ),
         MenuFlyoutItem(
           leading: const Icon(FluentIcons.edit),
@@ -1083,7 +1106,9 @@ void _showBookContextMenu(
                     ),
                   ),
                   onPressed: () {
-                    ref.read(libraryServiceProvider).deleteBook(book.path!);
+                    if (book.path != null) {
+                      ref.read(libraryServiceProvider).deleteBook(book.path!);
+                    }
                     Navigator.pop(context);
                   },
                   child: const Text('Delete'),
@@ -1137,5 +1162,5 @@ void _showAddToCollectionDialog(
         ),
       ],
     ),
-  );
+  ).whenComplete(textController.dispose);
 }

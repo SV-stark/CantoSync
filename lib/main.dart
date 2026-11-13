@@ -90,6 +90,7 @@ class CantoSyncApp extends ConsumerStatefulWidget {
 
 class _CantoSyncAppState extends ConsumerState<CantoSyncApp>
     with WindowListener {
+  final GlobalKey<NavigatorState> _navigatorKey = GlobalKey<NavigatorState>();
   bool _servicesInitialized = false;
 
   void _openLibraryCallback() {
@@ -196,8 +197,10 @@ class _CantoSyncAppState extends ConsumerState<CantoSyncApp>
       final updateInfo = await updateService.checkForUpdates();
       if (updateInfo != null && mounted) {
         logger.i('New version available: ${updateInfo.latestVersion}');
+        final overlayContext = _navigatorKey.currentContext;
+        if (overlayContext == null || !overlayContext.mounted) return;
         displayInfoBar(
-          context,
+          overlayContext,
           builder: (context, close) => InfoBar(
             title: Text('Update Available (${updateInfo.latestVersion})'),
             content: Text(
@@ -245,6 +248,7 @@ class _CantoSyncAppState extends ConsumerState<CantoSyncApp>
     final index = ref.watch(navigationIndexProvider);
 
     return FluentApp(
+      navigatorKey: _navigatorKey,
       title: 'CantoSync',
       themeMode: settings.themeMode,
       debugShowCheckedModeBanner: false,

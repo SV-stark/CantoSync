@@ -74,7 +74,11 @@ class TrayService extends TrayListener {
       windowManager.show();
       windowManager.focus();
     } else if (menuItem.key == 'play_pause') {
-      _ref.read(mediaServiceProvider).playOrPause();
+      try {
+        await _ref.read(mediaServiceProvider).playOrPause();
+      } catch (e, stack) {
+        logger.w('Tray play/pause failed', error: e, stackTrace: stack);
+      }
     } else if (menuItem.key == 'exit_app') {
       try {
         await _ref.read(playbackSyncProvider).forceSave();

@@ -204,9 +204,11 @@ Future<Map<String, List<String>>> performFileScan(String path) async {
   final dir = Directory(path);
   if (!await dir.exists()) return {};
 
-  final entities = await dir.list(recursive: true, followLinks: false).toList();
-
-  for (final entity in entities) {
+  await for (final entity in dir
+      .list(recursive: true, followLinks: false)
+      .handleError((Object error, StackTrace stackTrace) {
+        logger.w('Skipping inaccessible entry during scan: $error');
+      })) {
     if (entity is File) {
       final ext = p.extension(entity.path).toLowerCase();
       if (audioExtensions.contains(ext)) {
@@ -222,6 +224,7 @@ class LibraryService {
   LibraryService(this._isar, this._ref);
   final Isar _isar;
   final Ref _ref;
+  Future<void>? _rescanFuture;
 
   Future<List<Book>> getAllBooks() async {
     return _isar.books.where().findAll();
@@ -251,14 +254,30 @@ class LibraryService {
     });
   }
 
+  Future<void> _deleteUnreferencedCovers(Iterable<String> candidatePaths) async {
+    final uniqueCandidates = candidatePaths.toSet();
+    if (uniqueCandidates.isEmpty) return;
+
+    final remainingBooks = await getAllBooks();
+    final referencedCovers = remainingBooks
+        .map((b) => b.coverPath)
+        .whereType<String>()
+        .toSet();
+    final unreferenced = uniqueCandidates.where(
+      (path) => !referencedCovers.contains(path),
+    );
+    await _deleteCachedCovers(unreferenced);
+  }
+
   Future<void> deleteBook(String path) async {
     final book = await _isar.books.where().pathEqualTo(path).findFirst();
-    if (book?.coverPath != null) {
-      await _deleteCachedCovers([book!.coverPath!]);
-    }
+    final coverPath = book?.coverPath;
     await _isar.writeTxn(() async {
       await _isar.books.where().pathEqualTo(path).deleteFirst();
     });
+    if (coverPath != null) {
+      await _deleteUnreferencedCovers([coverPath]);
+    }
   }
 
   Stream<List<Book>> listenToBooks() {
@@ -273,45 +292,61 @@ class LibraryService {
   }
 
   Future<void> assignCollection(String path, String collectionName) async {
-    final book = await _isar.books.where().pathEqualTo(path).findFirst();
-    if (book != null) {
+    await _isar.writeTxn(() async {
+      final book = await _isar.books.where().pathEqualTo(path).findFirst();
+      if (book == null) return;
       final collections = List<String>.from(book.collections ?? []);
       if (!collections.contains(collectionName)) {
         collections.add(collectionName);
         book.collections = collections;
-        await saveBook(book);
+        await _isar.books.put(book);
       }
-    }
+    });
   }
 
   Future<void> removeBookFromCollection(String path, String collectionName) async {
-    final book = await _isar.books.where().pathEqualTo(path).findFirst();
-    if (book != null && (book.collections?.contains(collectionName) ?? false)) {
+    await _isar.writeTxn(() async {
+      final book = await _isar.books.where().pathEqualTo(path).findFirst();
+      if (book == null || !(book.collections?.contains(collectionName) ?? false)) {
+        return;
+      }
       final collections = List<String>.from(book.collections!);
       collections.remove(collectionName);
       book.collections = collections;
-      await saveBook(book);
-    }
+      await _isar.books.put(book);
+    });
   }
 
   Future<void> removeCollection(String collectionName) async {
-    final books = await getAllBooks();
-    final updatedBooks = <Book>[];
-    for (final book in books) {
-      if (book.collections?.contains(collectionName) ?? false) {
-        book.collections!.remove(collectionName);
-        updatedBooks.add(book);
+    await _isar.writeTxn(() async {
+      final books = await _isar.books.where().findAll();
+      final updatedBooks = <Book>[];
+      for (final book in books) {
+        if (book.collections?.contains(collectionName) ?? false) {
+          final collections = List<String>.from(book.collections!);
+          collections.remove(collectionName);
+          book.collections = collections;
+          updatedBooks.add(book);
+        }
       }
-    }
-    if (updatedBooks.isNotEmpty) {
-      await _isar.writeTxn(() async {
+      if (updatedBooks.isNotEmpty) {
         await _isar.books.putAll(updatedBooks);
-      });
-    }
+      }
+    });
   }
 
   /// Scans every configured library path and reconciles the database.
-  Future<void> rescanLibraries() async {
+  Future<void> rescanLibraries() {
+    final inFlight = _rescanFuture;
+    if (inFlight != null) return inFlight;
+    final future = _rescanLibrariesImpl().whenComplete(() {
+      _rescanFuture = null;
+    });
+    _rescanFuture = future;
+    return future;
+  }
+
+  Future<void> _rescanLibrariesImpl() async {
     final settings = _ref.read(appSettingsProvider);
     final libraryPaths = settings.libraryPaths;
 
@@ -343,6 +378,11 @@ class LibraryService {
             p.isWithin(libPath, bookPath) || p.equals(libPath, bookPath),
       );
       if (!isUnderAnyLibrary) {
+        // Preserve standalone single-file imports (e.g. drag-and-drop) while
+        // the file still exists on disk.
+        if (book.isDirectory == false && await File(bookPath).exists()) {
+          continue;
+        }
         // Guard: if the user has removed every library, keep the existing rows
         // rather than wiping the database.
         if (libraryPaths.isNotEmpty) {
@@ -373,7 +413,7 @@ class LibraryService {
       await _isar.writeTxn(() async {
         await _isar.books.deleteAll(idsToRemove);
       });
-      await _deleteCachedCovers(coversToDelete);
+      await _deleteUnreferencedCovers(coversToDelete);
     }
 
     // After scanning all, update series indices if needed
@@ -381,53 +421,65 @@ class LibraryService {
   }
 
   Future<void> _updateSeriesIndices() async {
-    final books = await getAllBooks();
-    final Map<String, List<Book>> seriesGroups = {};
-    for (var b in books) {
-      if (b.series != null && b.series!.isNotEmpty) {
-        seriesGroups.putIfAbsent(b.series!, () => []).add(b);
-      }
-    }
-
-    final updatedBooks = <Book>[];
-    for (var entry in seriesGroups.entries) {
-      final seriesBooks = entry.value;
-      // Order by explicit index first, then title. Books with no index sort
-      // LAST (not first) so that appending a newly-discovered title to an
-      // existing series yields the next sequential number rather than
-      // colliding with the volumes the user already numbered.
-      seriesBooks.sort((a, b) {
-        if (a.seriesIndex != null && b.seriesIndex != null) {
-          return a.seriesIndex!.compareTo(b.seriesIndex!);
-        }
-        if (a.seriesIndex != null) return -1;
-        if (b.seriesIndex != null) return 1;
-        return (a.title ?? '').compareTo(b.title ?? '');
-      });
-
-      // Number from the highest existing index so explicit user-set values
-      // are preserved and only gaps at the tail get filled in.
-      var next = 1;
-      for (final book in seriesBooks) {
-        if (book.seriesIndex != null) {
-          next = book.seriesIndex! + 1;
-        } else {
-          book.seriesIndex = next;
-          next++;
-          updatedBooks.add(book);
+    await _isar.writeTxn(() async {
+      final books = await _isar.books.where().findAll();
+      final Map<String, List<Book>> seriesGroups = {};
+      for (var b in books) {
+        if (b.series != null && b.series!.isNotEmpty) {
+          seriesGroups.putIfAbsent(b.series!, () => []).add(b);
         }
       }
-    }
 
-    if (updatedBooks.isNotEmpty) {
-      await _isar.writeTxn(() async {
+      final updatedBooks = <Book>[];
+      for (var entry in seriesGroups.entries) {
+        final seriesBooks = entry.value;
+        // Order by explicit index first, then title. Books with no index sort
+        // LAST (not first) so that appending a newly-discovered title to an
+        // existing series yields the next sequential number rather than
+        // colliding with the volumes the user already numbered.
+        seriesBooks.sort((a, b) {
+          if (a.seriesIndex != null && b.seriesIndex != null) {
+            return a.seriesIndex!.compareTo(b.seriesIndex!);
+          }
+          if (a.seriesIndex != null) return -1;
+          if (b.seriesIndex != null) return 1;
+          return (a.title ?? '').compareTo(b.title ?? '');
+        });
+
+        // Number from the highest existing index so explicit user-set values
+        // are preserved and only gaps at the tail get filled in.
+        var next = 1;
+        for (final book in seriesBooks) {
+          if (book.seriesIndex != null) {
+            next = book.seriesIndex! + 1;
+          } else {
+            book.seriesIndex = next;
+            next++;
+            updatedBooks.add(book);
+          }
+        }
+      }
+
+      if (updatedBooks.isNotEmpty) {
         await _isar.books.putAll(updatedBooks);
-      });
-    }
+      }
+    });
   }
 
   Future<List<String>> scanDirectory(String path, {bool forceUpdate = false}) async {
     return _scanDirectory(path, forceUpdate: forceUpdate);
+  }
+
+  Future<void> importSingleFile(String filePath) async {
+    const audioExtensions = {'.mp3', '.m4b', '.m4a', '.flac', '.ogg', '.wav', '.opus'};
+    final ext = p.extension(filePath).toLowerCase();
+    if (!audioExtensions.contains(ext)) return;
+    if (!await File(filePath).exists()) return;
+    await _addBookIfNotExists(
+      filePath,
+      isDirectory: false,
+      audioFiles: [filePath],
+    );
   }
 
   Future<void> updateBookCover(Book book, String newCoverFile) async {
@@ -448,7 +500,17 @@ class LibraryService {
       await sourceFile.copy(targetPath);
 
       book.coverPath = targetPath;
-      await saveBook(book);
+      final path = book.path;
+      if (path == null) {
+        await saveBook(book);
+        return;
+      }
+      await _isar.writeTxn(() async {
+        final fresh = await _isar.books.where().pathEqualTo(path).findFirst();
+        if (fresh == null) return;
+        fresh.coverPath = targetPath;
+        await _isar.books.put(fresh);
+      });
     } catch (e, stack) {
       logger.e('Error updating book cover', error: e, stackTrace: stack);
     }
@@ -636,12 +698,16 @@ class LibraryService {
               '$metadataSourcePath#${chapter.title}',
             );
           }
+          final timeScale =
+              (chapter.timeScale != null && chapter.timeScale! > 0)
+              ? chapter.timeScale!
+              : 1000;
           internalChapters.add(
             ChapterMetadata(
               title: chapter.title,
-              startTime: chapter.start / (chapter.timeScale ?? 1000),
+              startTime: chapter.start / timeScale,
               endTime: chapter.end != null
-                  ? chapter.end! / (chapter.timeScale ?? 1000)
+                  ? chapter.end! / timeScale
                   : null,
               coverPath: chapterCoverPath,
             ),
@@ -713,29 +779,33 @@ class LibraryService {
     }
 
     if (existingBook != null) {
-      // Preserve anything the user has overridden by hand in the metadata
-      // editor. Only refresh a field when the file actually supplies a value,
-      // otherwise a rescan would revert the user's edits (e.g. a cleaned-up
-      // title, a hand-written series, a chosen cover art).
-      final mergedTitle = title;
-      existingBook.title = (mergedTitle != null && mergedTitle.isNotEmpty)
-          ? mergedTitle
-          : existingBook.title ?? _cleanMetadataString(folderName);
-      existingBook.author = author ?? existingBook.author;
-      existingBook.album = album ?? existingBook.album;
-      existingBook.narrator = narrator ?? existingBook.narrator;
-      existingBook.durationSeconds = duration > 0 ? duration : null;
-      existingBook.coverPath = coverPath ?? existingBook.coverPath;
-      existingBook.audioFiles = audioFiles;
-      existingBook.isDirectory = isDirectory;
-      existingBook.description = description ?? existingBook.description;
-      existingBook.filesMetadata = fileMetaList.isNotEmpty
-          ? fileMetaList
-          : existingBook.filesMetadata;
-      existingBook.internalChapters = internalChapters.isNotEmpty
-          ? internalChapters
-          : existingBook.internalChapters;
-      await saveBook(existingBook);
+      await _isar.writeTxn(() async {
+        final fresh = await _isar.books.where().pathEqualTo(path).findFirst();
+        if (fresh == null) return;
+        // Preserve anything the user has overridden by hand in the metadata
+        // editor. Only fill missing values or refresh structural file metadata.
+        final existingTitle = fresh.title;
+        if (existingTitle == null || existingTitle.isEmpty) {
+          fresh.title = (title != null && title.isNotEmpty)
+              ? title
+              : _cleanMetadataString(folderName);
+        }
+        fresh.author = fresh.author ?? author;
+        fresh.album = fresh.album ?? album;
+        fresh.narrator = fresh.narrator ?? narrator;
+        fresh.durationSeconds = duration > 0 ? duration : fresh.durationSeconds;
+        fresh.coverPath = fresh.coverPath ?? coverPath;
+        fresh.audioFiles = audioFiles;
+        fresh.isDirectory = isDirectory;
+        fresh.description = fresh.description ?? description;
+        fresh.filesMetadata = fileMetaList.isNotEmpty
+            ? fileMetaList
+            : fresh.filesMetadata;
+        fresh.internalChapters = internalChapters.isNotEmpty
+            ? internalChapters
+            : fresh.internalChapters;
+        await _isar.books.put(fresh);
+      });
     } else {
       final book = Book(
         path: path,
@@ -906,18 +976,17 @@ class LibraryService {
       final mainPath = book.path;
       bool exists = false;
 
-      if (mainPath != null) {
-        if (await File(mainPath).exists() || await Directory(mainPath).exists()) {
-          exists = true;
-        }
-      }
-
-      if (!exists && book.audioFiles != null && book.audioFiles!.isNotEmpty) {
+      if (book.audioFiles != null && book.audioFiles!.isNotEmpty) {
         for (final file in book.audioFiles!) {
           if (await File(file).exists()) {
             exists = true;
             break;
           }
+        }
+      } else if (mainPath != null) {
+        if (await File(mainPath).exists() ||
+            await Directory(mainPath).exists()) {
+          exists = true;
         }
       }
 
@@ -933,7 +1002,7 @@ class LibraryService {
       await _isar.writeTxn(() async {
         await _isar.books.deleteAll(idsToRemove);
       });
-      await _deleteCachedCovers(coverPathsToDelete);
+      await _deleteUnreferencedCovers(coverPathsToDelete);
       logger.i('Cleaned ${idsToRemove.length} orphaned book(s) from database.');
     }
 

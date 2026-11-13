@@ -1,12 +1,10 @@
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
-import 'package:media_kit/media_kit.dart';
-import 'package:rxdart/rxdart.dart';
 import 'package:canto_sync/core/services/app_settings_service.dart';
 import 'package:canto_sync/core/services/media_service.dart';
-import 'package:canto_sync/features/library/data/library_service.dart';
-import 'package:canto_sync/core/services/playback_sync_service.dart';
+import 'package:canto_sync/core/services/playback_state.dart';
 import 'package:canto_sync/features/library/data/book.dart';
+import 'package:canto_sync/features/library/data/library_service.dart';
 import 'package:canto_sync/features/player/ui/widgets/ambient_background.dart';
 import 'package:canto_sync/features/player/ui/widgets/glass_player_card.dart';
 import 'package:canto_sync/features/player/ui/widgets/cover_art_with_reflection.dart';
@@ -17,185 +15,6 @@ import 'package:canto_sync/core/services/sleep_timer_service.dart';
 import 'package:canto_sync/features/library/ui/metadata_editor.dart';
 import 'package:canto_sync/core/utils/format_duration.dart';
 import 'package:canto_sync/core/constants/app_constants.dart';
-
-// Stream Providers
-final playerPositionProvider = StreamProvider.autoDispose<Duration>((ref) {
-  final service = ref.watch(mediaServiceProvider);
-  return service.positionStream;
-});
-
-final playerDurationProvider = StreamProvider.autoDispose<Duration>((ref) {
-  final service = ref.watch(mediaServiceProvider);
-  return service.durationStream;
-});
-
-final playerVolumeProvider = StreamProvider.autoDispose<double>((ref) {
-  final service = ref.watch(mediaServiceProvider);
-  return service.volumeStream;
-});
-
-final playerPlayingProvider = StreamProvider.autoDispose<bool>((ref) {
-  final service = ref.watch(mediaServiceProvider);
-  return service.playingStream.startWith(service.isPlaying);
-});
-
-final playerTotalDurationProvider = StreamProvider.autoDispose<Duration>((ref) {
-  final service = ref.watch(mediaServiceProvider);
-  return service.totalDurationStream.startWith(service.lastTotalDuration);
-});
-
-final playerRateProvider = StreamProvider.autoDispose<double>((ref) {
-  final service = ref.watch(mediaServiceProvider);
-  return service.rateStream.startWith(service.playRate);
-});
-
-final currentBookProvider = FutureProvider.autoDispose<Book?>((ref) async {
-  final path = ref.watch(currentBookPathProvider);
-  if (path == null) return null;
-  final books = ref.watch(libraryBooksProvider).value ?? [];
-  return books.where((b) => b.path == path).firstOrNull;
-});
-
-final playlistProvider = StreamProvider.autoDispose<Playlist>((ref) {
-  final service = ref.watch(mediaServiceProvider);
-  return service.playlistStream;
-});
-
-final playerChaptersProvider = StreamProvider.autoDispose<List<Chapter>>((ref) {
-  final service = ref.watch(mediaServiceProvider);
-  return service.chaptersStream.startWith(service.lastChapters);
-});
-
-class PlayerPlaybackProgress {
-  const PlayerPlaybackProgress({
-    required this.currentChapter,
-    required this.chapterPosition,
-    required this.chapterDuration,
-    required this.percentageText,
-    required this.totalDuration,
-    required this.position,
-    required this.duration,
-    required this.globalPositionSeconds,
-    required this.isMultiFile,
-  });
-
-  final Chapter? currentChapter;
-  final Duration chapterPosition;
-  final Duration chapterDuration;
-  final String percentageText;
-  final Duration totalDuration;
-  final Duration position;
-  final Duration duration;
-  final double globalPositionSeconds;
-  final bool isMultiFile;
-}
-
-final playerPlaybackProgressProvider =
-    Provider.autoDispose<PlayerPlaybackProgress>((ref) {
-      final currentBook = ref.watch(currentBookProvider).value;
-      final position = ref.watch(playerPositionProvider).value ?? Duration.zero;
-      final duration = ref.watch(playerDurationProvider).value ?? Duration.zero;
-      var totalDuration =
-          ref.watch(playerTotalDurationProvider).value ?? Duration.zero;
-      final chapters = ref.watch(playerChaptersProvider).value ?? [];
-      final mediaService = ref.watch(mediaServiceProvider);
-      final currentIndex = mediaService.currentIndex;
-
-      // Fallback: If player reports 0 duration (common with heavy m4b or initial load),
-      // use metadata from library scan.
-      final bookDurationSeconds = currentBook?.durationSeconds;
-      if (totalDuration.inSeconds == 0 && bookDurationSeconds != null) {
-        if (bookDurationSeconds > 0) {
-          totalDuration = Duration(
-            milliseconds: (bookDurationSeconds * 1000).toInt(),
-          );
-        }
-      }
-
-      final isMultiFile = mediaService.isPlaylistOpen;
-
-      // Determine current chapter
-      Chapter? currentChapter;
-      if (chapters.isNotEmpty) {
-        if (isMultiFile) {
-          if (currentIndex < chapters.length) {
-            currentChapter = chapters[currentIndex];
-          }
-        } else {
-          final posSeconds = position.inMilliseconds / 1000.0;
-          currentChapter = chapters.lastWhere(
-            (c) =>
-                c.startTime <=
-                posSeconds + AppConstants.chapterMatchingToleranceSeconds,
-            orElse: () => chapters.first,
-          );
-        }
-      }
-
-      // --- Calculations ---
-
-      // 1. Total Progress (Global)
-      double globalPositionSeconds = position.inMilliseconds / 1000.0;
-      if (currentChapter != null && isMultiFile) {
-        globalPositionSeconds += currentChapter.startTime;
-      }
-
-      double totalBookSeconds = totalDuration.inMilliseconds / 1000.0;
-
-      // Percentage
-      String percentageText = '';
-      if (totalBookSeconds > 0) {
-        final percent = (globalPositionSeconds / totalBookSeconds * 100).clamp(
-          0.0,
-          100.0,
-        );
-        percentageText = '${percent.toStringAsFixed(1)}%';
-      }
-
-      // 2. Chapter Progress (Local)
-      Duration chapterPosition = Duration.zero;
-      Duration chapterDuration = duration;
-
-      if (currentChapter != null) {
-        if (isMultiFile) {
-          chapterDuration = duration; // File duration
-          chapterPosition = position; // File position
-        } else {
-          // Single File Chapter Logic
-          final start = Duration(
-            milliseconds: (currentChapter.startTime * 1000).toInt(),
-          );
-          final end = currentChapter.endTime != null
-              ? Duration(milliseconds: (currentChapter.endTime! * 1000).toInt())
-              : duration;
-
-          chapterDuration = end - start;
-          chapterPosition = position - start;
-
-          if (chapterPosition.isNegative) {
-            chapterPosition = Duration.zero;
-          }
-          if (chapterPosition > chapterDuration) {
-            chapterPosition = chapterDuration;
-          }
-        }
-      } else {
-        chapterDuration = duration;
-        chapterPosition = position;
-      }
-
-      return PlayerPlaybackProgress(
-        currentChapter: currentChapter,
-        chapterPosition: chapterPosition,
-        chapterDuration: chapterDuration,
-        percentageText: percentageText,
-        totalDuration: totalDuration,
-        position: position,
-        duration: duration,
-        globalPositionSeconds: globalPositionSeconds,
-        isMultiFile: isMultiFile,
-      );
-    });
 
 class PlayerScreen extends ConsumerStatefulWidget {
   const PlayerScreen({super.key});
@@ -214,21 +33,18 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
   Widget build(BuildContext context) {
     final mediaService = ref.watch(mediaServiceProvider);
     final remainingTimer = ref.watch(sleepTimerProvider);
+    final playback = ref.watch(playbackStateProvider);
 
     // Book Info
-    final currentBook = ref.watch(currentBookProvider).value;
-
-    final isPlaying =
-        ref.watch(playerPlayingProvider).value ?? mediaService.isPlaying;
-
-    final progress = ref.watch(playerPlaybackProgressProvider);
-    final currentChapter = progress.currentChapter;
-    final chapterPosition = progress.chapterPosition;
-    final chapterDuration = progress.chapterDuration;
-    final percentageText = progress.percentageText;
-    final totalDuration = progress.totalDuration;
-    final globalPositionSeconds = progress.globalPositionSeconds;
-    final isMultiFile = progress.isMultiFile;
+    final currentBook = playback.currentBook;
+    final isPlaying = playback.isPlaying;
+    final currentChapter = playback.currentChapter;
+    final chapterPosition = playback.chapterPosition;
+    final chapterDuration = playback.chapterDuration;
+    final percentageText = playback.percentageText;
+    final totalDuration = playback.effectiveTotalDuration;
+    final globalPositionSeconds = playback.globalPositionSeconds;
+    final isMultiFile = playback.isPlaylistOpen;
 
     // Slider logic
     double sliderMax = chapterDuration.inMilliseconds.toDouble();
@@ -417,14 +233,13 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
               icon: Icon(FluentIcons.list, color: white70),
               onPressed: () {
                 if (currentBook != null) {
-                  ref.read(playerChaptersProvider).whenData((chapters) {
-                    _showChaptersList(
-                      context,
-                      chapters,
-                      currentChapter,
-                      isMultiPlaylist,
-                    );
-                  });
+                  final chapters = ref.read(playbackStateProvider).chapters;
+                  _showChaptersList(
+                    context,
+                    chapters,
+                    currentChapter,
+                    isMultiPlaylist,
+                  );
                 }
               },
             ),
@@ -667,10 +482,9 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
             _FooterButton(
               icon: FluentIcons.playback_rate1x,
               label:
-                  '${(ref.watch(playerRateProvider).value ?? mediaService.playRate).toStringAsFixed(2)}x',
+                  '${ref.watch(playbackStateProvider.select((s) => s.rate)).toStringAsFixed(2)}x',
               onTap: () {
-                final currentRate =
-                    ref.read(playerRateProvider).value ?? mediaService.playRate;
+                final currentRate = ref.read(playbackStateProvider).rate;
                 showDialog(
                   context: context,
                   builder: (context) => _SpeedControlDialog(

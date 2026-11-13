@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:metadata_audio/metadata_audio.dart' hide Chapter;
 import 'package:path/path.dart' as p;
 import 'package:canto_sync/core/services/media_service.dart';
+import 'package:canto_sync/core/services/playback_state.dart';
 import 'package:canto_sync/core/utils/logger.dart';
 import 'package:canto_sync/features/library/data/library_service.dart';
 import 'package:canto_sync/features/library/data/book.dart';
@@ -20,14 +21,6 @@ PlaybackSyncService playbackSync(Ref ref) {
   return service;
 }
 
-@riverpod
-class CurrentBookPath extends _$CurrentBookPath {
-  @override
-  String? build() => null;
-
-  void update(String? value) => state = value;
-}
-
 class PlaybackSyncService {
   PlaybackSyncService(this._mediaService, this._libraryService, this._ref) {
     _init();
@@ -38,15 +31,16 @@ class PlaybackSyncService {
   StreamSubscription? _subscription;
   StreamSubscription? _completedSubscription;
   StreamSubscription? _chaptersSubscription;
-  String? _currentPath;
   Timer? _debounceTimer;
   Timer? _statsTimer;
   double _lastPosition = 0;
   int _lastTrackIndex = 0;
   bool _pendingSave = false;
-  Book? _currentBook;
   int _sessionSeconds = 0;
   bool _wasPlaying = false;
+
+  Book? get _currentBook => _ref.read(playbackStateProvider).currentBook;
+  String? get _currentPath => _ref.read(playbackStateProvider).currentPath;
 
   /// Flushes any accumulated but unrecorded stats seconds. Called when
   /// playback pauses so short sessions are not lost.
@@ -185,8 +179,7 @@ class PlaybackSyncService {
   }
 
   void setCurrentPath(String? path) {
-    _currentPath = path;
-    _ref.read(currentBookPathProvider.notifier).update(path);
+    _ref.read(playbackStateProvider.notifier).setCurrentPath(path);
   }
 
   Future<void> _recordStatsSession(int seconds) async {
@@ -228,8 +221,7 @@ class PlaybackSyncService {
       unawaited(_performSave());
     }
 
-    _currentPath = path;
-    _ref.read(currentBookPathProvider.notifier).update(path);
+    _ref.read(playbackStateProvider.notifier).setCurrentBook(null, path: path);
 
     // Find book to get last position and metadata
     String? title;
@@ -243,7 +235,7 @@ class PlaybackSyncService {
     final book = await _libraryService.getBookByPath(path);
     if (generation != _resumeGeneration) return;
     if (book != null) {
-      _currentBook = book;
+      _ref.read(playbackStateProvider.notifier).setCurrentBook(book, path: path);
       title = book.title;
       author = book.author;
       album = book.album;
@@ -252,10 +244,10 @@ class PlaybackSyncService {
       isDirectory = book.isDirectory ?? false;
       lastTrackIndex = book.lastTrackIndex;
     } else {
-      // The book was deleted or moved. Keeping the previous _currentBook would
+      // The book was deleted or moved. Keeping the previous currentBook would
       // attribute this book's listening time and chapters to the old one.
       logger.w('No book found in library for path: $path');
-      _currentBook = null;
+      _ref.read(playbackStateProvider.notifier).setCurrentBook(null, path: path);
     }
 
     if (isDirectory && audioFiles != null && audioFiles.isNotEmpty) {
@@ -439,8 +431,9 @@ class PlaybackSyncService {
     _pendingSave = false;
     if (path == null) return;
     if (_currentBook?.path == path) {
-      _currentBook!.positionSeconds = _lastPosition;
-      _currentBook!.lastTrackIndex = _lastTrackIndex;
+      _ref
+          .read(playbackStateProvider.notifier)
+          .updateCurrentBookProgress(_lastPosition, _lastTrackIndex);
     }
     await _libraryService.updateProgress(
       path,

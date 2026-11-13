@@ -47,6 +47,8 @@ class MediaService {
 
   StreamSubscription<Duration>? _playerDurationSubscription;
   int _chapterFetchGeneration = 0;
+  Completer<List<Chapter>>? _chapterCompleter;
+  int _chapterCompleterGeneration = -1;
 
   void _init() {
     // Guard against re-entry: the _p getter re-invokes _init() whenever the
@@ -63,6 +65,7 @@ class MediaService {
         }
       });
       _player = player;
+      unawaited(_configureNativePlayer(player));
       _initFilters();
       _initFailed = false;
     } catch (e, stack) {
@@ -74,6 +77,47 @@ class MediaService {
       );
     } finally {
       _initialising = false;
+    }
+  }
+
+  Future<void> _configureNativePlayer(Player player) async {
+    final platform = player.platform;
+    if (platform is! NativePlayer || _isDisposed) return;
+
+    try {
+      await platform.setProperty('gapless-audio', 'yes');
+      await platform.setProperty('replaygain', 'track');
+      await platform.setProperty('audio-pitch-correction', 'yes');
+
+      await platform.observeProperty('chapter-list', (value) async {
+        if (_isDisposed || _customChapters != null || value.isEmpty) return;
+        try {
+          final decoded = jsonDecode(value);
+          final chapters = parseMpvChapters(decoded, player.state.duration);
+          if (chapters.isEmpty) return;
+
+          final completer = _chapterCompleter;
+          if (completer != null &&
+              !completer.isCompleted &&
+              _chapterCompleterGeneration == _chapterFetchGeneration) {
+            completer.complete(chapters);
+          } else {
+            _emitChapters(chapters);
+          }
+        } catch (e, stack) {
+          logger.w(
+            'Error parsing observed chapter-list',
+            error: e,
+            stackTrace: stack,
+          );
+        }
+      });
+    } catch (e, stack) {
+      logger.w(
+        'Error configuring NativePlayer audiobook properties',
+        error: e,
+        stackTrace: stack,
+      );
     }
   }
 
@@ -155,6 +199,10 @@ class MediaService {
     _customTotalDuration = totalDuration;
     final generation = ++_chapterFetchGeneration;
     _chapterFetchFuture = null;
+    if (_chapterCompleter != null && !_chapterCompleter!.isCompleted) {
+      _chapterCompleter!.complete(const []);
+    }
+    _chapterCompleter = null;
     _isPlaylistOpen = mediaSource is List<String> && mediaSource.length > 1;
 
     if (totalDuration != null) {
@@ -338,50 +386,40 @@ class MediaService {
 
     final native = platform;
     try {
-      // Retry briefly to handle the race where mpv has not finished loading
-      // the file's metadata yet.
-      for (var i = 0; i < 10; i++) {
-        if (_isDisposed ||
-            _player == null ||
-            generation != _chapterFetchGeneration) {
-          return [];
-        }
-        final countStr = await native.getProperty('chapters');
-        if (_isDisposed ||
-            _player == null ||
-            generation != _chapterFetchGeneration) {
-          return [];
-        }
-        final count = int.tryParse(countStr) ?? 0;
-
-        if (count > 0) {
-          final resultString = await native.getProperty('chapter-list');
-          if (_isDisposed ||
-              _player == null ||
-              generation != _chapterFetchGeneration) {
-            return [];
-          }
-          if (resultString.isNotEmpty) {
-            final result = jsonDecode(resultString);
-            final chapters = parseMpvChapters(result, _p.state.duration);
-            if (chapters.isNotEmpty) {
-              logger.d('Found ${chapters.length} chapters internally.');
-              return chapters;
-            }
-          }
-        }
-
-        final currentDuration = _p.state.duration.inMilliseconds;
-        if (currentDuration > 0 && i > 3) {
-          logger.d(
-            'Duration loaded but no chapters found. '
-            'Likely no internal chapters.',
-          );
-          return [];
-        }
-
-        await Future.delayed(const Duration(milliseconds: 150));
+      // Check immediately in case mpv already parsed chapters before getChapters() ran.
+      final immediate = await native.getProperty('chapter-list');
+      if (_isDisposed ||
+          _player == null ||
+          generation != _chapterFetchGeneration) {
+        return [];
       }
+      if (immediate.isNotEmpty) {
+        final decoded = jsonDecode(immediate);
+        final chapters = parseMpvChapters(decoded, _p.state.duration);
+        if (chapters.isNotEmpty) {
+          logger.d('Found ${chapters.length} chapters internally.');
+          return chapters;
+        }
+      }
+
+      // Otherwise wait for the event-driven observeProperty('chapter-list') callback.
+      final completer = Completer<List<Chapter>>();
+      _chapterCompleter = completer;
+      _chapterCompleterGeneration = generation;
+      final chapters = await completer.future.timeout(
+        const Duration(seconds: 2),
+        onTimeout: () => const [],
+      );
+      if (identical(_chapterCompleter, completer)) {
+        _chapterCompleter = null;
+      }
+      if (_isDisposed || generation != _chapterFetchGeneration) {
+        return [];
+      }
+      if (chapters.isNotEmpty) {
+        logger.d('Found ${chapters.length} chapters via chapter-list observer.');
+      }
+      return chapters;
     } catch (e, stack) {
       logger.e(
         'Error fetching/parsing chapters',
@@ -515,6 +553,14 @@ class MediaService {
 
   void dispose() {
     _isDisposed = true;
+    if (_chapterCompleter != null && !_chapterCompleter!.isCompleted) {
+      _chapterCompleter!.complete(const []);
+    }
+    _chapterCompleter = null;
+    final platform = _player?.platform;
+    if (platform is NativePlayer) {
+      unawaited(platform.unobserveProperty('chapter-list').catchError((_) {}));
+    }
     _playerDurationSubscription?.cancel();
     _playerDurationSubscription = null;
     _player?.dispose();

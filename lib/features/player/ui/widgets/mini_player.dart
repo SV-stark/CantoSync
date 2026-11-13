@@ -2,9 +2,7 @@ import 'dart:io';
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:canto_sync/core/services/media_service.dart';
-import 'package:canto_sync/core/services/playback_sync_service.dart';
-import 'package:canto_sync/features/library/data/library_service.dart';
-import 'package:canto_sync/features/player/ui/player_screen.dart';
+import 'package:canto_sync/core/services/playback_state.dart';
 import 'package:canto_sync/core/utils/format_duration.dart';
 
 class MiniPlayer extends ConsumerStatefulWidget {
@@ -21,24 +19,23 @@ class _MiniPlayerState extends ConsumerState<MiniPlayer> {
 
   @override
   Widget build(BuildContext context) {
-    final currentPath = ref.watch(currentBookPathProvider);
-    if (currentPath == null) return const SizedBox.shrink();
+    final playback = ref.watch(playbackStateProvider);
+    final currentPath = playback.currentPath;
+    final currentBook = playback.currentBook;
+    if (currentPath == null || currentBook == null) {
+      return const SizedBox.shrink();
+    }
 
-    final books = ref.watch(libraryBooksProvider).value ?? [];
-    final currentBook = books.where((b) => b.path == currentPath).firstOrNull;
-    if (currentBook == null) return const SizedBox.shrink();
-
-    final progress = ref.watch(playerPlaybackProgressProvider);
     final mediaService = ref.watch(mediaServiceProvider);
 
-    final currentChapter = progress.currentChapter;
+    final currentChapter = playback.currentChapter;
     final chapterTitle = currentChapter?.title;
-    final isMultiFile = progress.isMultiFile;
+    final isMultiFile = playback.isPlaylistOpen;
 
-    final duration = progress.duration;
-    final position = progress.position;
-    final chapterDuration = progress.chapterDuration;
-    final chapterPosition = progress.chapterPosition;
+    final duration = playback.duration;
+    final position = playback.position;
+    final chapterDuration = playback.chapterDuration;
+    final chapterPosition = playback.chapterPosition;
 
     final sliderMax = (chapterDuration.inMilliseconds > 0)
         ? chapterDuration.inMilliseconds.toDouble()

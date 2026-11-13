@@ -27,19 +27,21 @@
 
 | Feature | Description |
 | :--- | :--- |
-| 🚀 **High-Performance** | Powered by `media_kit` (libmpv) for unmatched stability and format support (M4B, MP3, FLAC, OPUS, and more). |
-| 🔖 **Native Chapters** | Direct interface with the audio engine to parse embedded chapters (ID3/M4B) for easy navigation. |
-| 🧠 **Smart Resume** | Remembers the exact second where you left off for *every* audio file in your library. |
-| 📑 **Bookmarks** | Save custom timestamps to quickly jump back to important moments in your audiobooks. |
-| 📚 **Series Support** | Organize audiobooks by series with automatic index-based ordering. |
-| 📂 **Multiple Libraries** | Add multiple folder paths to build your complete audiobook collection. |
-| 🎨 **Fluent Design** | A beautiful interface built with `fluent_ui`, featuring Mica and Acrylic effects on Windows. |
-| 🎵 **Mini-Player** | Persistent mini-player with playback controls that stays visible across all screens. |
-| 📊 **Listening Statistics** | Track your listening habits with daily stats, author analytics, and completion tracking. |
-| 📝 **Metadata Editor** | Edit book titles, authors, descriptions, and custom cover art directly in the app. |
-| 🎚️ **Equalizer** | Built-in audio equalization to customize your listening experience. |
-| 🧹 **Orphaned File Cleaner** | Scan & purge database records for missing or deleted audio files automatically. |
-| 🔄 **Auto-Updater** | Built-in update checker that automatically notifies you of new releases. |
+| 🚀 **High-Performance** | Powered by `media_kit` (libmpv) for smooth playback and broad format support (`.m4b`, `.m4a`, `.mp3`, `.flac`, `.ogg`, `.wav`, `.opus`). |
+| 🔖 **Chapters & Multi-File** | Parses embedded M4B/ID3 chapters and automatically groups multi-file audiobook folders into chaptered playlists. |
+| 🧠 **Smart Resume** | Remembers the exact track and second where you left off for every audiobook in your library. |
+| 📑 **Bookmarks** | Save custom timestamped bookmarks to jump back to key moments across single-file and multi-file books. |
+| 📚 **Series & Collections** | Organize audiobooks by author, series (with index-based ordering), or custom collections, with Grid/List views and search. |
+| 📂 **Multi-Library & Drag-and-Drop** | Add multiple library folders or drag and drop audiobook folders and individual audio files directly into the library. |
+| 🎨 **Fluent Design** | Built with `fluent_ui`, supporting Light, Dark, and System themes, plus customizable player themes, waveform, and cover reflection. |
+| 🎵 **Mini-Player & System Tray** | Persistent mini-player across all screens and system tray controls (Windows & Linux). |
+| ⏲️ **Sleep Timer** | Timed countdown or End-of-Chapter auto-pause with smooth volume fade-out. |
+| ⌨️ **Keyboard Shortcuts** | Customizable in-app and global hotkeys with conflict detection. |
+| 📊 **Listening Statistics** | Track daily listening activity, streaks, author analytics, average playback speed, and completion tracking. |
+| 📝 **Metadata Editor** | Edit book titles, authors, series, descriptions, and custom cover art directly in the app. |
+| 🎚️ **Audio Processing** | Playback speed control, equalizer presets (Flat, Voice Enhance, Bass Boost, Treble Boost), skip silence, and loudness normalization. |
+| 🧹 **Orphaned File Cleaner** | Scan and purge database records for missing or deleted audio files. |
+| 🔄 **Update Checker** | Built-in GitHub Releases update checker that notifies you when a new version is available. |
 
 ---
 
@@ -57,28 +59,23 @@
 
 ## 🛠️ Tech Stack
 
-- **Framework**: [Flutter](https://flutter.dev)
-- **UI Library**: [fluent_ui](https://pub.dev/packages/fluent_ui)
+- **Framework**: [Flutter](https://flutter.dev) (Windows & Linux desktop)
+- **UI Library**: [fluent_ui](https://pub.dev/packages/fluent_ui) & [skeletonizer](https://pub.dev/packages/skeletonizer)
 - **Audio Engine**: [media_kit](https://pub.dev/packages/media_kit) (libmpv)
-- **State Management**: [Riverpod](https://riverpod.dev) & [flutter_hooks](https://pub.dev/packages/flutter_hooks)
+- **State & Codegen**: [hooks_riverpod](https://pub.dev/packages/hooks_riverpod), [riverpod_annotation](https://pub.dev/packages/riverpod_annotation), [flutter_hooks](https://pub.dev/packages/flutter_hooks), & [freezed](https://pub.dev/packages/freezed)
 - **Database**: [Isar Community](https://pub.dev/packages/isar_community)
-- **OS Controls**: [audio_service](https://pub.dev/packages/audio_service) (Windows SMTC & Linux MPRIS)
 - **Metadata Extraction**: [metadata_audio](https://pub.dev/packages/metadata_audio)
-- **Image & Data Caching**: [cached_network_image](https://pub.dev/packages/cached_network_image) & [flutter_cache_manager](https://pub.dev/packages/flutter_cache_manager)
-- **Window Management**: [window_manager](https://pub.dev/packages/window_manager)
-- **Global Hotkeys**: [hotkey_manager](https://pub.dev/packages/hotkey_manager)
-- **System Tray**: [tray_manager](https://pub.dev/packages/tray_manager)
-- **File Picker**: [file_picker](https://pub.dev/packages/file_picker)
-- **Layout & Utilities**: [gap](https://pub.dev/packages/gap), [fpdart](https://pub.dev/packages/fpdart), [fast_immutable_collections](https://pub.dev/packages/fast_immutable_collections)
+- **Desktop Integration**: [window_manager](https://pub.dev/packages/window_manager), [hotkey_manager](https://pub.dev/packages/hotkey_manager), [tray_manager](https://pub.dev/packages/tray_manager), [desktop_drop](https://pub.dev/packages/desktop_drop), & [file_picker](https://pub.dev/packages/file_picker)
+- **Streams & Utilities**: [rxdart](https://pub.dev/packages/rxdart), [gap](https://pub.dev/packages/gap), [fpdart](https://pub.dev/packages/fpdart), & [fast_immutable_collections](https://pub.dev/packages/fast_immutable_collections)
 
 ---
 
 ## 🚀 Getting Started
 
 ### Prerequisites
-- **Flutter SDK** (3.10+)
+- **Flutter SDK** with **Dart 3.10.7+**
 - **Visual Studio Build Tools** (Windows)
-- **MPV dependencies** (Linux)
+- **Linux build & audio dependencies**: `clang`, `cmake`, `ninja-build`, `pkg-config`, `libgtk-3-dev`, `libmpv-dev`, `libkeybinder-3.0-dev`, `libayatana-appindicator3-dev`, `libsecret-1-dev`
 
 ### Quick Start
 
@@ -92,6 +89,17 @@ flutter pub get
 
 # 3. Run the app
 flutter run -d windows # or linux
+```
+
+### Development & Testing
+
+```bash
+# Regenerate Riverpod / Freezed / Isar files after modifying annotated code
+dart run build_runner build --delete-conflicting-outputs
+
+# Run static analysis and unit tests
+flutter analyze
+flutter test
 ```
 
 ---
@@ -139,11 +147,12 @@ flutter build linux --release
 - [x] **Listening Statistics**: Track daily stats, author analytics, and completion rates.
 - [x] **Mini-Player**: Persistent playback controls across all screens.
 - [x] **Metadata Editor**: Edit titles, authors, descriptions, and cover art.
-- [x] **Equalizer**: Built-in audio equalization.
+- [x] **Equalizer & Audio Filters**: Built-in audio presets, skip silence, and loudness normalization.
+- [x] **Library Grouping & Search**: Group by Author, Series, or Collections with search and Grid/List views.
 - [x] **Auto-Updater**: Automatic update checking and notifications.
 - [ ] **Cloud Sync**: Cross-device progress synchronization (NextCloud/WebDAV).
-- [ ] **Audio DSP**: Per-file equalizer presets and playback rate optimization.
-- [ ] **Smart Filters**: Dynamic grouping and advanced library search.
+- [ ] **Per-Book Audio DSP**: Per-book equalizer presets and playback speed memory.
+- [ ] **OS Media Controls**: Native Windows SMTC & Linux MPRIS integration.
 
 ---
 

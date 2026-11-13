@@ -29,10 +29,10 @@ packages:
     dependency: transitive
     description:
       name: android_file_picker
-      sha256: "014c74ab48d452c3252465682375a7fe6ddf56abb908ec361f207a3c4ffb2444"
+      sha256: e7e02f9bab7e014e5b47e4cef135a8f5c66f5c14fd90986e415e758f6a1762e1
       url: "https://pub.dev"
     source: hosted
-    version: "1.1.1"
+    version: "2.1.6"
   archive:
     dependency: transitive
     description:
@@ -149,26 +149,26 @@ packages:
     dependency: "direct main"
     description:
       name: cached_network_image
-      sha256: "7c1183e361e5c8b0a0f21a28401eecdbde252441106a9816400dd4c2b2424916"
+      sha256: "0cb71977516a1354434893163d74bf5f79b3055d1a7e936fb75095aef0d8a3a9"
       url: "https://pub.dev"
     source: hosted
-    version: "3.4.1"
+    version: "4.0.7"
   cached_network_image_platform_interface:
     dependency: transitive
     description:
       name: cached_network_image_platform_interface
-      sha256: "35814b016e37fbdc91f7ae18c8caf49ba5c88501813f73ce8a07027a395e2829"
+      sha256: fc48eb93237498afdb88fb2273867e32ec27b01c365e5a19ccc0de5bb11dbccb
       url: "https://pub.dev"
     source: hosted
-    version: "4.1.1"
+    version: "5.0.4"
   cached_network_image_web:
     dependency: transitive
     description:
       name: cached_network_image_web
-      sha256: "980842f4e8e2535b8dbd3d5ca0b1f0ba66bf61d14cc3a17a9b4788a3685ba062"
+      sha256: f75209409e5a723054e5769e49df86f4f1e5c03eaf94aac69ccddfa00373380d
       url: "https://pub.dev"
     source: hosted
-    version: "1.3.1"
+    version: "2.0.5"
   characters:
     dependency: transitive
     description:
@@ -221,10 +221,10 @@ packages:
     dependency: "direct main"
     description:
       name: connectivity_plus
-      sha256: b5e72753cf63becce2c61fd04dfe0f1c430cc5278b53a1342dc5ad839eab29ec
+      sha256: "762c99f890ca8bf87f7337236f99edd42793843bc6c3631da294a76653a54bd0"
       url: "https://pub.dev"
     source: hosted
-    version: "6.1.5"
+    version: "7.3.1"
   connectivity_plus_platform_interface:
     dependency: transitive
     description:
@@ -293,10 +293,10 @@ packages:
     dependency: "direct main"
     description:
       name: desktop_drop
-      sha256: aa1e797255bfbc76f9eb5aa4f61e5b68dbf69962ab1be6495816d2f251bc0d1f
+      sha256: "47ded09c85909edfed644fd4cbb5051b040d0aed5c79e7e062ea4b3b7156dbe4"
       url: "https://pub.dev"
     source: hosted
-    version: "0.7.1"
+    version: "0.8.4"
   fake_async:
     dependency: transitive
     description:
@@ -309,10 +309,10 @@ packages:
     dependency: "direct main"
     description:
       name: fast_immutable_collections
-      sha256: "3f791151fe63e27beffdba12835db33c60031e324351f683879ebe18d1b10588"
+      sha256: "293012edcb75c742f39a5cfe184baab8d6382cd478dabca8f2cf264f668494da"
       url: "https://pub.dev"
     source: hosted
-    version: "11.2.1"
+    version: "12.0.0"
   ffi:
     dependency: transitive
     description:
@@ -341,42 +341,42 @@ packages:
     dependency: "direct main"
     description:
       name: file_picker
-      sha256: "9be6aac79508dbcf8dac80a4fb20f27ce6f910837ca27e3670b9295995cc0110"
+      sha256: "079dc46b753abbddb7f77cd87e6ed9ecc62902580707514568321bdf8e050a86"
       url: "https://pub.dev"
     source: hosted
-    version: "12.3.0"
+    version: "13.3.3"
   file_picker_darwin:
     dependency: transitive
     description:
       name: file_picker_darwin
-      sha256: "59fa5394cfa5b6dc8bf491630cb17077b77b844adbb840df371e7be5355d6cf6"
+      sha256: b7d3a6bd26a18c503d29070fc2d7b26fbfe918d08a6bcd984b6e806ff5ad923f
       url: "https://pub.dev"
     source: hosted
-    version: "1.2.0"
+    version: "2.5.1"
   file_picker_linux:
     dependency: transitive
     description:
       name: file_picker_linux
-      sha256: bd52ff1e0048f29df95f913c55ad2991c72791d93e6c42241912c4bdee946cb9
+      sha256: "9215ee8c672508cdd9a325202669f849e1baac883658626b3abed5d7777e6a4b"
       url: "https://pub.dev"
     source: hosted
-    version: "1.1.0"
+    version: "2.0.4"
   file_picker_platform_interface:
     dependency: transitive
     description:
       name: file_picker_platform_interface
-      sha256: "0355558fd9af6da499d18e333d6b3beb44b0bf19e00933fccd15d18eb8d0e9ca"
+      sha256: "336e7168306834a2b68e6168ed768e00d3fabeac23154d5793e277ca9f97cf20"
       url: "https://pub.dev"
     source: hosted
-    version: "3.4.0"
+    version: "4.2.0"
   file_picker_web:
     dependency: transitive
     description:
       name: file_picker_web
-      sha256: "935560a9d29fa6f006f2855addebb88e88d438e13627d4cc24187033c106f227"
+      sha256: "50749a6da2984fc29609e102ad4d80fd1d07e6895150f8e4922086167d9d45d8"
       url: "https://pub.dev"
     source: hosted
-    version: "3.1.0"
+    version: "4.2.1"
   fixnum:
     dependency: transitive
     description:
@@ -809,10 +809,10 @@ packages:
     dependency: "direct main"
     description:
       name: metadata_audio
-      sha256: c3ba5f441999806178d7b4982ad7a302ab5bf19683152beca55f903c4c235dbc
+      sha256: b544375b93d5a5c40a42b8009457285758bee99c5e8b042c2735fe2ce64ec40b
       url: "https://pub.dev"
     source: hosted
-    version: "0.8.0"
+    version: "0.9.6"
   mime:
     dependency: transitive
     description:
@@ -1129,10 +1129,10 @@ packages:
     dependency: "direct main"
     description:
       name: skeletonizer
-      sha256: "9f38f9b47ec3cf2235a6a4f154a88a95432bc55ba98b3e2eb6ced5c1974bc122"
+      sha256: f67c2ce8a3fedea63d885afe61a136f3adb59f2c28faa6e79102a5280973c64f
       url: "https://pub.dev"
     source: hosted
-    version: "2.1.3"
+    version: "3.0.0"
   sky_engine:
     dependency: transitive
     description: flutter
@@ -1470,10 +1470,10 @@ packages:
     dependency: transitive
     description:
       name: windows_file_picker
-      sha256: "62e6e6e115231d1d1d71c7b5883b4091ce3e0190e49548dfb0ff8cba8d91ad96"
+      sha256: cd1be37ada0abcfaa55bddb7410e8515844e35cd77669c35d9a28a15722299d8
       url: "https://pub.dev"
     source: hosted
-    version: "1.3.0"
+    version: "2.0.2"
   xdg_directories:
     dependency: transitive
     description:

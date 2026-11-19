@@ -52,7 +52,7 @@ dependencies:
   # metadata_god: ^1.1.0
   metadata_audio: ^0.9.6
   crypto: ^3.0.3
-  tray_manager: ^0.5.2
+  tray_manager: ^0.9.0
   hotkey_manager: ^0.2.3
   desktop_drop: ^0.8.4
   package_info_plus: ^10.2.1
